@@ -6,7 +6,7 @@ containing clinical data for research and dashboard development within UCLH.
 This is a non-operational “mirror” of a subset of UCLH data (historical and live). 
 The underpinning aim is to ensure that no clinical data are corrupted or destroyed during the interaction 
 between the research process and the hospital’s systems and that the systems are not compromised 
-(for instance, if they are interrupted or slowed down by research enquiries).
+(for instance, that they are not interrupted or slowed down by research enquiries).
 
 For more information about EMAP, please see the [docs](https://github.com/SAFEHR-data/emap/tree/main/docs)
 
