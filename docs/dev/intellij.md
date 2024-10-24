@@ -6,77 +6,64 @@ For all code in monorepo + hoover.
 
 These setup instructions are aimed at developing in [IntelliJ IDEA](https://www.jetbrains.com/idea/), but hopefully should be similar in [Eclipse](https://www.eclipse.org/downloads/).
 
-1. <details>
-    <summary>Create a parent directory</summary>
-
-   Create a directory where all the repositories, including this one, will be cloned
+1. Create the parent directory where all the repositories, including this one, will be cloned
    e.g.
 
     ```bash
     mkdir ~/projects/EMAP
     ```
-</details>
 
-2. <details>
-    <summary>Clone repositories</summary>
+2. Clone repositories.
 
-   This repo is now a monorepo that contains the source code from several pre-existing repos (Emap-Core Emap-Interchange Inform-DB emap-hl7-processor).
+   This repo is now a monorepo that contains the source code from several pre-existing repos (Emap-Core Emap-Interchange Inform-DB emap-hl7-processor). Hoover is still separate.
+
+   The [`emap` script](../../emap-setup/) can be used to set up your repos, including cloning them for the
+   first time, but if you want to do it manually:
 
     ```bash
     cd ~/projects/EMAP
     git clone https://github.com/UCLH-DHCT/emap.git
-    git clone https://github.com/inform-health-informatics/hoover.git
+    git clone https://github.com/UCLH-DHCT/hoover.git
     ```
 
-</details>
-
-3. <details>
-    <summary>Open project in IntelliJ IDEA</summary>
+3. Open project in IntelliJ IDEA
 
    <b>File > New > New Project From existing sources</b> and select this repository directory (e.g. `~/projects/EMAP/emap`). 
    When prompted, choose "Create project from existing sources"
 
    "Unmark All" if prompted to select source files for the project.
-</details>
 
-4. <details>
-    <summary>Add Maven projects</summary>
+4. Add Maven projects as IntelliJ modules
 
    <b>File > Project Structure > Modules </b>
    
-   Click the plus to add a new project and select the following `pom.xml` files
+   Click the plus to import a module and select the following `pom.xml` files
 
    - `core/pom.xml`
    - `emap-interchange/pom.xml`
    - `emap-star/pom.xml` - NOT to be confused with `emap/emap-star/emap-star/pom.xml` (which contains the Hibernate entity definitions, but requires the annotation preprocessor)!
    - `hl7-reader/pom.xml`
+   - `waveform-reader/pom.xml`
    - `../hoover/pom.xml` (optional for running within UCLH, outside this repo)
 
-   If you add one by mistake, you can delete the project
+   If you add one by mistake, you can delete the module
 
    ![project root module](img/project-root-config.png)
 
-</details>
-
-5. <details>
-    <summary>Allow annotation processing</summary>
+5. Allow annotation processing
 
    Go to <b>File > Settings > and searching for `processor`</b>
     - Check `enable annotation preprocessing`
     - Change the production sources directory to `classes` as below
 
    ![preprocessor](img/annotation_processor.png)
-</details>
 
-6. <details>
-    <summary>Reload Maven projects</summary>
+6. Reload Maven projects
 
    In the `Maven` pane (which should now have appeared on the top right of the IDE),
    click **Reimport all maven projects** or **Reload**
-</details>
 
-7. <details>
-    <summary>Point to correct Java versions</summary>
+7. Point to correct Java versions
 
     There are several places in IntelliJ that relate to the java version used.
     These settings are sometimes correctly set from the maven config but you may want to double check in case of errors.
@@ -85,17 +72,13 @@ These setup instructions are aimed at developing in [IntelliJ IDEA](https://www.
     `Preferences | Build, Execution, Deployment | Compiler | Java Compiler` (Project bytecode version and per-module bytecode version)
     `Preferences | Build, Execution, Deployment | Build Tools | Maven | Importing` (JDK for importer)
 
-    At the time of writing, hoover uses java 11 and all other modules use java 17.
-</details>
+    At the time of writing, all modules use java 17, except for emap-setup which uses python.
 
-8. <details>
-    <summary>Add lombok and checkstyle plugins</summary>
+8. Add lombok and checkstyle plugins
 
    Go to <b>File > Settings > search for plugins</b>, search lombok and checkstyle and install them
-</details>
 
-9. <details>
-    <summary>Setup checkstyle</summary>
+9. Setup checkstyle
 
    To allow checkstyle to be run go to <b>File > settings > search for checkstyle</b>
     - Set the version of checkstyle to the latest version
@@ -105,7 +88,6 @@ These setup instructions are aimed at developing in [IntelliJ IDEA](https://www.
 
     - Make a description and select the checkstyle file `emap/emap-checker.xml`. When done, in the bottom panel of the IntelliJ select the inform rules to make the new configuration active.
       ![checkstyle](img/checkstyle.png)
-</details>
 
 ## Running unit tests
 

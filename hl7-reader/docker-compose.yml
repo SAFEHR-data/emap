@@ -1,4 +1,3 @@
-version: '3.2'
 services:
   hl7-reader:
     build:

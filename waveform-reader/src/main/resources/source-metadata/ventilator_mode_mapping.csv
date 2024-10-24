@@ -1,0 +1,24 @@
+Value of Variable 584, Variable Description, Displayed Text on Ventilator Screen, Ventilation Mode Primary (Variable 7077), Ventilation Mode Options (Variable 7078), Full Ventilation Mode (Variable 7076), Automode Status (Variable 3483: 0 for Automode off 1 for Automode on)," Invasive/NonInvasive Status (Variable 2382: ""1"" for Invasive ""2"" for Noninvasive)", 
+1, Pressure Control (PC) Automode off, PC, MAN PC CMV, None, MAN PC CMV, Automode off, Invasive
+2, PC - PS Automode on no patient trigg, AUTOMODE PC-PS, MAN PC CMV, None, MAN PC CMV, Automode on, Invasive
+3, PC - PS Automode on patient trigg, AUTOMODE PC-PS, SPN PS, None, SPN PS, Automode on, Invasive
+4, Volume Control (VC) Automode off, VC, MAN VC CMV, None, MAN VC CMV, Automode off, Invasive
+5, VC - VS Automode on no patient trigg, AUTOMODE VC-VS, MAN VC CMV, None, MAN VC CMV, Automode on, Invasive
+6, VC - VS Automode on patient trigg, AUTOMODE VC-VS, SPN VS, None, SPN VS, Automode on, Invasive
+7, Pressure Reg. Volume Control (PRVC) Automode off, PRVC, MAN ADPC CMV, None, MAN ADPC CMV, Automode off, Invasive
+8, PRVC - VS Automode on no patient trigg, AUTOMODE PRVC-VS, MAN ADPC CMV, None, MAN ADPC CMV, Automode on, Invasive
+9, PRVC - VS Automode on patient trigg, AUTOMODE PRVC-VS, SPN VS, None, SPN VS, Automode on, Invasive
+10, Volume Support (VS), VS, SPN VS, None, SPN VS, Automode off, Invasive
+11, Pressure Support / CPAP (PS), PS/CPAP, SPN PS, None, SPN PS, Automode off, Invasive
+12, SIMV (Vol. Contr.) + Pressure Support, SIMV (VC) + PS, MAN VC SIMV, +PS, MAN VC SIMV +PS, Automode off, Invasive
+13, SIMV (Press. Contr.) + Pressure Support, SIMV (PC) + PS, MAN PC SIMV, +PS, MAN PC SIMV +PS, Automode off, Invasive
+14, SIMV (Pressure Reg. Volume Control) + Pressure Support, SIMV (PRVC) + PS, MAN ADPC SIMV, +PS, MAN ADPC SIMV +PS, Automode off, Invasive
+15, Bi-Vent/APRV, BI-VENT/APRV, MAN PC Bilevel, None, MAN PC Bilevel, Automode off, Invasive
+16, Pressure Control in NIV, NIV PC, MAN PC CMV, None, MAN PC CMV, Automode off, NonInvasive
+17, Pressure Support / CPAP in NIV, NIV PS, SPN PS, None, SPN PS, Automode off, NonInvasive
+18, Nasal CPAP, NASAL CPAP, SPN CPAP, None, SPN CPAP, Automode off, NonInvasive
+19, NAVA, NAVA, SPN NAVA, None, SPN NAVA, Automode off, Invasive
+20, NIV NAVA, NIV NAVA, SPN NAVA, None, SPN NAVA, Automode off, NonInvasive
+21, High Flow Therapy, HIGH FLOW, O2THERAPY, None, O2THERAPY, Automode off, Invasive / NonInvasive Note: variable 2382 is not sent in this mode.
+24, Neural Pressure Support, NPS, SPN NAVA, +PS, SPN NAVA +PS, Automode off, Invasive
+25,NIV Neural Pressure Support, NIV NPS, SPN NAVA, +PS, SPN NAVA +PS, Automode off, NonInvasive

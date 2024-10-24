@@ -4,7 +4,7 @@ SHELL ["/bin/bash", "-c"]
 # Install zip & unzip for glowroot
 RUN apt update; apt install -yy zip
 # Set up the Maven proxy settings
-COPY core/set_mvn_proxy.sh /app/
+COPY docker/set_mvn_proxy.sh /app/
 # Download and extract glowroot
 WORKDIR /app/core
 RUN curl -s https://api.github.com/repos/glowroot/glowroot/releases/latest \

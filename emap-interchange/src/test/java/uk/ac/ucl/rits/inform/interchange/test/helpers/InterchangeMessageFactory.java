@@ -9,8 +9,7 @@ import uk.ac.ucl.rits.inform.interchange.AdvanceDecisionMessage;
 import uk.ac.ucl.rits.inform.interchange.ConsultMetadata;
 import uk.ac.ucl.rits.inform.interchange.ConsultRequest;
 import uk.ac.ucl.rits.inform.interchange.FileStoreWithMonitoredAccess;
-import uk.ac.ucl.rits.inform.interchange.location.DepartmentMetadata;
-import uk.ac.ucl.rits.inform.interchange.location.LocationMetadata;
+import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
 import uk.ac.ucl.rits.inform.interchange.PatientAllergy;
 import uk.ac.ucl.rits.inform.interchange.PatientInfection;
 import uk.ac.ucl.rits.inform.interchange.PatientProblem;
@@ -23,14 +22,21 @@ import uk.ac.ucl.rits.inform.interchange.lab.LabIsolateMsg;
 import uk.ac.ucl.rits.inform.interchange.lab.LabMetadataMsg;
 import uk.ac.ucl.rits.inform.interchange.lab.LabOrderMsg;
 import uk.ac.ucl.rits.inform.interchange.lab.LabResultMsg;
+import uk.ac.ucl.rits.inform.interchange.location.DepartmentMetadata;
+import uk.ac.ucl.rits.inform.interchange.location.LocationMetadata;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.Flowsheet;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.FlowsheetMetadata;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
+
+import static uk.ac.ucl.rits.inform.interchange.utils.DateTimeUtils.roundInstantToNearest;
 
 
 /**
@@ -249,6 +255,52 @@ public class InterchangeMessageFactory {
      */
     public List<Flowsheet> getFlowsheets(final String fileName) throws IOException {
         return getFlowsheets(fileName, sourceId);
+    }
+
+    /**
+     *
+     * @param sourceStreamId how the source data identifies this stream
+     * @param mappedStreamName how the reader has interpreted the source stream id
+     * @param samplingRate samples per second
+     * @param numSamples total bumber of samples to generate
+     * @param maxSamplesPerMessage how many samples to put in a message; split as necessary
+     * @param sourceLocation bed location according to the original data
+     * @param mappedLocation bed location according to data reader's interpretation of the original data
+     * @param obsDatetime when the data occurred
+     * @param unit the unit of the measurement
+     * @param roundToUnit what precision to round obsDatetime to when creating messages (to be more realistic),
+     *                    or null to not perform rounding
+     * @return list of messages containing synthetic data
+     */
+    public List<WaveformMessage> getWaveformMsgs(String sourceStreamId, String mappedStreamName,
+                                                 int samplingRate, final int numSamples, int maxSamplesPerMessage,
+                                                 String sourceLocation, String mappedLocation,
+                                                 Instant obsDatetime, String unit, ChronoUnit roundToUnit) {
+        // XXX: perhaps make use of the hl7-reader utility function for splitting messages? Or is that cheating?
+        // Or should such a utility function go into (non-test) Interchange?
+        List<WaveformMessage> allMessages = new ArrayList<>();
+        int samplesRemaining = numSamples;
+        while (samplesRemaining > 0) {
+            int samplesThisMessage = Math.min(samplesRemaining, maxSamplesPerMessage);
+            WaveformMessage waveformMessage = new WaveformMessage();
+            waveformMessage.setSourceStreamId(sourceStreamId);
+            waveformMessage.setMappedStreamDescription(mappedStreamName);
+            waveformMessage.setSamplingRate(samplingRate);
+            waveformMessage.setSourceLocationString(sourceLocation);
+            waveformMessage.setMappedLocationString(mappedLocation);
+            var values = new ArrayList<Double>();
+            for (int i = 0; i < samplesThisMessage; i++) {
+                values.add(Math.sin((numSamples - samplesRemaining + i) * 0.01));
+            }
+            waveformMessage.setUnit(unit);
+            waveformMessage.setNumericValues(new InterchangeValue<>(values));
+            Instant obsDatetimeRounded = roundInstantToNearest(obsDatetime, roundToUnit);
+            waveformMessage.setObservationTime(obsDatetimeRounded);
+            allMessages.add(waveformMessage);
+            samplesRemaining -= samplesThisMessage;
+            obsDatetime = obsDatetime.plus(samplesThisMessage * 1000_000L / samplingRate, ChronoUnit.MICROS);
+        }
+        return allMessages;
     }
 
     /**

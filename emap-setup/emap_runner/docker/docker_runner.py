@@ -82,7 +82,11 @@ class DockerRunner:
 
         paths = [
             self.core_docker_compose_path,
+            # need to make optional
+            Path(self.emap_dir, "core", "docker-compose.fakeuds.yml"),
             Path(self.emap_dir, "hl7-reader", "docker-compose.yml"),
+            Path(self.emap_dir, "waveform-reader", "docker-compose.yml"),
+            Path(self.emap_dir, "waveform-generator", "docker-compose.yml"),
         ]
         # allow for hoover and to be optional compose path
         if "hoover" in self.config["repositories"]:

@@ -50,11 +50,11 @@ public class Publisher implements Runnable, Releasable {
 
     private final Logger logger = LoggerFactory.getLogger(Publisher.class);
 
-    @Autowired
-    private EmapDataSource getEmapDataSource;
+    private final EmapDataSource getEmapDataSource;
 
     /**
      * @param rabbitTemplate rabbitTemplate bean
+     * @param emapDataSource emapDataSource bean
      * @param maxBatches     Application properties value rabbitmq.max.batches
      *                       Sets the maximum number of batches allowed before blocking
      * @param maxInTransit   Application properties value rabbitmq.max.batches
@@ -62,12 +62,15 @@ public class Publisher implements Runnable, Releasable {
      * @param initialDelay   Initial delay for a failed message to be resent in seconds
      */
     @Autowired
-    public Publisher(RabbitTemplate rabbitTemplate, @Value("${rabbitmq.max.batches:1}") int maxBatches,
+    public Publisher(RabbitTemplate rabbitTemplate,
+                     EmapDataSource emapDataSource,
+                     @Value("${rabbitmq.max.batches:1}") int maxBatches,
                      @Value("${rabbitmq.max.intransit:1}") int maxInTransit,
                      @Value("${rabbitmq.retry.delay.initial:1}") int initialDelay) {
         semaphore = new Semaphore(maxInTransit, true);
         rabbitTemplate.setConfirmCallback(new MessagesConfirmCallback(this));
         this.rabbitTemplate = rabbitTemplate;
+        this.getEmapDataSource = emapDataSource;
         blockingQueue = new ArrayBlockingQueue<>(maxBatches);
         waitingMap = new ConcurrentHashMap<>();
         batchWaitingMap = new ConcurrentHashMap<>();

@@ -1,0 +1,3 @@
+# these settings work on the GAE but if the process is getting OOM killed you can reduce them
+MAX_HEAP_SIZE=4G
+HEAP_NEWSIZE=800M

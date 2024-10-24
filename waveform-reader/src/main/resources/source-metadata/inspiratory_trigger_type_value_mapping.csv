@@ -1,0 +1,8 @@
+variable_value, variable_description 
+1, Trig cause undefined 
+2, Trig by CMV rate 
+3, Flow Trig 
+4, Pressure Trig 
+5, Edi Trig 
+6, Time to give a mandatory breath 
+7, Start breath button pressed 

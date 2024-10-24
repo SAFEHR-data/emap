@@ -1,0 +1,24 @@
+{
+    "transactions": {
+        "slowThresholdMillis": 300,
+        "profilingIntervalMillis": 1000,
+        "captureThreadStats": true
+      },
+      "instrumentation": [
+              {
+                        "className": "uk.ac.ucl.rits.inform.datasources.waveform_generator.Hl7Generator",
+                        "methodName": "generateMessages",
+                        "methodParameterTypes": [
+                                    ".."
+                                  ],
+                        "captureKind": "transaction",
+                        "transactionType": "Web",
+                        "transactionNameTemplate": "mainLoop",
+                        "transactionSlowThresholdMillis": 500,
+                        "alreadyInTransactionBehavior": "capture-new-transaction",
+                        "traceEntryMessageTemplate": "{{this}}.{{methodName}}({{0}}, {{1}}, {{2}})",
+                        "timerName": "mainLoop"
+                      }
+            ]
+}
+

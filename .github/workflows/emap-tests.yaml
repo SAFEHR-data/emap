@@ -3,7 +3,7 @@ on:
   push:
     branches: [ main, develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop, sk/waveform-dev ]
   repository_dispatch:
 permissions:
   contents: read
@@ -18,6 +18,7 @@ jobs:
       emap-interchange: ${{ steps.filter.outputs.emap-interchange }}
       core: ${{ steps.filter.outputs.core }}
       hl7-reader: ${{ steps.filter.outputs.hl7-reader }}
+      waveform-reader: ${{ steps.filter.outputs.waveform-reader }}
     steps:
       - uses: actions/checkout@v3
       - uses: dorny/paths-filter@v2
@@ -44,6 +45,11 @@ jobs:
               - 'emap-interchange/**'
               - 'emap-star/**'
               - 'hl7-reader/**'
+            waveform-reader:
+              - '.github/**'
+              - 'emap-checker.xml'
+              - 'emap-interchange/**'
+              - 'waveform-reader/**'
   emap-star-tests:
     needs: [filter]
     runs-on: ubuntu-latest
@@ -133,6 +139,29 @@ jobs:
         working-directory: core
         env:
           TZ: "America/Chicago"
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v2
+        if: success() || failure()
+        with:
+          report_paths: '**/target/surefire-reports/TEST-*.xml'
+  waveform-reader-tests:
+    needs: [filter]
+    runs-on: ubuntu-latest
+    if: needs.filter.outputs.waveform-reader == 'true'
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: Build emap-interchange
+        working-directory: emap-interchange
+        run: mvn clean install
+      - name: Run waveform-reader tests
+        working-directory: waveform-reader
+        run: mvn clean test
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v2
         if: success() || failure()

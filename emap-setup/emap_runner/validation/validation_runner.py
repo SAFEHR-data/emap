@@ -1,6 +1,6 @@
 from subprocess import Popen
 from datetime import date, timedelta
-from time import time, sleep
+import time
 from typing import Union, List
 from pathlib import Path
 
@@ -13,25 +13,29 @@ class ValidationRunnerException(EMAPRunnerException):
 
 
 class ValidationRunner:
+    wait_secs = 120
+    final_wait_secs = 600
+
     def __init__(
         self,
         docker_runner: "DockerRunner",
         time_window: "TimeWindow",
+        timeout: timedelta,
         should_build: bool = True,
         use_hl7_reader: bool = True,
         use_hoover: bool = True,
+        use_waveform: bool = False,
     ):
         """Validation runner that will be run over a time window"""
 
         self.should_build = should_build
         self.use_hl7_reader = use_hl7_reader
         self.use_hoover = use_hoover
-
-        self.start_time = None
-        self.timeout = timedelta(hours=10)
+        self.use_waveform = use_waveform
 
         self.docker = docker_runner
         self.time_window = time_window
+        self.timeout = timeout
 
     def run(self) -> None:
         """Run a validation run pipeline by constructing services and waiting
@@ -154,6 +158,16 @@ class ValidationRunner:
                 output_filename=f"{self.log_file_prefix}_hoover.txt",
             )
 
+        # Assume for the time being that this validation option is only to control whether
+        # the waveform *reader* is brought up, which will be reading from an HL7 dump file
+        # and therefore doesn't require the waveform-generator.
+        if self.use_waveform:
+            self.docker.run(
+                "up --exit-code-from waveform-reader waveform-reader",
+                output_filename=f"{self.log_file_prefix}_waveform-reader.txt",
+            )
+
+
         self.docker.run("ps")
 
     def _wait_for_queue_to_empty(self) -> None:
@@ -162,32 +176,22 @@ class ValidationRunner:
         If it's still going after 10 hours something's gone very wrong and we
         should give up
         """
-        self.start_time = time()
+        start_time_monotonic = time.monotonic()
 
         while self._has_populated_queues:
-
-            sleep(120)
-
-            if self._exceeded_timeout:
+            time.sleep(ValidationRunner.wait_secs)
+            elapsed_time = timedelta(seconds=time.monotonic() - start_time_monotonic)
+            if elapsed_time > self.timeout:
                 self._save_logs_and_stop()
                 raise ValidationRunnerException(
                     f"Waiting for queue timed out. Elapsed time "
-                    f"({self._elapsed_time}) > timeout ({self.timeout})"
+                    f"({elapsed_time}) > timeout ({self.timeout})"
                 )
 
         # exits too keenly from databaseExtracts queue, adding in a wait period
-        sleep(600)
+        time.sleep(ValidationRunner.final_wait_secs)
 
         return None
-
-    @property
-    def _exceeded_timeout(self) -> bool:
-        return self._elapsed_time > self.timeout
-
-    @property
-    def _elapsed_time(self) -> timedelta:
-        """Seconds elapsed since the runner started"""
-        return timedelta(microseconds=time() - self.start_time)
 
     @property
     def _has_populated_queues(self) -> bool:
@@ -206,10 +210,10 @@ class ValidationRunner:
             "exec rabbitmq rabbitmqctl -q list_queues", output_lines=output_lines
         )
 
-        return self._stdout_rabbitmq_lines_have_zero_length_queues(output_lines)
+        return not self._stdout_rabbitmq_queues_all_zero_length(output_lines)
 
     @staticmethod
-    def _stdout_rabbitmq_lines_have_zero_length_queues(lines: List[str]) -> bool:
+    def _stdout_rabbitmq_queues_all_zero_length(lines: List[str]) -> bool:
         """
         Do a set of output lines generated from querying the rabbitmq
         queues indicate that all queues are empty?

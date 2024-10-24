@@ -1,5 +1,6 @@
 package uk.ac.ucl.rits.inform.datasinks.emapstar.repos;
 
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import uk.ac.ucl.rits.inform.informdb.identity.HospitalVisit;
 import uk.ac.ucl.rits.inform.informdb.movement.Location;
@@ -69,6 +70,22 @@ public interface LocationVisitRepository extends CrudRepository<LocationVisit, L
     Optional<LocationVisit> findByHospitalVisitIdAndLocationIdAndDischargeDatetime(HospitalVisit visit,
                                                                                    Location locationId,
                                                                                    Instant dischargeDatetime);
+
+    /**
+     * Find a current or closed location visit by any time during that visit and its location.
+     * Intended for when the visit can't be found by its ID, and we have to infer it by time and place.
+     * @param observationDatetime any time when the patient was at that location
+     * @param locationString location string
+     * @return the location visit, if it exists
+     */
+    @Query("from LocationVisit lv "
+            + "inner join lv.locationId as loc "
+            + "where loc.locationString = :locationString "
+            + "and :observationDatetime >= lv.admissionDatetime "
+            + "and (lv.dischargeDatetime is null "
+            + "  or :observationDatetime <= lv.dischargeDatetime) "
+    )
+    Optional<LocationVisit> findLocationVisitByLocationAndTime(Instant observationDatetime, String locationString);
 
     /**
      * For testing: find by location string.

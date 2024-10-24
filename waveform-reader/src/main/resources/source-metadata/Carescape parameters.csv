@@ -1,0 +1,5 @@
+Channel,Variable,Description,Sample rate,Unit
+"1, 2, 3, 4, 5, 6",51920,Invasive blood pressure,100Hz,mmHg
+"1,2,3",27,Generic ECG Waveform,300Hz,uV
+1,51911,O2 Pleth Waveform,100Hz,%
+,52921,ETCO2,25Hz,%

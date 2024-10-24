@@ -138,8 +138,12 @@ class GlobalConfiguration(dict):
         return None
 
     def get_first(self, key: str, section: str) -> str:
-        """Get the first value of a key within a section of this global
-        configuration. If it cannot be found then use the top-level"""
+        """
+        Search the config for the given key in the following order:
+         - In the section given by arg `section`
+         - In any of the sections in possible_sections
+         - At the top level
+         """
 
         if section in self and key in self[section]:
             """

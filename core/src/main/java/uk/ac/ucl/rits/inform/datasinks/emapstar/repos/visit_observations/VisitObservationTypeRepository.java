@@ -3,6 +3,7 @@ package uk.ac.ucl.rits.inform.datasinks.emapstar.repos.visit_observations;
 import org.springframework.data.repository.CrudRepository;
 import uk.ac.ucl.rits.inform.informdb.visit_recordings.VisitObservationType;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -51,4 +52,11 @@ public interface VisitObservationTypeRepository extends CrudRepository<VisitObse
      * @return Visit Observation Type with interfaceId and idInApplication as specified, if exists.
      */
     Optional<VisitObservationType> findByInterfaceIdAndIdInApplication(String interfaceId, String idInApplication);
+
+    /**
+     * For testing.
+     * @param sourceObservationType source observation type (eg. "waveform")
+     * @return all rows matching
+     */
+    List<VisitObservationType> findAllBySourceObservationType(String sourceObservationType);
 }

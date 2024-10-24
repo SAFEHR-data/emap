@@ -33,6 +33,10 @@ import java.util.Map;
 public class DataSourceConfiguration {
     private static final Logger logger = LoggerFactory.getLogger(DataSourceConfiguration.class);
 
+    public DataSourceConfiguration(EmapDataSource emapDataSource) {
+        this.emapDataSource = emapDataSource;
+    }
+
     /**
      * @return a converter which ensures Instant objects are handled properly
      */
@@ -42,8 +46,7 @@ public class DataSourceConfiguration {
         return new Jackson2JsonMessageConverter(mapper);
     }
 
-    @Autowired
-    private EmapDataSource emapDataSource;
+    private final EmapDataSource emapDataSource;
 
     private @Value("${rabbitmq.queue.length:100000}")
     int queueLength;

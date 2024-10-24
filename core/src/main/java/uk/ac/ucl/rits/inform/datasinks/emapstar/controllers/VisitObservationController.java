@@ -19,6 +19,7 @@ import uk.ac.ucl.rits.inform.informdb.visit_recordings.VisitObservationType;
 import uk.ac.ucl.rits.inform.informdb.visit_recordings.VisitObservationTypeAudit;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.Flowsheet;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.FlowsheetMetadata;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
 
 import javax.annotation.Resource;
 import java.time.Instant;
@@ -120,6 +121,21 @@ public class VisitObservationController {
             flowsheetState.saveEntityOrAuditLogIfRequired(visitObservationRepo, visitObservationAuditRepo);
             updateDataFlagsAndSaveObservationType(msg, observationType, validFrom, storedFrom);
         }
+    }
+
+    /**
+     * Process the parts of a waveform message that relate to its visit observation type.
+     * @param msg waveform msg from which to extract VisitObservationType data
+     * @param storedFrom stored from
+     * @return new or existing VisitObservationType
+     */
+    public VisitObservationType getOrCreateFromWaveform(WaveformMessage msg, Instant storedFrom) {
+        VisitObservationType observationType = cache.getOrCreatePersistedObservationType(
+                msg.getSourceStreamId(), msg.getSourceStreamId(), "waveform", msg.getObservationTime(), storedFrom);
+        observationType.setName(msg.getMappedStreamDescription());
+        observationType.setIsRealTime(true);
+        // Might want to consider updating/auditing if the name/description changes. See Issue #71
+        return observationType;
     }
 
     /**
