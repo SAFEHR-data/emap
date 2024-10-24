@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 public class Hl7Generator {
     private final Logger logger = LoggerFactory.getLogger(Hl7Generator.class);
 
-    @Value("${test.synthetic.num_patients:30}")
+    @Value("${waveform.synthetic.num_patients:30}")
     private int numPatients;
 
 
@@ -44,7 +44,7 @@ public class Hl7Generator {
      * In catch-up mode, warp factor can be used to control how quickly data
      * will be fed in (measure in multiples of real time).
      */
-    @Value("${test.synthetic.start_datetime:#{null}}")
+    @Value("${waveform.synthetic.start_datetime:#{null}}")
     private Instant startDatetime;
     /**
      * Where we are up to in generating data (observation time).
@@ -64,12 +64,12 @@ public class Hl7Generator {
 
     // system time (not observation time) when we started running
     private Long monotonicStartTimeNanos = null;
-    @Value("${test.synthetic.end_datetime:#{null}}")
+    @Value("${waveform.synthetic.end_datetime:#{null}}")
     private Instant endDatetime;
-    @Value("${test.synthetic.warp_factor:1}")
+    @Value("${waveform.synthetic.warp_factor:1}")
     private int warpFactor;
 
-    @Value("${test.synthetic.tcp_client_pool_size:1}")
+    @Value("${waveform.synthetic.tcp_client_pool_size:1}")
     private int tcpClientPoolSize;
 
     /**

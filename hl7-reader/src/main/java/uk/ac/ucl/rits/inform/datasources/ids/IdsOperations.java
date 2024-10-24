@@ -98,8 +98,8 @@ public class IdsOperations implements AutoCloseable {
         idsFactory = idsConfiguration.getSessionFactory();
         idsEmptyOnInit = getIdsIsEmpty();
         logger.info("IdsOperations() idsEmptyOnInit = {}", idsEmptyOnInit);
-        defaultStartUnid = getFirstMessageUnidFromDate(idsConfiguration.getStartDateTime(), 1);
-        endUnid = getFirstMessageUnidFromDate(idsConfiguration.getEndDatetime(), defaultStartUnid);
+        defaultStartUnid = getFirstMessageUnidFromDate(idsConfiguration.getStartDateTime());
+        endUnid = getFirstMessageUnidFromDate(idsConfiguration.getEndDatetime());
 
         // Progress is stored as the unid (the date info is purely for human convenience),
         logger.info(
@@ -156,22 +156,23 @@ public class IdsOperations implements AutoCloseable {
      * timestamp.
      *
      * @param fromDateTime the timestamp to start from, or null for no boundary
-     * @param fromUnid     starting unid for filtering
      * @return the unid of the first message to be persisted at or after that time,
      * or null if there are no such messages or no bound was requested (fromDateTime == null)
      */
-    private Integer getFirstMessageUnidFromDate(Instant fromDateTime, Integer fromUnid) {
+    private Integer getFirstMessageUnidFromDate(Instant fromDateTime) {
         if (fromDateTime == null) {
             // bypass this slow query if no bound was requested
             return null;
         }
         logger.info("Querying IDS for first unid after {}, this can take a while", fromDateTime);
         try (Session idsSession = idsFactory.openSession()) {
+            idsSession.setDefaultReadOnly(true);
+            // Including `unid` anywhere in this query seems to make it do an index scan on the unid (PK) column
+            // and thus make it very slow.
             List<IdsMaster> msg = idsSession.createQuery(
-                            "select i from IdsMaster i where i.unid >= :fromUnid and i.persistdatetime >= :fromDatetime order by i.unid",
+                            "select i from IdsMaster i where i.persistdatetime >= :fromDatetime order by i.persistdatetime",
                             IdsMaster.class)
                     .setParameter("fromDatetime", fromDateTime)
-                    .setParameter("fromUnid", fromUnid)
                     .setMaxResults(1)
                     .getResultList();
             if (msg.isEmpty()) {

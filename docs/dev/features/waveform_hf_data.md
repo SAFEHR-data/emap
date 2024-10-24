@@ -36,17 +36,31 @@ Core:
 
 Waveform Generator:
   - `waveform.hl7.send_host`, `waveform.hl7.send_port` - the host and port to send the generated data to
-  - `test.synthetic.num_patients` - number of different patients (locations) to generate data for
-  - `test.synthetic.start_datetime` observation date to start generating data from or null to simulate live data
+  - `waveform.synthetic.num_patients` - number of different patients (locations) to generate data for
+  - `waveform.synthetic.start_datetime` observation date to start generating data from or null to simulate live data
     (see comment in code for more)
-  - `test.synthetic.end_datetime` if not null, exit the generator when observation date hits this date
-  - `test.synthetic.warp_factor` How many times real time to generate data at. Live mode implies warp factor = 1.
+  - `waveform.synthetic.end_datetime` if not null, exit the generator when observation date hits this date
+  - `waveform.synthetic.warp_factor` How many times real time to generate data at. Live mode implies warp factor = 1.
 
 Waveform Reader:
   - `waveform.hl7.listen_port` port inside the container to listen on for waveform HL7 generator
   - `waveform.hl7.source_address_allow_list` comma-separated list of source IP addresses to accept connections from.
-      If the listen contains the value "ALL", then all source IP addresses are allowed.
+      Enter your Smartlinx server IP address(es) here.
+      For testing only: if the list contains the value "ALL", then all source IP addresses are allowed. This is
+      the only form of authentication so don't use this setting in production.
+      Not currently supported: hostnames or IP ranges.
   - `waveform.hl7.test_dump_file` If specified, read messages from this file and then exit - intended for validation
+
+## Container housekeeping (setup script)
+The waveform processing feature is enabled or disabled in the global configuration file. I've added
+a "features" section for this, and taken the opportunity to also add the `fakeuds` container to make that easier
+to turn on and off.
+
+Because the waveform feature flag will include/exclude the relevant docker compose files from
+the docker commands it generates, you can continue to
+run a simple `emap docker up -d` to bring up a production instance of emap without the waveform containers coming up.
+Feature flag implementation is different here than for, say, SDEs because that's a feature within the core
+processor, whereas disabling waveform data requires an entire container to be disabled.
 
 ## Design details
 

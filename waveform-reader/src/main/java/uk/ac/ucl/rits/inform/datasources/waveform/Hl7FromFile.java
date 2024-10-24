@@ -46,14 +46,21 @@ public class Hl7FromFile {
 
     @Scheduled(fixedRate = Long.MAX_VALUE) // do once only
     void readOnceAndQueueScheduled() throws Hl7ParseException, WaveformCollator.CollationException, IOException {
-        readOnceAndQueue(hl7DumpFile);
-    }
-
-    void readOnceAndQueue(File hl7DumpFile) throws Hl7ParseException, WaveformCollator.CollationException, IOException {
         if (hl7DumpFile == null) {
             logger.info("No test HL7 file specified");
             return;
         }
+        readOnceAndQueue(hl7DumpFile);
+        // Not sure how to wait for Publisher to finish, so just sleep for a bit
+        try {
+            Thread.sleep(10_000);
+        } catch (InterruptedException e) {
+            logger.warn("Thread was interrupted", e);
+        }
+        System.exit(0);
+    }
+
+    void readOnceAndQueue(File hl7DumpFile) throws Hl7ParseException, WaveformCollator.CollationException, IOException {
         List<String> messages = readFromFile(hl7DumpFile);
         logger.info("Read {} HL7 messages from test dump file", messages.size());
         for (int mi = 0; mi < messages.size(); mi++) {

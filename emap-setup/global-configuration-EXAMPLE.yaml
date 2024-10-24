@@ -30,6 +30,12 @@ repositories:
 #  hoover:
 #    branch:  develop
 
+# Feature flags for not quite ready features, or for turning fake services on and off
+features:
+  waveform: false
+  waveform_generator: false
+  fake_uds: false
+
 # Configuration data for the rabbitmq instance used by Spring in the pipeline
 rabbitmq:
   SPRING_RABBITMQ_HOST: rabbitmq

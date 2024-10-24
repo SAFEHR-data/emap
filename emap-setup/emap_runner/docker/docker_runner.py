@@ -12,16 +12,31 @@ class DockerRunnerException(EMAPRunnerException):
     """Exception for something breaking within docker"""
 
 
+def first_not_none(*args):
+    for a in args:
+        if a is not None:
+            return a
+    return None
+
 class DockerRunner:
     """Orchestration for multiple services using docker"""
 
-    def __init__(self, project_dir: Path, config: "GlobalConfiguration"):
+    def __init__(self,
+                 project_dir: Path,
+                 config: "GlobalConfiguration",
+                 enable_waveform=None,
+                 use_fake_waveform=None,
+                 use_fake_uds=None,
+                 ):
         """Initialise a docker runner with docker-compose.yml files relative
         to the main directory given a specific configuration"""
 
         self.project_dir = project_dir
         self.emap_dir = project_dir / "emap"
         self.config = config
+        self.enable_waveform = first_not_none(enable_waveform, self.config.get("features", "waveform"))
+        self.use_fake_waveform = first_not_none(use_fake_waveform, self.config.get("features", "waveform_generator"))
+        self.use_fake_uds = first_not_none(use_fake_uds, self.config.get("features", "fake_uds"))
 
     def run(
         self,
@@ -82,12 +97,18 @@ class DockerRunner:
 
         paths = [
             self.core_docker_compose_path,
-            # need to make optional
-            Path(self.emap_dir, "core", "docker-compose.fakeuds.yml"),
             Path(self.emap_dir, "hl7-reader", "docker-compose.yml"),
-            Path(self.emap_dir, "waveform-reader", "docker-compose.yml"),
-            Path(self.emap_dir, "waveform-generator", "docker-compose.yml"),
         ]
+        # Fakes are for testing only. Waveform is a real feature that is currently off
+        # by default, except for the waveform generator which is for testing waveform
+        # data only.
+        if self.use_fake_uds:
+            paths.append(Path(self.emap_dir, "core", "docker-compose.fakeuds.yml"))
+        if self.enable_waveform:
+            paths.append(Path(self.emap_dir, "waveform-reader", "docker-compose.yml"))
+            if self.use_fake_waveform:
+                paths.append(Path(self.emap_dir, "waveform-generator", "docker-compose.yml"))
+
         # allow for hoover and to be optional compose path
         if "hoover" in self.config["repositories"]:
             paths.append(Path(self.project_dir, "hoover", "docker-compose.yml"))

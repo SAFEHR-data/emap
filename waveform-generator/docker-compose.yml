@@ -11,7 +11,7 @@ services:
         https_proxy: ${https_proxy}
         SERVICE_SRC_DIR: waveform-generator
     env_file:
-      - ../../config/waveform-reader-config-envs
+      - ../../config/waveform-generator-config-envs
     logging:
       driver: "json-file"
     restart: "no"

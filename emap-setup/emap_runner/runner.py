@@ -212,7 +212,14 @@ class EMAPRunner:
             raise ValueError("hoover requested but is missing from repositories in global config")
 
         runner = ValidationRunner(
-            docker_runner=DockerRunner(project_dir=Path.cwd(), config=self.global_config),
+            docker_runner=DockerRunner(project_dir=Path.cwd(),
+                                       config=self.global_config,
+                                       # must enable the compose file if we intend to ask for waveform container
+                                       enable_waveform=self.args.use_waveform,
+                                       # but never use fake waveform or fake UDS in validation
+                                       use_fake_waveform=False,
+                                       use_fake_uds=False,
+                                       ),
             time_window=TimeWindow(
                 start_date=self.args.start_date, end_date=self.args.end_date
             ),

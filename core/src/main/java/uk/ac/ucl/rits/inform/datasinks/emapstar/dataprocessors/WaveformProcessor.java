@@ -57,7 +57,7 @@ public class WaveformProcessor {
     /**
      * To keep the overall database size down to something reasonable, periodically delete old data.
      */
-    @Scheduled(fixedRate = 60 * 1000)
+    @Scheduled(fixedRate = 60 * 60 * 1000)
     public void deleteOldWaveformData() {
         logger.info("deleteOldWaveformData: Checking for old waveform data for deletion");
         Instant baselineDatetime;

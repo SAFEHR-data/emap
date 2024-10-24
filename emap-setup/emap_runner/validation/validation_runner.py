@@ -139,12 +139,10 @@ class ValidationRunner:
         the time delay required for RabbitMQ to be there. Should this prove not to be sufficient, then the running order
         may need to change, i.e. the data sources to be started first (as background services though!).
         """
-        _ = Popen(
-            "sleep 180 && "
-            + self.docker.base_docker_compose_command
-            + "up -d core",
-            shell=True,
-        )
+        # not sure this sleep is necessary given the healthchecks we have now
+        time.sleep(180)
+        self.docker.run("up -d core")
+        self.docker.run("ps")
 
         if self.use_hl7_reader:
             self.docker.run(
@@ -162,6 +160,9 @@ class ValidationRunner:
         # the waveform *reader* is brought up, which will be reading from an HL7 dump file
         # and therefore doesn't require the waveform-generator.
         if self.use_waveform:
+            # While de-orphaning remains unimplemented, must wait for ADT data to
+            # be present before adding waveform-data. (See issue #36)
+            self._wait_for_queue_to_empty()
             self.docker.run(
                 "up --exit-code-from waveform-reader waveform-reader",
                 output_filename=f"{self.log_file_prefix}_waveform-reader.txt",
