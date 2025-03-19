@@ -155,7 +155,7 @@ class Repository:
 
     @staticmethod
     def _add_env_to_files(path: Path, files: List[EnvironmentFile]):
-        if path.is_file() and str(path).endswith("-envs.EXAMPLE"):
+        if path.is_file() and str(path).endswith(("-envs.EXAMPLE", "-build-args.EXAMPLE")):
             files.append(EnvironmentFile.from_example_file(path))
 
     @staticmethod

@@ -175,7 +175,7 @@ class DockerRunner:
     @staticmethod
     def _all_global_environment_variables() -> dict:
         """Dictionary of all global variables present in
-        config/global-config-envs added to the currently set env vars"""
+        config/global-config-envs or config/*-build-args added to the currently set env vars"""
 
         config_dir_path = Path(Path.cwd(), "config")
 
@@ -187,10 +187,20 @@ class DockerRunner:
         env_vars = os.environ.copy()
 
         for item in config_dir_path.iterdir():
-            # only necessary to read the global config variables; rest will be
-            # pulled through containers directly
-            if item.is_file() and item.stem == "global-config-envs":
-                env_vars.update(EnvironmentFile(item).environment_variables)
+            item: Path
+            # only necessary to read the global config variables and variables that become build args;
+            # rest will be pulled through containers directly
+            if item.is_file() and (item.stem == "global-config-envs" or item.stem.endswith('-build-args')):
+                new_variables = EnvironmentFile(item).environment_variables
+                # Can't see an easy way of keeping the build args separate per image, so just put them all
+                # in the environment and warn here if any variables conflict.
+                for nv in new_variables.keys():
+                    if nv in env_vars:
+                        logger.warning(
+                            "Conflicting build time variables:\n%s=%s [from %s] overwriting:\n%s=%s",
+                            nv, new_variables[nv], item.stem, nv, env_vars[nv]
+                        )
+                env_vars.update(new_variables)
 
         return env_vars
 

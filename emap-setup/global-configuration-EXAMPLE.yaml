@@ -82,7 +82,11 @@ dates:
 # Configurations for the UDS.
 uds:
   UDS_JDBC_URL: jdbc:postgresql://uds_db:5432/uds
+  # dialect to use for core informdb tables
   UDS_HIBERNATE_DIALECT: uk.ac.ucl.rits.inform.informdb.PostgreSQLEmapDialect
+  # profile name to use for liquibase or other places where there is an opportunity to compute the correct value
+  # possible values: sqlserver, postgres
+  UDS_HIBERNATE_DIALECT_PROFILE: postgres
   UDS_SCHEMA: schemaname
   UDS_USERNAME: schemauser
   UDS_PASSWORD: schemapw
