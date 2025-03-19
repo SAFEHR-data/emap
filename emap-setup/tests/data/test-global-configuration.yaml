@@ -7,7 +7,7 @@ EMAP_PROJECT_NAME:
   my_project_name
 
 repositories:
-  InformDB:
+  emap:
     branch:  develop
   hl7-vitals:
     branch:  main
@@ -63,6 +63,9 @@ informdb:
 # For testing outside the GAE, you can enable a fake UDS
 fake_uds:
   enable_fake_uds: false
+
+fake_mssql:
+  enable_fake_mssql: false
 
 # config related to waveform data ingress
 waveform:
