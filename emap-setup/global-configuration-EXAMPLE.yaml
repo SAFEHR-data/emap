@@ -84,6 +84,8 @@ uds:
   UDS_JDBC_URL: jdbc:postgresql://uds_db:5432/uds
   # dialect to use for core informdb tables
   UDS_HIBERNATE_DIALECT: uk.ac.ucl.rits.inform.informdb.PostgreSQLEmapDialect
+  # dialect for modules that don't have access to emap-star (which contains the above code)
+  UDS_HIBERNATE_DIALECT_2: org.hibernate.dialect.PostgreSQL95Dialect
   # profile name to use for liquibase or other places where there is an opportunity to compute the correct value
   # possible values: sqlserver, postgres
   UDS_HIBERNATE_DIALECT_PROFILE: postgres
