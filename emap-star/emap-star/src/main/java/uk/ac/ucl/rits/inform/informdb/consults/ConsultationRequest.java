@@ -13,6 +13,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
+import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import java.time.Instant;
 
@@ -67,7 +68,7 @@ public class ConsultationRequest extends TemporalCore<ConsultationRequest, Consu
     /**
      * \brief Notes added to the consultationRequest which are not tied to a Question.
      */
-    @Column(columnDefinition = "text")
+    @Lob
     private String comments;
 
     /**

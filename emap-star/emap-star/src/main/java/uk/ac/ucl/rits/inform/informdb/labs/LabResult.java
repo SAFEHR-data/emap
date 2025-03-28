@@ -13,6 +13,7 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Index;
 import javax.persistence.JoinColumn;
+import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import java.time.Instant;
@@ -81,7 +82,7 @@ public class LabResult extends TemporalCore<LabResult, LabResultAudit> {
     /**
      * \brief Value as text.
      */
-    @Column(columnDefinition = "text")
+    @Lob
     private String valueAsText;
 
     /**
@@ -127,7 +128,7 @@ public class LabResult extends TemporalCore<LabResult, LabResultAudit> {
     /**
      * \brief Additional comments.
      */
-    @Column(columnDefinition = "text")
+    @Lob
     private String comment;
 
     public LabResult() {}

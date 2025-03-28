@@ -16,6 +16,7 @@ import javax.persistence.Index;
 import javax.persistence.Inheritance;
 import javax.persistence.InheritanceType;
 import javax.persistence.JoinColumn;
+import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import java.time.Instant;
@@ -79,7 +80,7 @@ public class VisitObservation extends TemporalCore<VisitObservation, VisitObserv
     /**
      * \brief Value as text.
      */
-    @Column(columnDefinition = "text")
+    @Lob
     private String valueAsText;
 
     /**
@@ -101,7 +102,7 @@ public class VisitObservation extends TemporalCore<VisitObservation, VisitObserv
     /**
      * \brief Comments added by clinician.
      */
-    @Column(columnDefinition = "text")
+    @Lob
     private String comment;
 
     /**

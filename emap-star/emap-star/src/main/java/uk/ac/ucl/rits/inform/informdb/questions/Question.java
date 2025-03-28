@@ -9,6 +9,7 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.Lob;
 import java.time.Instant;
 
 /**
@@ -38,7 +39,8 @@ public class Question {
     /**
      * \brief Text content of the question.
      */
-    @Column(columnDefinition = "text", nullable = false)
+    @Lob
+    @Column(nullable = false)
     private String question;
 
     /**

@@ -1,11 +1,10 @@
 package uk.ac.ucl.rits.inform.datasources.idstables;
 
-import java.time.Instant;
-
-import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
+import javax.persistence.Lob;
 import javax.persistence.Table;
+import java.time.Instant;
 
 /**
  * Representation of the main IDS table. Usually for reading but we can also
@@ -34,7 +33,7 @@ public class IdsMaster {
     private String messageformat;
     private String messageversion;
     private Instant messagedatetime;
-    @Column(columnDefinition = "text")
+    @Lob
     private String hl7message;
     private Instant persistdatetime;
 

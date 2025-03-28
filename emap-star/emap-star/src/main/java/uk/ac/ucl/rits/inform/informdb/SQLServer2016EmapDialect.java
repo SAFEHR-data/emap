@@ -18,5 +18,6 @@ public class SQLServer2016EmapDialect extends SQLServer2016Dialect {
     public SQLServer2016EmapDialect() {
         super();
         registerColumnType(Types.ARRAY, "varbinary(max)");
+        // it doesn't seem to be necessary to map CLOB to varchar(max)
     }
 }

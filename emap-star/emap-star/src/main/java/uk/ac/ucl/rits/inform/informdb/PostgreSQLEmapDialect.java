@@ -20,6 +20,8 @@ public class PostgreSQLEmapDialect extends PostgreSQL95Dialect {
         super();
         registerColumnType(Types.TIMESTAMP, "timestamp with time zone");
         registerColumnType(Types.ARRAY, "DOUBLE PRECISION ARRAY");
+        // Map @Lob to "text"
+        registerColumnType(Types.CLOB, "text");
     }
 
 }
