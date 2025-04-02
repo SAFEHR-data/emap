@@ -2,7 +2,8 @@ services:
   hl7-reader:
     build:
       context: ..
-      dockerfile: hl7-reader/Dockerfile
+      dockerfile: unified.Dockerfile
+      target: hl7readerruntime
       args:
         HTTP_PROXY: ${HTTP_PROXY}
         http_proxy: ${http_proxy}

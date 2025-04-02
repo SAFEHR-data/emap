@@ -59,15 +59,42 @@ COPY core/src/ /app/core/src/
 # Create final jar
 RUN source /app/set_mvn_proxy.sh; mvn install -Dmaven.test.skip=true -Pemapstar -Dstart-class=uk.ac.ucl.rits.inform.datasinks.emapstar.App
 
+FROM mavenbase AS hl7readerbuild
+WORKDIR /app/hl7-reader
+# be more selective in what we copy in due course
+COPY --from=starbuild /app/emap-star /app/emap-star
+COPY --from=interchangebuild /app/emap-interchange /app/emap-interchange
+# We copied the JARs from the previous builds but we need to install them in the local
+# maven repo or it won't be able to use them for the main build
+
+RUN mvn install:install-file -Dfile=/app/emap-interchange/target/emap-interchange-2.7.jar -DgroupId=uk.ac.ucl.rits.inform -DartifactId=emap-interchange -Dversion=2.7 -Dpackaging=jar
+RUN mvn install:install-file -Dfile=/app/emap-interchange/target/emap-interchange-2.7-sources.jar -DgroupId=uk.ac.ucl.rits.inform -DartifactId=emap-interchange -Dversion=2.7 -Dpackaging=jar -Dclassifier=sources
+RUN mvn install:install-file -Dfile=/app/emap-interchange/target/emap-interchange-2.7-tests.jar -DgroupId=uk.ac.ucl.rits.inform -DartifactId=emap-interchange -Dversion=2.7 -Dpackaging=jar -Dclassifier=tests
+RUN mvn install:install-file -Dfile=/app/emap-star/emap-star-annotations/target/emap-star-annotations-2.7.jar -DgroupId=uk.ac.ucl.rits.inform -DartifactId=emap-star-annotations -Dversion=2.7 -Dpackaging=jar
+RUN mvn install:install-file -Dfile=/app/emap-star/emap-star/target/emap-star-2.7.jar -DgroupId=uk.ac.ucl.rits.inform -DartifactId=emap-star -Dversion=2.7 -Dpackaging=jar
+RUN mvn install:install-file -Dfile=/app/emap-star/emap-star/target/emap-star-2.7-sources.jar -DgroupId=uk.ac.ucl.rits.inform -DartifactId=emap-star -Dversion=2.7 -Dpackaging=jar -Dclassifier=sources
+
+COPY hl7-reader/pom.xml /app/hl7-reader/
+RUN source /app/set_mvn_proxy.sh; mvn de.qaware.maven:go-offline-maven-plugin:resolve-dependencies -f /app/hl7-reader/pom.xml
+
+COPY hl7-reader/src/ /app/hl7-reader/src/
+RUN source /app/set_mvn_proxy.sh; mvn install -Dmaven.test.skip=true -Dstart-class=uk.ac.ucl.rits.inform.datasources.ids.AppHl7
+
+
 # Runtime base
 FROM debian:11.11-slim AS jrebase
 ENV JAVA_HOME=/opt/java/openjdk
 COPY --from=eclipse-temurin:17.0.14_7-jre $JAVA_HOME $JAVA_HOME
+COPY --from=glowrootbuild /app/glowroot /app/glowroot
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 # Core proc runtime
 FROM jrebase AS coreruntime
 WORKDIR /app/core
-COPY --from=corebuild /app /app
-COPY --from=glowrootbuild /app/glowroot /app/glowroot
+COPY --from=corebuild /app/core /app/core
 CMD ["java", "-javaagent:/app/glowroot/glowroot/glowroot.jar", "-jar", "./target/core.jar"]
+
+FROM jrebase AS hl7readerruntime
+WORKDIR /app/hl7-reader
+COPY --from=hl7readerbuild /app/hl7-reader /app/hl7-reader
+CMD ["java", "-javaagent:/app/glowroot/glowroot/glowroot.jar", "-jar", "./target/hl7-reader.jar"]
