@@ -22,6 +22,7 @@
     <checkstyle.version>10.3.1</checkstyle.version>
     <checkstyle.plugin.version>3.3.0</checkstyle.plugin.version>
     <hapi.version>2.3</hapi.version>
+    <emap-star.version>2.7</emap-star.version>
     <emap-interchange.version>2.7</emap-interchange.version>
     <go-offline-maven-plugin.version>1.2.8</go-offline-maven-plugin.version>
   </properties>
@@ -36,6 +37,11 @@
   </profiles>
 
   <dependencies>
+    <dependency>
+      <groupId>uk.ac.ucl.rits.inform</groupId>
+      <artifactId>emap-star</artifactId>
+      <version>${emap-star.version}</version>
+    </dependency>
     <dependency>
       <groupId>uk.ac.ucl.rits.inform</groupId>
       <artifactId>emap-interchange</artifactId>
@@ -205,6 +211,12 @@
         <version>${go-offline-maven-plugin.version}</version>
         <configuration>
           <dynamicDependencies>
+            <DynamicDependency>
+              <groupId>uk.ac.ucl.rits.inform</groupId>
+              <artifactId>emap-star</artifactId>
+              <version>${emap-star.version}</version>
+              <repositoryType>MAIN</repositoryType>
+            </DynamicDependency>
             <DynamicDependency>
               <groupId>uk.ac.ucl.rits.inform</groupId>
               <artifactId>emap-interchange</artifactId>
