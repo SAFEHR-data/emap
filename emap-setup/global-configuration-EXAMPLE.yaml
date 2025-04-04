@@ -80,7 +80,8 @@ dates:
   end:
 
 # Configurations for the UDS.
-uds:
+# For postgres
+postgres-uds: &postgres-uds
   UDS_JDBC_URL: jdbc:postgresql://uds_db:5432/uds
   # dialect to use for core informdb tables
   UDS_HIBERNATE_DIALECT: uk.ac.ucl.rits.inform.informdb.PostgreSQLEmapDialect
@@ -90,6 +91,21 @@ uds:
   UDS_SCHEMA: schemaname
   UDS_USERNAME: schemauser
   UDS_PASSWORD: schemapw
+
+# For SQL Server
+sqlserver-uds: &sqlserver-uds
+  UDS_JDBC_URL: jdbc:sqlserver://fakeuds-mssql:1433;Encrypt=false;TrustServerCertificate=true
+  # dialect to use for core informdb tables
+  UDS_HIBERNATE_DIALECT: uk.ac.ucl.rits.inform.informdb.SQLServer2016EmapDialect
+  # profile name to use for liquibase or other places where there is an opportunity to compute the correct value
+  UDS_HIBERNATE_DIALECT_PROFILE: sqlserver
+  UDS_SCHEMA: dbo
+  UDS_USERNAME: sa
+  UDS_PASSWORD: EXAMPLE_VALUE
+
+
+# Switch the actual config between Postgres and SQL Server here
+uds: *postgres-uds
 
 # These are the configurations for glowroot (a Java application performance
 # management system).
