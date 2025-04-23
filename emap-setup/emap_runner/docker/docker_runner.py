@@ -104,6 +104,8 @@ class DockerRunner:
             profiles.append("fakeuds-mssql")
         elif self.use_fake_uds:
             profiles.append("fakeuds-pg")
+        if "emap_validation" in self.config["repositories"]:
+            profiles.append("validation")
 
         return profiles
 
@@ -130,6 +132,8 @@ class DockerRunner:
         # allow for hoover and to be optional compose path
         if "hoover" in self.config["repositories"]:
             paths.append(Path(self.project_dir, "hoover", "docker-compose.yml"))
+        if "emap_validation" in self.config["repositories"]:
+            paths.append(Path(self.project_dir, "emap_validation", "docker-compose.yml"))
 
         return paths
 
