@@ -57,10 +57,10 @@ global:
   RABBITMQ_PORT: 5672
   RABBITMQ_ADMIN_PORT: 5679
   # can remove clarity and caboodle configuration if hoover is not being used
-  CLARITY_JDBC_URL: jdbc:postgresql://host.docker.internal:5432/clarity
+  CLARITY_JDBC_URL: jdbc:sqlserver://host.docker.internal:5432\clarity
   CLARITY_USERNAME: clarity_user
   CLARITY_PASSWORD: clearity_readaccess
-  CABOODLE_JDBC_URL: jdbc:postgresql://host.docker.internal:5432/caboodle
+  CABOODLE_JDBC_URL: jdbc:sqlserver://host.docker.internal:5432
   CABOODLE_USERNAME: caboodle_username
   CABOODLE_PASSWORD: caboodle_readaccess
   ACTUATOR_ALLOWED_ORIGINS: ""
