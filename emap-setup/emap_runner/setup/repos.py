@@ -181,17 +181,15 @@ class Repository:
             data = git.Git().execute(
                 [f"git ls-remote -h {self.https_git_url}"], shell=True
             )
-
         except git.GitCommandError as e:
             logger.error(f"{e}\nFailed to check remotes. Assuming branch exists")
             return branch
 
-        remote_branches = [x.split(r"/")[-1] for x in data.split("\n")]
-
-        if any(b == branch for b in remote_branches):
+        # (branch names can contain "/")
+        remote_branches = [x.split("\t")[-1] for x in data.split("\n")]
+        if f"refs/heads/{branch}" in remote_branches:
             return branch
-
-        elif any(b == fallback_branch for b in remote_branches):
+        elif f"refs/heads/{fallback_branch}" in remote_branches:
             logger.warning(f"Falling back to {fallback_branch} for {self.name}")
             return fallback_branch
 
