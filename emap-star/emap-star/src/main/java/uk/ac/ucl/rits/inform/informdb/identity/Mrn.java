@@ -1,9 +1,8 @@
 package uk.ac.ucl.rits.inform.informdb.identity;
 
-import java.io.Serializable;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import lombok.Data;
+import org.hibernate.annotations.Check;
+import org.hibernate.annotations.Type;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -14,11 +13,10 @@ import javax.persistence.Id;
 import javax.persistence.Index;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
-
-import org.hibernate.annotations.Check;
-
-import lombok.Data;
-import org.hibernate.annotations.ColumnDefault;
+import java.io.Serializable;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * \brief This represents the association of Medical Resource Number (MRN) to
@@ -67,8 +65,8 @@ public class Mrn implements Serializable {
      */
     private String nhsNumber;
 
-    // SQL Server requires 0, not false
-    @ColumnDefault("0")
+    // SQL Server requires 0, Postgres requires FALSE
+    @Type(type = "uk.ac.ucl.rits.inform.informdb.BooleanDefaultFalse")
     private boolean researchOptOut;
 
     /**

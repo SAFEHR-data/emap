@@ -22,6 +22,7 @@ public class PostgreSQLEmapDialect extends PostgreSQL95Dialect {
         registerColumnType(Types.ARRAY, "DOUBLE PRECISION ARRAY");
         // Map @Lob to "text"
         registerColumnType(Types.CLOB, "text");
+        registerColumnType(BooleanDefaultFalse.INSTANCE.sqlType(), "boolean default FALSE");
     }
 
 }

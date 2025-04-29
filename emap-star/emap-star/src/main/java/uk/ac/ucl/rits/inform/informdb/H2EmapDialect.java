@@ -15,5 +15,7 @@ public class H2EmapDialect extends H2Dialect {
         super();
         registerColumnType(Types.TIMESTAMP, "timestamp with time zone");
         registerColumnType(Types.ARRAY, "DOUBLE PRECISION ARRAY");
+
+        registerColumnType(BooleanDefaultFalse.INSTANCE.sqlType(), "boolean default FALSE");
     }
 }
