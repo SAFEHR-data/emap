@@ -24,8 +24,8 @@ These setup instructions are aimed at developing in [IntelliJ IDEA](https://www.
 
     ```bash
     cd ~/projects/EMAP
-    git clone https://github.com/UCLH-DHCT/emap.git
-    git clone https://github.com/inform-health-informatics/hoover.git
+    git clone https://github.com/SAFEHR-data/emap.git
+    git clone https://github.com/SAFEHR-data/hoover.git
     ```
 
 </details>
@@ -89,9 +89,9 @@ These setup instructions are aimed at developing in [IntelliJ IDEA](https://www.
 </details>
 
 8. <details>
-    <summary>Add lombok and checkstyle plugins</summary>
+    <summary>Add Lombok and CheckStyle-IDEA plugins</summary>
 
-   Go to <b>File > Settings > search for plugins</b>, search lombok and checkstyle and install them
+   Go to <b>File > Settings > search for plugins</b>, search Lombok and CheckStyle-IDEA and install them
 </details>
 
 9. <details>

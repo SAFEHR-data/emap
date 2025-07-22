@@ -56,7 +56,7 @@
 
 - <a id="csn">**CSN**</a> 
 
-	The Contact Serial Number, assigned to a patient on arrival at the hospital, is related to a particular visit. Within [EPIC}(#epic) many interactons are related to the patient via the CSN. Note though that not every patient is assigned
+	The Contact Serial Number, assigned to a patient on arrival at the hospital, is related to a particular visit. Within [EPIC](#epic) many interactons are related to the patient via the CSN. Note though that not every patient is assigned
     a CSN. Information relevant to a patient is available through the CSN or [MRN](#mrn) of a patient.
 
 - <a id="ci">**Continuous integration**</a> 

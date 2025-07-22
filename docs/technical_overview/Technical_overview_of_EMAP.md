@@ -1,6 +1,6 @@
 # Technical Overview EMAP
 
-Note a Glossary of terms used is provided as a separate document.
+Note a [Glossary](../Glossary.md) of terms used is provided as a separate document.
 
 ## Introduction
 
@@ -110,7 +110,8 @@ involving data sources or destinations.
 
 ### RabbitMQ server
 
-While there is more information on RabbitMQ in section "Technologies used", it should be mentioned here that once 
+There is more information on RabbitMQ in the [Technologies used](technologies_used/RabbitMQ.md) section
+It should be mentioned here that once
 messages have been converted into the interchange format, they are batched and sent to the appropriate queue 
 managed by the RabbitMQ server. Each queue has a maximum number of messages that are allowed, and the services 
 publishing to the queues implement an exponential backoff policy to limit the amount of disk 
