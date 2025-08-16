@@ -16,7 +16,7 @@ def config():
 def test_read_global_config(config: GlobalConfiguration):
     """Configuration should act as a dictionary, populated from a yaml"""
 
-    assert config["git_org_url"] == "https://github.com/SAFEHR-data"
+    assert config["git_org_url"] == "https://github.com/inform-health-informatics"
 
 
 def test_set_global_config(config: GlobalConfiguration):

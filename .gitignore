@@ -48,10 +48,3 @@ hs_err_pid*
 # IntelliJ files
 .idea/
 *.iml
-
-# python
-__pycache__
-
-# prevent notebooks from being checked in
-*.ipynb
-.ipynb_checkpoints

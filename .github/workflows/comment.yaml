@@ -11,7 +11,7 @@ jobs:
       - name: Checkout documentation
         uses: actions/checkout@v4
         with:
-          repository: SAFEHR-data/internal_emap_documentation
+          repository: UCLH-DHCT/internal_emap_documentation
           token: ${{ secrets.GH_PAT_READ_AND_COMMENT }}
           ref: main
       - id: get-pr-checklist

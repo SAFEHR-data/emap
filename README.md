@@ -17,9 +17,8 @@ For more information about EMAP, please see the [docs](https://github.com/SAFEHR
 
 # Setup
 
-See the [instructions for deploying an instance of EMAP](docs/dev/core.md).
-
-You should end up with the following directory structure.
+The EMAP project follows this structure, for deploying a live instance of EMAP follow the instructions
+in [docs/core.md](docs/core.md).
 
 ```
 EMAP [your root emap directory]

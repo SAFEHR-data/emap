@@ -147,17 +147,9 @@ public class FormController {
                         formQuestion.getEntity());
                 formAnswer.setInternalId(answerMsg.getSourceMessageId());
             }
-            RowState<FormAnswer, FormAnswerAudit> formAnswerRowState = new RowState<>(
-                    formAnswer, answerMsg.getFiledDatetime(), storedFrom, entityJustCreated);
+            RowState<FormAnswer, FormAnswerAudit> formAnswerRowState = new RowState<>(formAnswer, metadataValidFrom, storedFrom, entityJustCreated);
             setValuesForAllTypes(formAnswerRowState, formAnswer, answerMsg);
-            // Don't update the filing date if only the filing date has changed. This happens for FormAnswerMsg
-            // that originally came from an SDE note (which don't have intrinsic filing dates, so the synthetic date
-            // gets updated evey time even if nothing changed).
-            if (formAnswerRowState.isEntityUpdated()) {
-                formAnswerRowState.assignIfCurrentlyNullOrNewerAndDifferent(
-                        answerMsg.getFiledDatetime(), formAnswer.getFiledDatetime(), formAnswer::setFiledDatetime,
-                        answerMsg.getFiledDatetime(), formAnswer.getFiledDatetime());
-            }
+            formAnswerRowState.assignIfDifferent(answerMsg.getFiledDatetime(), formAnswer.getFiledDatetime(), formAnswer::setFiledDatetime);
             formAnswerRowState.saveEntityOrAuditLogIfRequired(formAnswerRepository, formAnswerAuditRepository);
         }
     }

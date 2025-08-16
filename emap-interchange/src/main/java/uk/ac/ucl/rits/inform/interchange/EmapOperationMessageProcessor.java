@@ -8,16 +8,15 @@ import uk.ac.ucl.rits.inform.interchange.adt.MergePatient;
 import uk.ac.ucl.rits.inform.interchange.adt.MoveVisitInformation;
 import uk.ac.ucl.rits.inform.interchange.adt.PendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.SwapLocations;
-import uk.ac.ucl.rits.inform.interchange.form.FormMetadataMsg;
-import uk.ac.ucl.rits.inform.interchange.form.FormMsg;
 import uk.ac.ucl.rits.inform.interchange.form.FormQuestionMetadataMsg;
 import uk.ac.ucl.rits.inform.interchange.lab.LabMetadataMsg;
 import uk.ac.ucl.rits.inform.interchange.lab.LabOrderMsg;
+import uk.ac.ucl.rits.inform.interchange.form.FormMetadataMsg;
+import uk.ac.ucl.rits.inform.interchange.form.FormMsg;
 import uk.ac.ucl.rits.inform.interchange.location.DepartmentMetadata;
 import uk.ac.ucl.rits.inform.interchange.location.LocationMetadata;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.Flowsheet;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.FlowsheetMetadata;
-import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
 
 /**
  * Define the message types that an Emap processor
@@ -170,10 +169,4 @@ public interface EmapOperationMessageProcessor {
      * @throws EmapOperationMessageProcessingException if message cannot be processed
      */
     void processMessage(PatientAllergy msg) throws EmapOperationMessageProcessingException;
-
-    /**
-     * @param msg the PatientAllergy message to process
-     * @throws EmapOperationMessageProcessingException if message cannot be processed
-     */
-    void processMessage(WaveformMessage msg) throws EmapOperationMessageProcessingException;
 }

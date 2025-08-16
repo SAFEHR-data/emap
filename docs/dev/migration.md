@@ -108,8 +108,6 @@ The new name column will be used for ALL purposes; that is, the docker service n
 
 Since `git filter-repo` works on an entire repo, it's necessary to do the main rewriting work on a clone of each incoming repository.
 
-(old Github Org names are used because this is now a record of what was done, not instructions)
-
 Create like so:
 ```
 # clone the new repo (this repo) if not already done

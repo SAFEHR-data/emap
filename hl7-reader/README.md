@@ -1,13 +1,13 @@
 # Local setup instructions using IntelliJ IDEA
 
-- You can follow the [main setup guide](https://github.com/SAFEHR-data/emap/blob/main/docs/intellij.md)
+- You can follow the [main setup guide](https://github.com/UCLH-DHCT/emap/blob/main/docs/intellij.md)
   steps for setting up a local instance, only requiring to import `hl7-reader` and `emap-interchange`
   into maven using their `pom.xml` files.
 - If you are creating a directory only for hl7 processing, then you don't need to set up annotation preprocessing
 
 # How to deploy a live version
 
-Use the [emap setup](https://github.com/SAFEHR-data/emap/tree/main/emap-setup) tool to create a live version
+Use the [emap setup](https://github.com/UCLH-DHCT/emap/tree/main/emap-setup) tool to create a live version
 
 ## Dependencies
 

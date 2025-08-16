@@ -32,7 +32,6 @@ public class TestCopyConstructor {
             "boolean",
             "java.lang.Boolean",
             "java.lang.Double",
-            "java.lang.Double[]",
             "java.lang.Long",
             "java.lang.String",
             "java.time.Instant",
@@ -135,7 +134,7 @@ public class TestCopyConstructor {
 
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
-            throw new RuntimeException("Failed to generate an instance of " + className, e);
+            throw new RuntimeException("Failed to generate an instance of " + className);
         }
     }
 
@@ -150,7 +149,7 @@ public class TestCopyConstructor {
         } catch (InvocationTargetException | InstantiationException
                  | IllegalAccessException | NoSuchMethodException e) {
             e.printStackTrace();
-            throw new RuntimeException("Failed to generate an instance of " + entity.getName(), e);
+            throw new RuntimeException("Failed to generate an instance of " + entity.getName());
         }
     }
 
@@ -177,8 +176,6 @@ public class TestCopyConstructor {
                 return Instant.now();
             case "java.lang.Double":
                 return (double) INTEGERS.get(index);
-            case "java.lang.Double[]":
-                return new Double[]{(double) INTEGERS.get(index)};
             case "long":
             case "java.lang.Long":
                 return (long) INTEGERS.get(index);
@@ -192,7 +189,7 @@ public class TestCopyConstructor {
                 return List.of();
         }
 
-        throw new IllegalArgumentException("Need to add an implementation for initialising object of type: " + className);
+        throw new StringIndexOutOfBoundsException("Did not find " + className + " in base types");
     }
 
     /**
@@ -227,7 +224,7 @@ public class TestCopyConstructor {
         for (Method method : setterMethodsOf(entity)) {
 
             Object[] params = Arrays.stream(method.getParameterTypes())
-                    .map(p -> newInstance(p.getTypeName()))
+                    .map(p -> newInstance(p.getName()))
                     .toArray();
 
             try {

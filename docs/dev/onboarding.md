@@ -9,30 +9,30 @@ There are currently two data sources for EMAP:
 
 - HL7 data
     - Persisted in
-      the [Immutable Data Store](https://github.com/SAFEHR-data/emap/blob/main/docs/technical_overview/Technical_overview_of_EMAP.md#immutable-data-store-ids)
+      the [Immutable Data Store](https://github.com/inform-health-informatics/emap_documentation/blob/main/technical_overview/Technical_overview_of_EMAP.md#immutable-data-store-ids)
       (IDS), from a copy of specific HL7 message streams
     - The IDS is read by
-      the [HL7 reader](https://github.com/SAFEHR-data/emap/blob/main/docs/technical_overview/Technical_overview_of_EMAP.md#hl7-reader),
-      (defined in the [hl7-reader](https://github.com/SAFEHR-data/emap/tree/main/hl7-reader) module)
+      the [HL7 reader](https://github.com/inform-health-informatics/emap_documentation/blob/main/technical_overview/Technical_overview_of_EMAP.md#hl7-reader),
+      (defined in the [hl7-reader](https://github.com/UCLH-DHCT/emap/tree/main/hl7-reader) module)
       converting the HL7 message into a source-agnostic format (interchange message, defined in
-      the [emap-interchange](https://github.com/SAFEHR-data/emap/tree/main/emap-interchange) module)
+      the [emap-interchange](https://github.com/UCLH-DHCT/emap/tree/main/emap-interchange) module)
       and published to a rabbitMQ queue for processing by the core processor.
 - Hospital database polling
   -
-  The [Hoover](https://github.com/SAFEHR-data/emap/blob/main/docs/technical_overview/Technical_overview_of_EMAP.md#hoover)
-  (defined in the [hoover](https://github.com/SAFEHR-data/hoover) repository)
+  The [Hoover](https://github.com/inform-health-informatics/emap_documentation/blob/main/technical_overview/Technical_overview_of_EMAP.md#hoover)
+  (defined in the [hoover](https://github.com/UCLH-DHCT/hoover) repository)
   service polls hospital databases (Clarity and Caboodle) for data that has changed since the last poll.
   It converts the query outputs into the interchange message and publishes these to a rabbitMQ queue for processing by
   the core processor.
   We can't make the Hoover repository public because the SQL queries contain the intellectual property of the hospital
   patient record system, EPIC.
 
-The [core processor](https://github.com/SAFEHR-data/emap/blob/main/docs/technical_overview/Technical_overview_of_EMAP.md#the-eventprocessor)
-(defined in the [core](https://github.com/SAFEHR-data/emap/tree/main/core) module) is responsible for processing the
+The [core processor](https://github.com/inform-health-informatics/emap_documentation/blob/main/technical_overview/Technical_overview_of_EMAP.md#the-eventprocessor)
+(defined in the [core](https://github.com/UCLH-DHCT/emap/tree/main/core) module) is responsible for processing the
 interchange messages and
 updating
-the [emap database](https://github.com/SAFEHR-data/emap/blob/main/docs/technical_overview/Technical_overview_of_EMAP.md#star-schema)
-(defined in the [emap-star](https://github.com/SAFEHR-data/emap/tree/main/emap-star) module).
+the [emap database](https://github.com/inform-health-informatics/emap_documentation/blob/main/technical_overview/Technical_overview_of_EMAP.md#star-schema)
+(defined in the [emap-star](https://github.com/UCLH-DHCT/emap/tree/main/emap-star) module).
 
 The core processor compares what is already known in the EMAP database, with the data in the interchange message and
 updates the EMAP database accordingly.
@@ -41,11 +41,11 @@ We can receive HL7 messages out of order so the processor must be able to handle
 ## Development guide
 
 All the EMAP services use the Spring-Boot framework and are written in Java. Setup instructions are found in
-the [emap repo](https://github.com/SAFEHR-data/emap/blob/main/docs/intellij.md)
-with additional information for hoover in the [hoover repo](https://github.com/SAFEHR-data/hoover).
+the [emap repo](https://github.com/UCLH-DHCT/emap/blob/main/docs/intellij.md)
+with additional information for hoover in the [hoover repo](https://github.com/UCLH-DHCT/hoover).
 
 A decision log for technical choices for a module can be found in
-its [dev/design_choices.md](https://github.com/SAFEHR-data/emap/blob/main/core/dev/design_choices.md) file.
+its [dev/design_choices.md](https://github.com/UCLH-DHCT/emap/blob/main/core/dev/design_choices.md) file.
 
 ### Hl7-reader
 
@@ -107,7 +107,7 @@ The hoover service requires native queries to be written for Clarity and Caboodl
 containers running sqlserver
 with fake data to test the queries. These are defined in `test-files/clarity` and `test-files/caboodle`.
 Be sure to follow
-the [local setup instructions](https://github.com/SAFEHR-data/hoover#local-setup-instructions-using-intellij-idea)
+the [local setup instructions](https://github.com/UCLH-DHCT/hoover#local-setup-instructions-using-intellij-idea)
 before starting work on the service.
 
 Each data type processed by Hoover is represented by its own class that implements the `QueryStrategy` interface, and
@@ -187,7 +187,7 @@ An example is shown in the following diagram (simplified)
       in
       emap star.
       This can be found in
-      the [emap-star/emap-star-annotations](https://github.com/SAFEHR-data/emap/tree/main/emap-star/emap-star-annotations)
+      the [emap-star/emap-star-annotations](https://github.com/UCLH-DHCT/emap/tree/main/emap-star/emap-star-annotations)
       maven module.
     - An Audit table must extend the `TemporalCore` class, generics are used to link the entity class and its audit
       entity
@@ -219,7 +219,7 @@ An example is shown in the following diagram (simplified)
 
 The EMAP services are deployed using Docker containers, which can interact with each-other using docker compose.
 To simplify the configuration and deployment of the containers, we use
-the [emap-setup](https://github.com/SAFEHR-data/emap/tree/main/emap-setup) python package.
+the [emap-setup](https://github.com/UCLH-DHCT/emap/tree/main/emap-setup) python package.
 This also has functionality to deploy a validation run of EMAP, setting a specific start and end date for the data to be
 processed from all sources.
 
@@ -230,9 +230,9 @@ required before changes should impact the running codebase.
 If this is an entirely new data type with no effect on existing data, then feature flags can be used to disable the
 processing of the messages in production.
 For a change to an existing data type or to release into production, then follow
-the [validation SOP](https://github.com/SAFEHR-data/internal_emap_documentation/blob/main/SOP/validation_run.md).
+the [validation SOP](https://github.com/UCLH-DHCT/internal_emap_documentation/blob/main/SOP/validation_run.md).
 
 ### Deployment
 
 Deployment is carried out using the emap-setup tool, follow
-the [release procedure SOP](https://github.com/SAFEHR-data/internal_emap_documentation/blob/main/SOP/release_procedure.md)
+the [release procedure SOP](https://github.com/UCLH-DHCT/internal_emap_documentation/blob/main/SOP/release_procedure.md)

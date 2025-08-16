@@ -1,6 +1,6 @@
 
 git_org_url:
-  https://github.com/SAFEHR-data
+  https://github.com/inform-health-informatics
 
 EMAP_PROJECT_NAME:
   my_project_name
@@ -38,14 +38,3 @@ core:
   UDS_SCHEMA: inform_schema
   UDS_USERNAME: someuser
   UDS_PASSWORD: redacted
-
-# For testing outside the GAE, you can enable a fake UDS
-fake_uds:
-  enable_fake_uds: false
-
-# config related to waveform data ingress
-waveform:
-  enable_waveform: false
-  enable_waveform_generator: false
-  WAVEFORM_HL7_SOURCE_ADDRESS_ALLOW_LIST: 127.0.0.1
-  WAVEFORM_HL7_TEST_DUMP_FILE: ""

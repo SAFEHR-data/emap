@@ -9,7 +9,7 @@
 
 
 git_org_url:
-  https://github.com/SAFEHR-data
+  https://github.com/UCLH-DHCT
 
 # note that the project name is used in naming docker containers, so this is how you will find them later!
 EMAP_PROJECT_NAME:
@@ -29,19 +29,6 @@ repositories:
     branch:  main
 #  hoover:
 #    branch:  develop
-
-# Each section below could represent either a service defined by Emap (eg. rabbitmq),
-# an external service (eg. IDS/UDS), or really anything at all. The meaning is ultimately
-# defined by the setup script.
-# To pull a variable into the environment for a container, create/edit a file `*-config-envs.EXAMPLE`
-# containing the (empty) variables you wish to have populated. The file (minus ".EXAMPLE" suffix)
-# will be copied into the config dir with real values when you run `emap setup -g`. This config file
-# should be referenced from the relevant docker-compose service definition to bring the envs into the
-# container.
-# Note that the sections are not namespaces, and thus variable names should be unique
-# even if in a different section.
-# By convention, variables intended to be passed into containers directly are in
-# upper case. Variables to control the setup script itself are lower case.
 
 # Configuration data for the rabbitmq instance used by Spring in the pipeline
 rabbitmq:
@@ -94,26 +81,3 @@ glowroot:
   GLOWROOT_PASSWORD: glowrootpw
   GLOWROOT_ADMIN_PORT: 4000
 
-# For testing outside the GAE, you can enable a fake UDS
-fake_uds:
-  enable_fake_uds: false
-
-# config related to waveform data ingress
-waveform:
-  enable_waveform: false
-  enable_waveform_generator: false
-  CORE_WAVEFORM_RETENTION_HOURS: 24
-  WAVEFORM_HL7_SOURCE_ADDRESS_ALLOW_LIST: 127.0.0.1
-  WAVEFORM_HL7_TEST_DUMP_FILE: ""
-  WAVEFORM_SYNTHETIC_NUM_PATIENTS: 30
-  WAVEFORM_SYNTHETIC_WARP_FACTOR: 6
-  WAVEFORM_SYNTHETIC_START_DATETIME: "2024-01-02T12:00:00Z"
-  WAVEFORM_SYNTHETIC_END_DATETIME: "2024-01-03T12:00:00Z"
-
-# The nginx portal and other monitoring/validation/visualisation services
-monitoring:
-  SERVER_EXTERNAL_HOSTNAME: server.fqdn.example
-  PORTAL_PORT: 7100
-  PORTAL_USERNAME: emap
-  PORTAL_PASSWORD: portal_password
-  use_streamlit: false

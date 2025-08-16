@@ -1,8 +1,6 @@
 import argparse
-from datetime import timedelta
 
 from pathlib import Path
-from typing import Any
 
 from emap_runner.parser import Parser
 from emap_runner.utils import TimeWindow
@@ -101,18 +99,22 @@ def create_parser() -> Parser:
         default=False,
         action="store_true",
     )
-    validation_parser.add_argument(
-        "--timeout",
-        type=lambda h: timedelta(hours=float(h)),
-        metavar="HOURS",
-        help="Max time to wait for the validation run to finish",
-        default=timedelta(hours=10),
-    )
 
-    # flags for enabling/disabling various services in validation
-    add_boolean_optional_action(validation_parser, "hl7-reader", True, "the main HL7 ADT reader")
-    add_boolean_optional_action(validation_parser, "hoover", True, "the hoover service")
-    add_boolean_optional_action(validation_parser, "waveform", False, "waveform reader")
+    validation_source_group = validation_parser.add_mutually_exclusive_group()
+    validation_source_group.add_argument(
+        "--only-hl7",
+        dest="use_only_hl7_reader",
+        help="Use only the hl7-reader service (no hoover)",
+        default=False,
+        action="store_true",
+    )
+    validation_source_group.add_argument(
+        "--only-hoover",
+        dest="use_only_hoover",
+        help="Use only the hoover service (no hl7-reader)",
+        default=False,
+        action="store_true",
+    )
 
     config_parser = subparsers.add_parser("config", help="Configuration operations")
     config_parser.add_argument(
@@ -133,26 +135,6 @@ def create_parser() -> Parser:
     return parser
 
 
-# BooleanOptionalAction doesn't exist on python 3.8, do it ourselves
-def add_boolean_optional_action(parser: Parser, name: str, enabled_by_default, help_str):
-    mutex = parser.add_mutually_exclusive_group()
-    dest_name = "use_{}".format(name.replace("-", "_"))
-    mutex.add_argument(
-        f"--use-{name}",
-        dest=dest_name,
-        action='store_true',
-        default=enabled_by_default,
-        help=f"Enable {help_str}",
-    )
-    mutex.add_argument(
-        f"--no-use-{name}",
-        dest=dest_name,
-        action='store_false',
-        default=enabled_by_default,
-        help=f"Disable {help_str}",
-    )
-
-
 class EMAPRunner:
     def __init__(self, args: argparse.Namespace, config: GlobalConfiguration):
 
@@ -165,6 +147,7 @@ class EMAPRunner:
         repos = self.global_config.extract_repositories(branch_name=self.args.branch)
 
         if self.args.init:
+            repos.clean(print_warnings=False)
             repos.clone()
 
         elif self.args.update:
@@ -205,37 +188,28 @@ class EMAPRunner:
 
         return None
 
-    def validation(self) -> ValidationRunner:
+    def validation(self) -> None:
         """Run a validation run of EMAP"""
-        # user should explicitly switch off hoover if not defined in global config
-        if self.args.use_hoover and "hoover" not in self.global_config["repositories"]:
-            raise ValueError("hoover requested but is missing from repositories in global config")
+        # allow for hoover not to be defined in global config
+        use_hoover = ("hoover" in self.global_config["repositories"]) and (not self.args.use_only_hl7_reader)
 
         runner = ValidationRunner(
-            docker_runner=DockerRunner(project_dir=Path.cwd(),
-                                       config=self.global_config,
-                                       # must enable the compose file if we intend to ask for waveform container
-                                       enable_waveform=self.args.use_waveform,
-                                       # but never use fake waveform or fake UDS in validation
-                                       use_fake_waveform=False,
-                                       use_fake_uds=False,
-                                       ),
+            docker_runner=DockerRunner(project_dir=Path.cwd(), config=self.global_config),
             time_window=TimeWindow(
                 start_date=self.args.start_date, end_date=self.args.end_date
             ),
             should_build=not self.args.skip_build,
-            use_hl7_reader=self.args.use_hl7_reader,
-            use_hoover=self.args.use_hoover,
-            use_waveform=self.args.use_waveform,
-            timeout=self.args.timeout,
+            use_hl7_reader=not self.args.use_only_hoover,
+            use_hoover=use_hoover,
         )
-        runner.run()
-        return runner
 
-    def run(self) -> Any:
+        runner.run()
+
+        return None
+
+    def run(self, method_name: str) -> None:
         """Call a method of this runner instance defined by its name"""
 
-        method_name = self.args.subcommand
         if hasattr(self, method_name):
             return getattr(self, method_name)()
 
@@ -253,7 +227,7 @@ def main():
         exit(f"Configuration file {args.filename} not found. Exiting")
 
     runner = EMAPRunner(args=args, config=GlobalConfiguration(args.filename))
-    runner.run()
+    runner.run(args.subcommand)
 
     return None
 

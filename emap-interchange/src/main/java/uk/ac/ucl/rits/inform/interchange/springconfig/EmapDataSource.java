@@ -11,10 +11,6 @@ public enum EmapDataSource {
      */
     HL7_QUEUE("hl7Queue"),
     /**
-     * The message queue for waveform data.
-     */
-    WAVEFORM_DATA("waveform"),
-    /**
      * The message queue for database extracts.
      */
     DATABASE_EXTRACTS("databaseExtracts"),

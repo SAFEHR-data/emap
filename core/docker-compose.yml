@@ -1,3 +1,4 @@
+version: '3.2'
 services:
   core:
     build:
@@ -14,10 +15,8 @@ services:
       driver: "json-file"
     restart: on-failure
     depends_on:
-      glowroot-central:
-        condition: service_started
-      rabbitmq:
-        condition: service_healthy
+        - glowroot-central
+        - rabbitmq
   rabbitmq:
     image: rabbitmq:management
     env_file:
@@ -26,18 +25,12 @@ services:
       - "${RABBITMQ_PORT}:5672"
       - "${RABBITMQ_ADMIN_PORT}:15672"
     restart: on-failure
-    healthcheck:
-      # rabbitmq server crashes if any rabbitmq-diagnostics cmd is run very soon
-      # after starting, so can't check too aggressively here
-      test: rabbitmq-diagnostics -q check_running
-      interval: 30s
-      timeout: 10s
-      retries: 3
   cassandra:
     image: cassandra
     restart: on-failure
-    env_file:
-      - ../../config/cassandra-config-envs
+    environment:
+      - MAX_HEAP_SIZE=4G
+      - HEAP_NEWSIZE=800M
   glowroot-central:
     build:
       context: ..
@@ -54,25 +47,4 @@ services:
     restart: on-failure
     depends_on:
        - cassandra
-  emap-portal:
-    build:
-      context: ..
-      dockerfile: core/Dockerfile.emap-portal
-      args:
-        HTTP_PROXY: ${HTTP_PROXY}
-        http_proxy: ${http_proxy}
-        HTTPS_PROXY: ${HTTPS_PROXY}
-        https_proxy: ${https_proxy}
-      secrets:
-        - portal-build-secrets
-    env_file:
-      - ../../config/portal-config-envs
-    ports:
-      - "${PORTAL_PORT}:80"
-
-
-
-secrets:
-  portal-build-secrets:
-    file: ../../config/portal-config-envs
 
