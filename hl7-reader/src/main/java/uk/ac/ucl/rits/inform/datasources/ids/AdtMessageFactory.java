@@ -191,6 +191,7 @@ public class AdtMessageFactory {
             case "A01":
                 AdmitPatient admitPatient = new AdmitPatient();
                 admitPatient.setAdmissionDateTime(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionDateTime()));
+                admitPatient.setAdmissionType(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionType()));
                 msg = admitPatient;
                 break;
             case "A02":

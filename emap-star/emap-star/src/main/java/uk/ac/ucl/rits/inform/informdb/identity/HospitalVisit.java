@@ -82,6 +82,11 @@ public class HospitalVisit extends TemporalCore<HospitalVisit, HospitalVisitAudi
     private Instant admissionDatetime;
 
     /**
+     * \brief the admission type for this hospitalVisit.
+     */
+    private String admissionType;
+
+    /**
      * \brief Date and time at which this hospitalVisit formally ended.
      *
      * at which the patient was discharged.
@@ -139,6 +144,7 @@ public class HospitalVisit extends TemporalCore<HospitalVisit, HospitalVisitAudi
         this.hospitalVisitId = other.hospitalVisitId;
         this.encounter = other.encounter;
         this.admissionDatetime = other.admissionDatetime;
+        this.admissionType = other.admissionType;
         this.arrivalMethod = other.arrivalMethod;
         this.dischargeDestination = other.dischargeDestination;
         this.dischargeDisposition = other.dischargeDisposition;

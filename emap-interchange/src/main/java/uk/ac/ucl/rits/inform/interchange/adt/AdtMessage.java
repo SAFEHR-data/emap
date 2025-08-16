@@ -27,6 +27,7 @@ public abstract class AdtMessage extends EmapOperationMessage {
     private String nhsNumber;
     private String visitNumber;
     private InterchangeValue<String> modeOfArrival = InterchangeValue.unknown();
+
     private InterchangeValue<String> ethnicGroup = InterchangeValue.unknown();
     private InterchangeValue<String> fullLocationString = InterchangeValue.unknown();
     private InterchangeValue<String> previousLocationString = InterchangeValue.unknown();
@@ -43,6 +44,8 @@ public abstract class AdtMessage extends EmapOperationMessage {
     private InterchangeValue<String> patientSex = InterchangeValue.unknown();
     private InterchangeValue<String> patientTitle = InterchangeValue.unknown();
     private InterchangeValue<String> patientZipOrPostalCode = InterchangeValue.unknown();
+
+    private InterchangeValue<String> admissionType = InterchangeValue.unknown();
 
 
     /**
