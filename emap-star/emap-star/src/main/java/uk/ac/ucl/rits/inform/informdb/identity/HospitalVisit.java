@@ -70,7 +70,6 @@ public class HospitalVisit extends TemporalCore<HospitalVisit, HospitalVisitAudi
      * patient was first seen in the hospital as part of this visit.
      * This may be prior to their admission.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant presentationDatetime;
 
     /**
@@ -78,7 +77,6 @@ public class HospitalVisit extends TemporalCore<HospitalVisit, HospitalVisitAudi
      *
      * at which the patient was formally admitted.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant admissionDatetime;
 
     /**
@@ -86,7 +84,6 @@ public class HospitalVisit extends TemporalCore<HospitalVisit, HospitalVisitAudi
      *
      * at which the patient was discharged.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant dischargeDatetime;
 
     /**

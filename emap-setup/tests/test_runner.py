@@ -36,14 +36,14 @@ def test_clone_then_clean_repos():
     runner.run()
 
     # Ensure that the cloned directory exists
-    assert exists("emap_documentation")
+    assert exists("internal_emap_documentation")
     assert exists("config")
 
     # and can be cleaned
     runner = EMAPRunner(args=parser.parse_args(["setup", "-c"]), config=config)
     runner.run()
 
-    assert not exists("emap_documentation")
+    assert not exists("internal_emap_documentation")
 
 
 @work_in_tmp_directory(to_copy=None)
@@ -58,7 +58,7 @@ def test_double_clone():
     runner = EMAPRunner(args=parser.parse_args(args), config=config)
     runner.run()
     # Make some un-pushed changes to newly cloned repo
-    file_to_keep = Path('emap_documentation/my_favourite_file.txt')
+    file_to_keep = Path('internal_emap_documentation/my_favourite_file.txt')
     with open(file_to_keep, 'w') as fh:
         fh.write("cheese")
 

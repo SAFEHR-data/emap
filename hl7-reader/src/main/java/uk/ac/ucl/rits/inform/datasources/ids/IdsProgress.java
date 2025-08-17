@@ -2,7 +2,6 @@ package uk.ac.ucl.rits.inform.datasources.ids;
 
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
@@ -17,9 +16,7 @@ public class IdsProgress {
     @Id
     private int id;
     private int lastProcessedIdsUnid;
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant lastProcessedMessageDatetime;
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant lastProcessingDatetime;
 
     /**

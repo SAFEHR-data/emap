@@ -7,7 +7,6 @@ import uk.ac.ucl.rits.inform.informdb.TemporalCore;
 import uk.ac.ucl.rits.inform.informdb.annotation.AuditTable;
 import uk.ac.ucl.rits.inform.informdb.identity.Mrn;
 
-import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -84,13 +83,11 @@ public class CoreDemographic extends TemporalCore<CoreDemographic, CoreDemograph
     /**
      * \brief Date and time of birth of the patient.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant datetimeOfBirth;
 
     /**
      * \brief Date and time of death of the patient.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant datetimeOfDeath;
 
     /**

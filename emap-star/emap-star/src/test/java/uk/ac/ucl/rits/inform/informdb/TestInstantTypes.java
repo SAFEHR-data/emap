@@ -11,19 +11,23 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Ensure Instant types are annotated correctly.
  */
 class TestInstantTypes {
 
-    private void fieldIsTimestampWithTimeZone(Field field) {
+    private void fieldHasNoManualType(Field field) {
         List<String> columnDefinition = Arrays.stream(field.getAnnotationsByType(Column.class))
                 .map(Column::columnDefinition)
                 .collect(Collectors.toList());
-        assertEquals(1, columnDefinition.size(),
-                String.format("field '%s' needs exactly one @Column annotation with a columnDefinition specified", field.getName()));
-        assertEquals("timestamp with time zone", columnDefinition.get(0));
+        if (columnDefinition.size() == 1) {
+            // columnDefinition can be either absent or empty string
+            assertEquals("", columnDefinition.get(0),
+                    String.format("Instant field '%s' cannot specify non-empty columnDefinition text",
+                            field.getName()));
+        }
     }
 
     /**
@@ -35,6 +39,6 @@ class TestInstantTypes {
 
         Arrays.stream(entityClass.getDeclaredFields())
                 .filter(field -> field.getType().equals(Instant.class))
-                .forEach(this::fieldIsTimestampWithTimeZone);
+                .forEach(this::fieldHasNoManualType);
     }
 }

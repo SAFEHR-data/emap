@@ -13,6 +13,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
+import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -59,7 +60,6 @@ public class FormAnswer extends TemporalCore<FormAnswer, FormAnswerAudit> {
      * \brief The datetime this answer was filed. It may differ from Form.firstFiledDatetime
      * if this form answer has been updated since the form was first filed.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant filedDatetime;
 
     /**
@@ -75,7 +75,7 @@ public class FormAnswer extends TemporalCore<FormAnswer, FormAnswerAudit> {
      * If not of type String, this field will still contain the string representation of the value.
      * .
      */
-    @Column(columnDefinition = "text")
+    @Lob
     private String valueAsText;
 
     /**
@@ -94,7 +94,6 @@ public class FormAnswer extends TemporalCore<FormAnswer, FormAnswerAudit> {
      * \brief Current value of the form if it's a timestamp, else null.
      * .
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant valueAsDatetime;
 
     /**

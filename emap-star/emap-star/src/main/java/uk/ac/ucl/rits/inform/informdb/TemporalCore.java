@@ -26,9 +26,9 @@ import java.time.Instant;
 @MappedSuperclass
 public abstract class TemporalCore<T extends TemporalCore<T, A>, A extends AuditCore> implements Serializable {
 
-    @Column(nullable = false, columnDefinition = "timestamp with time zone")
+    @Column(nullable = false)
     private Instant validFrom;
-    @Column(nullable = false, columnDefinition = "timestamp with time zone")
+    @Column(nullable = false)
     private Instant storedFrom;
 
     /**

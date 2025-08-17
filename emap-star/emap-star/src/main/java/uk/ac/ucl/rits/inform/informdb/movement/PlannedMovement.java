@@ -7,7 +7,6 @@ import uk.ac.ucl.rits.inform.informdb.TemporalCore;
 import uk.ac.ucl.rits.inform.informdb.annotation.AuditTable;
 import uk.ac.ucl.rits.inform.informdb.identity.HospitalVisit;
 
-import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -70,7 +69,6 @@ public class PlannedMovement extends TemporalCore<PlannedMovement, PlannedMoveme
     /**
      * \brief The date and time that the planned movement event was made.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant eventDatetime;
 
     /**
@@ -81,7 +79,6 @@ public class PlannedMovement extends TemporalCore<PlannedMovement, PlannedMoveme
     /**
      * \brief The date and time that the planned movement was cancelled.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant cancelledDatetime;
 
     /**

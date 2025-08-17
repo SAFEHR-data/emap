@@ -43,6 +43,9 @@ core:
 fake_uds:
   enable_fake_uds: false
 
+fake_mssql:
+  enable_fake_mssql: false
+
 # config related to waveform data ingress
 waveform:
   enable_waveform: false

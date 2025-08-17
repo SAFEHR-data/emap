@@ -117,7 +117,6 @@ public class VisitObservationType extends TemporalCore<VisitObservationType, Vis
     /**
      * \brief Date and time at which this visitObservationType was created in the source system.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant creationDatetime;
 
     /**

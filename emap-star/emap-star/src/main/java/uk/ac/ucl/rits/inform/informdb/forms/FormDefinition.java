@@ -12,6 +12,7 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.Lob;
 import java.time.Instant;
 
 /**
@@ -55,7 +56,7 @@ public class FormDefinition extends TemporalCore<FormDefinition, FormDefinitionA
      * .
      * Only about 10% of forms specify this field.
      */
-    @Column(columnDefinition = "text")
+    @Lob
     private String patientFriendlyName;
 
     public FormDefinition() {
