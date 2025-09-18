@@ -180,9 +180,9 @@ class Repository:
 
         try:
             gh_token = os.environ.get('GITHUB_TOKEN', False)
-            if token:
+            if gh_token:
                 data = git.Git().execute(
-                    [f"git ls-remote -h {self.https_git_url} --with-token gh_token"], shell=True
+                    [f"git ls-remote -h {self.https_git_url} --with-token {gh_token}"], shell=True
                 )
             else:
                 data = git.Git().execute(
