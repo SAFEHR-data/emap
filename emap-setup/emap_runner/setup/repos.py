@@ -1,4 +1,5 @@
 import git
+import os
 import shutil
 
 from pathlib import Path
@@ -178,9 +179,15 @@ class Repository:
         """Branch that exists on remote, either that specified or a fallback"""
 
         try:
-            data = git.Git().execute(
-                [f"git ls-remote -h {self.https_git_url}"], shell=True
-            )
+            gh_token = os.environ.get('GITHUB_TOKEN', False)
+            if token:
+                data = git.Git().execute(
+                    [f"git ls-remote -h {self.https_git_url} --with-token gh_token"], shell=True
+                )
+            else:
+                data = git.Git().execute(
+                    [f"git ls-remote -h {self.https_git_url}"], shell=True
+                )
 
         except git.GitCommandError as e:
             logger.error(f"{e}\nFailed to check remotes. Assuming branch exists")
