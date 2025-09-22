@@ -119,6 +119,9 @@ class Repository:
     @property
     def https_git_url(self) -> str:
         """Generate a https URL. e.g. https://github.com/../emap-setup.git"""
+        gh_token = os.environ.get('GITHUB_TOKEN', False)
+        if gh_token:
+            return f"https://gh_token@{self._base_git_url}/{self.name}"
         return f"https://{self._base_git_url}/{self.name}"
 
     @property
@@ -179,15 +182,9 @@ class Repository:
         """Branch that exists on remote, either that specified or a fallback"""
 
         try:
-            gh_token = os.environ.get('GITHUB_TOKEN', False)
-            if gh_token:
-                data = git.Git().execute(
-                    [f"git ls-remote -h {self.https_git_url} --with-token {gh_token}"], shell=True
-                )
-            else:
-                data = git.Git().execute(
-                    [f"git ls-remote -h {self.https_git_url}"], shell=True
-                )
+            data = git.Git().execute(
+                [f"git ls-remote -h {self.https_git_url}"], shell=True
+            )
 
         except git.GitCommandError as e:
             logger.error(f"{e}\nFailed to check remotes. Assuming branch exists")
