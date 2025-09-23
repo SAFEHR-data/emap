@@ -4,3 +4,4 @@ PyYAML
 gitpython
 black
 tqdm
+setuptools
