@@ -1,4 +1,4 @@
-name: emap setup tests
+name: emap tests
 on:
   push:
     branches: [ main, develop ]
