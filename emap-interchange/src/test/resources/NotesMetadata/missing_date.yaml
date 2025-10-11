@@ -1,0 +1,8 @@
+"@class": "uk.ac.ucl.rits.inform.interchange.NotesMetadataMessage"
+sourceSystem: "EPIC"
+sourceMessageId: "11828212"
+mrn: "40800000"
+visitNumber: "123412341234"
+noteType: "PROGRESS"
+startedDatetime: "2013-02-14T09:00:00Z"
+notesMetadataId: 1234521112
