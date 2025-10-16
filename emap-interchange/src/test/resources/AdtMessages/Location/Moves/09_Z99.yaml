@@ -1,0 +1,36 @@
+"@class": "uk.ac.ucl.rits.inform.interchange.adt.UpdateSubSpeciality"
+recordedDateTime: "2013-02-11T18:00:52Z"
+eventOccurredDateTime: "2022-04-22T00:00:00Z"
+eventReasonCode: "ADT_EVENT"
+visitNumber: "123412341234"
+nhsNumber: "9999999999"
+sourceSystem: "EPIC"
+mrn: "40800000"
+hospitalService:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "Anaes"
+fullLocationString:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "1020100166^SDEC BY02^11 SDEC"
+patientClass:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "INPATIENT"
+patientIsAlive:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: true
+patientFamilyName:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "ORANGE"
+patientGivenName:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "BLOOD"
+patientSex:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "F"

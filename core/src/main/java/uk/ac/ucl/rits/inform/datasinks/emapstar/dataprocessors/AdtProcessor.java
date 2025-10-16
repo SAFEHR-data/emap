@@ -21,6 +21,7 @@ import uk.ac.ucl.rits.inform.interchange.adt.MergePatient;
 import uk.ac.ucl.rits.inform.interchange.adt.MoveVisitInformation;
 import uk.ac.ucl.rits.inform.interchange.adt.PendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.SwapLocations;
+import uk.ac.ucl.rits.inform.interchange.adt.UpdateSubSpeciality;
 
 import java.time.Instant;
 import java.util.List;
@@ -40,11 +41,11 @@ public class AdtProcessor {
 
     /**
      * Implicitly wired spring beans.
-     * @param personController          person interactions.
-     * @param visitController           encounter interactions.
-     * @param patientLocationController location interactions.
-     * @param pendingAdtController      pending ADT interactions.
-     * @param deletionController        cascading deletes for hospital visits.
+     * @param personController              person interactions.
+     * @param visitController               encounter interactions.
+     * @param patientLocationController     location interactions.
+     * @param pendingAdtController          pending ADT interactions.
+     * @param deletionController            cascading deletes for hospital visits.
      */
     public AdtProcessor(PersonController personController, VisitController visitController,
                         PatientLocationController patientLocationController, PendingAdtController pendingAdtController,
@@ -211,4 +212,21 @@ public class AdtProcessor {
         HospitalVisit visit = processPersonAndVisit(msg, storedFrom, validFrom);
         pendingAdtController.processMsg(visit, msg, validFrom, storedFrom);
     }
+
+    /**
+     * Process an update subspeciality message.
+     * <p>
+     * Updates the sub speciality in the hospital visit table
+     * @param msg        change sub speciality adt message
+     * @param storedFrom time that emap core started processing the message
+     * @throws RequiredDataMissingException if the visit number is missing
+     */
+    @Transactional
+    public void processUpdateSubSpeciality(UpdateSubSpeciality msg, Instant storedFrom) throws RequiredDataMissingException {
+        Instant validFrom = msg.bestGuessAtValidFrom();
+        HospitalVisit visit = processPersonAndVisit(msg, storedFrom, validFrom);
+        // patientLocationController.processVisitLocation(visit, msg, storedFrom);
+        pendingAdtController.processMsg(visit, msg, validFrom, storedFrom);
+    }
+
 }

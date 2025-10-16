@@ -187,7 +187,7 @@ public class TestHL7ParsingMatchesInterchangeFactoryOutput extends TestHl7Messag
 
     @Test
     void testAdtPermutationMoves() throws Exception {
-        String[] fileNames = {"02_A01", "03_A02", "04_A02", "05_A02", "06_A02", "07_A06", "08_A03"};
+        String[] fileNames = {"02_A01", "03_A02", "04_A02", "05_A02", "06_A02", "07_A06", "08_A03", "09_Z99"};
 
         builtAndAssertAdtMessages("Adt", "Location/Moves", fileNames);
     }

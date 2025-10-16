@@ -43,7 +43,7 @@ public abstract class AdtMessage extends EmapOperationMessage {
     private InterchangeValue<String> patientSex = InterchangeValue.unknown();
     private InterchangeValue<String> patientTitle = InterchangeValue.unknown();
     private InterchangeValue<String> patientZipOrPostalCode = InterchangeValue.unknown();
-
+    private InterchangeValue<Long> matchedMovementId = InterchangeValue.unknown();
 
     /**
      * Ideally the time the event occurred, but uses the message date time as a backup.

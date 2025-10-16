@@ -33,6 +33,7 @@ import uk.ac.ucl.rits.inform.interchange.adt.MergePatient;
 import uk.ac.ucl.rits.inform.interchange.adt.MoveVisitInformation;
 import uk.ac.ucl.rits.inform.interchange.adt.PendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.SwapLocations;
+import uk.ac.ucl.rits.inform.interchange.adt.UpdateSubSpeciality;
 import uk.ac.ucl.rits.inform.interchange.form.FormMetadataMsg;
 import uk.ac.ucl.rits.inform.interchange.form.FormMsg;
 import uk.ac.ucl.rits.inform.interchange.form.FormQuestionMetadataMsg;
@@ -338,5 +339,16 @@ public class InformDbOperations implements EmapOperationMessageProcessor {
         formProcessor.processQuestionMetadataMessage(msg, storedFrom);
     }
 
+    /**
+     * Process an Update Sub Speciality message.
+     * @param  updateSubSpeciality the message
+     * @throws EmapOperationMessageProcessingException if message could not be processed
+     */
+    @Override
+    @Transactional
+    public void processMessage(UpdateSubSpeciality updateSubSpeciality) throws EmapOperationMessageProcessingException {
+        Instant storedFrom = Instant.now();
+        adtProcessor.processUpdateSubSpeciality(updateSubSpeciality, storedFrom);
+    }
 
 }
