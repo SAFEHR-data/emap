@@ -1,13 +1,7 @@
 package uk.ac.ucl.rits.inform.datasinks.emapstar.adt;
 
-import org.h2.table.Plan;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.ArgumentsProvider;
-import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,24 +10,16 @@ import uk.ac.ucl.rits.inform.datasinks.emapstar.repos.CoreDemographicRepository;
 import uk.ac.ucl.rits.inform.datasinks.emapstar.repos.HospitalVisitRepository;
 import uk.ac.ucl.rits.inform.datasinks.emapstar.repos.MrnRepository;
 import uk.ac.ucl.rits.inform.datasinks.emapstar.repos.PlannedMovementRepository;
-import uk.ac.ucl.rits.inform.informdb.identity.HospitalVisit;
 import uk.ac.ucl.rits.inform.informdb.movement.PlannedMovement;
 import uk.ac.ucl.rits.inform.interchange.adt.PendingTransfer;
-import uk.ac.ucl.rits.inform.interchange.test.helpers.InterchangeMessageFactory;
-import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
-import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
-import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.UpdateSubSpeciality;
-import uk.ac.ucl.rits.inform.interchange.adt.PendingType;
 
 import java.io.IOException;
-import java.io.InvalidClassException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Optional;
-import java.util.stream.Stream;
+
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -53,8 +39,7 @@ class TestUpdateSubSpeciality extends MessageProcessingBase {
 
     private static final String VISIT_NUMBER = "123412341234";
     private static final String LOCATION_STRING = "1020100166^SDEC BY02^11 SDEC";
-    private static final Instant EVENT_TIME = Instant.parse("2022-04-22T00:00:00Z");
-    private static final Instant CANCEL_TIME = Instant.parse("2022-04-21T23:37:58Z");
+
 
 
     private PlannedMovement getPlannedMovementOrThrow(String visitNumber, String location) {
@@ -66,23 +51,6 @@ class TestUpdateSubSpeciality extends MessageProcessingBase {
     void setup() throws IOException {
         updateSubSpeciality = messageFactory.getAdtMessage("Location/Moves/09_Z99.yaml");
     }
-
-
-    /**
-      If no entities exist in the database then latest service is NULL, 
-      create an entry with the correct sub speciality/
-    */
-    @Test
-    void testPendingCreatesOtherEntities() throws Exception {
-        dbOps.processMessage(updateSubSpeciality);
-        Optional<HospitalVisit> byId = hospitalVisitRepository.findByEncounter(VISIT_NUMBER);
-        /*
-         get the most recent planned movement - there shouldn't be one, so will throw a
-         NoSuchElementException
-        */
-        assertThrows(NoSuchElementException.class, () -> getPlannedMovementOrThrow(VISIT_NUMBER, "EAU^UCH T00 EAU BY02^BY02-08"));
-    }
-
 
     /**
      * Given that no entities exist in the database
@@ -111,17 +79,40 @@ class TestUpdateSubSpeciality extends MessageProcessingBase {
     void testEditMessageInsertedIfHospitalServicesAreDifferent() throws Exception {
         PendingTransfer pendingTransfer = messageFactory.getAdtMessage("pending/A15.yaml");
         PendingTransfer pendingTransferLater = messageFactory.getAdtMessage("pending/A15.yaml");
+        PendingTransfer pendingTransferAfter = messageFactory.getAdtMessage("pending/A15.yaml");
 
-        Instant laterTime = pendingTransferLater.getEventOccurredDateTime().plus(1, ChronoUnit.HOURS);
+        Instant laterTime = pendingTransferLater.getEventOccurredDateTime().plus(1, ChronoUnit.MINUTES);
         pendingTransferLater.setEventOccurredDateTime(laterTime);
+
+        Instant afterTime = pendingTransferAfter.getEventOccurredDateTime().plus(1, ChronoUnit.HOURS);
+        pendingTransferAfter.setEventOccurredDateTime(afterTime);
+
         dbOps.processMessage(pendingTransfer);
         dbOps.processMessage(pendingTransferLater);
+        dbOps.processMessage(pendingTransferAfter);
         dbOps.processMessage(updateSubSpeciality);
 
         // and entry should have been added to the planned movement table with the correct matched planned movement id
         List<PlannedMovement> movements = plannedMovementRepository.findAllByHospitalVisitIdEncounter(VISIT_NUMBER);
-        assertEquals (6, movements.get(2).getMatchedMovementId());
+        assertEquals(4, movements.size());
+        assertEquals("EDIT/HOSPITAL_SERVICE_CHANGE", movements.get(3).getEventType());
+        assertEquals(7, movements.get(3).getMatchedMovementId());
     }
 
-}
+    /**
+    * Find the most recent one, but don't add to table if it has the same hospital service as the edit message
+    */
+    @Test
+    void testEditMessageNotInsertedIfHospitalServicesAreTheSame() throws Exception {
+        PendingTransfer pendingTransfer = messageFactory.getAdtMessage("pending/A15.yaml");
 
+        dbOps.processMessage(pendingTransfer);
+        updateSubSpeciality.setHospitalService(pendingTransfer.getHospitalService());
+        dbOps.processMessage(updateSubSpeciality);
+
+        // and entry should have been added to the planned movement table with the correct matched planned movement id
+        List<PlannedMovement> movements = plannedMovementRepository.findAllByHospitalVisitIdEncounter(VISIT_NUMBER);
+        assertEquals(1, movements.size());
+        assertEquals("TRANSFER", movements.get(0).getEventType());
+    }
+}
