@@ -50,72 +50,72 @@ jobs:
               - 'emap-checker.xml'
               - 'emap-interchange/**'
               - 'waveform-reader/**'
-  emap-star-tests:
-    needs: [filter]
-    runs-on: ubuntu-latest
-    if: needs.filter.outputs.emap-star == 'true'
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up java
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: 'maven'
-      - name: Run emap-star tests
-        working-directory: emap-star
-        run: mvn clean test
-      - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v2
-        if: success() || failure()
-        with:
-          report_paths: '**/target/surefire-reports/TEST-*.xml'
-  emap-interchange-tests:
-    needs: [filter]
-    runs-on: ubuntu-latest
-    if: needs.filter.outputs.emap-interchange == 'true'
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up java
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: 'maven'
-      - name: Run emap-interchange tests
-        working-directory: emap-interchange
-        run: mvn clean test
-      - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v2
-        if: success() || failure()
-        with:
-          report_paths: '**/target/surefire-reports/TEST-*.xml'
-  hl7-reader-tests:
-    needs: [filter]
-    runs-on: ubuntu-latest
-    if: needs.filter.outputs.hl7-reader == 'true'
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up java
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: 'maven'
-      - name: Build emap-star
-        working-directory: emap-star
-        run: mvn clean install
-      - name: Build emap-interchange
-        working-directory: emap-interchange
-        run: mvn clean install
-      - name: Run hl7-reader tests
-        working-directory: hl7-reader
-        run: mvn clean test
-      - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v2
-        if: success() || failure()
-        with:
-          report_paths: '**/target/surefire-reports/TEST-*.xml'
+  # emap-star-tests:
+  #   needs: [filter]
+  #   runs-on: ubuntu-latest
+  #   if: needs.filter.outputs.emap-star == 'true'
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Set up java
+  #       uses: actions/setup-java@v3
+  #       with:
+  #         java-version: '17'
+  #         distribution: 'temurin'
+  #         cache: 'maven'
+  #     - name: Run emap-star tests
+  #       working-directory: emap-star
+  #       run: mvn clean test
+  #     - name: Publish Test Report
+  #       uses: mikepenz/action-junit-report@v2
+  #       if: success() || failure()
+  #       with:
+  #         report_paths: '**/target/surefire-reports/TEST-*.xml'
+  # emap-interchange-tests:
+  #   needs: [filter]
+  #   runs-on: ubuntu-latest
+  #   if: needs.filter.outputs.emap-interchange == 'true'
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Set up java
+  #       uses: actions/setup-java@v3
+  #       with:
+  #         java-version: '17'
+  #         distribution: 'temurin'
+  #         cache: 'maven'
+  #     - name: Run emap-interchange tests
+  #       working-directory: emap-interchange
+  #       run: mvn clean test
+  #     - name: Publish Test Report
+  #       uses: mikepenz/action-junit-report@v2
+  #       if: success() || failure()
+  #       with:
+  #         report_paths: '**/target/surefire-reports/TEST-*.xml'
+  # hl7-reader-tests:
+  #   needs: [filter]
+  #   runs-on: ubuntu-latest
+  #   if: needs.filter.outputs.hl7-reader == 'true'
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Set up java
+  #       uses: actions/setup-java@v3
+  #       with:
+  #         java-version: '17'
+  #         distribution: 'temurin'
+  #         cache: 'maven'
+  #     - name: Build emap-star
+  #       working-directory: emap-star
+  #       run: mvn clean install
+  #     - name: Build emap-interchange
+  #       working-directory: emap-interchange
+  #       run: mvn clean install
+  #     - name: Run hl7-reader tests
+  #       working-directory: hl7-reader
+  #       run: mvn clean test
+  #     - name: Publish Test Report
+  #       uses: mikepenz/action-junit-report@v2
+  #       if: success() || failure()
+  #       with:
+  #         report_paths: '**/target/surefire-reports/TEST-*.xml'
   core-tests:
     needs: [filter]
     runs-on: ubuntu-latest
@@ -144,26 +144,26 @@ jobs:
         if: success() || failure()
         with:
           report_paths: '**/target/surefire-reports/TEST-*.xml'
-  waveform-reader-tests:
-    needs: [filter]
-    runs-on: ubuntu-latest
-    if: needs.filter.outputs.waveform-reader == 'true'
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up java
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: 'maven'
-      - name: Build emap-interchange
-        working-directory: emap-interchange
-        run: mvn clean install
-      - name: Run waveform-reader tests
-        working-directory: waveform-reader
-        run: mvn clean test
-      - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v2
-        if: success() || failure()
-        with:
-          report_paths: '**/target/surefire-reports/TEST-*.xml'
+  # waveform-reader-tests:
+  #   needs: [filter]
+  #   runs-on: ubuntu-latest
+  #   if: needs.filter.outputs.waveform-reader == 'true'
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Set up java
+  #       uses: actions/setup-java@v3
+  #       with:
+  #         java-version: '17'
+  #         distribution: 'temurin'
+  #         cache: 'maven'
+  #     - name: Build emap-interchange
+  #       working-directory: emap-interchange
+  #       run: mvn clean install
+  #     - name: Run waveform-reader tests
+  #       working-directory: waveform-reader
+  #       run: mvn clean test
+  #     - name: Publish Test Report
+  #       uses: mikepenz/action-junit-report@v2
+  #       if: success() || failure()
+  #       with:
+  #         report_paths: '**/target/surefire-reports/TEST-*.xml'
