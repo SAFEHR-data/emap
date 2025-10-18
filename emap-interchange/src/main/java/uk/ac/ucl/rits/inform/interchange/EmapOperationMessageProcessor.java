@@ -1,11 +1,13 @@
 package uk.ac.ucl.rits.inform.interchange;
 
 import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
+import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingDischarge;
 import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.ChangePatientIdentifiers;
 import uk.ac.ucl.rits.inform.interchange.adt.DeletePersonInformation;
 import uk.ac.ucl.rits.inform.interchange.adt.MergePatient;
 import uk.ac.ucl.rits.inform.interchange.adt.MoveVisitInformation;
+import uk.ac.ucl.rits.inform.interchange.adt.PendingDischarge;
 import uk.ac.ucl.rits.inform.interchange.adt.PendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.SwapLocations;
 import uk.ac.ucl.rits.inform.interchange.form.FormMetadataMsg;
@@ -67,6 +69,19 @@ public interface EmapOperationMessageProcessor {
      * @throws EmapOperationMessageProcessingException if the message cannot be processed
      */
     void processMessage(SwapLocations msg) throws EmapOperationMessageProcessingException;
+
+    /**
+     * @param msg the PendingDischarge msg to process. May want to make this into generic PendingAdt if we implement admit and discharge.
+     * @throws EmapOperationMessageProcessingException if message cannot be processed
+     */
+    void processMessage(PendingDischarge msg) throws EmapOperationMessageProcessingException;
+
+    /**
+     * @param msg the CancelPendingDischarge msg to process. May want to make this into generic CancelPendingAdt if we implement admit and discharge.
+     * @throws EmapOperationMessageProcessingException if message cannot be processed
+     */
+    void processMessage(CancelPendingDischarge msg) throws EmapOperationMessageProcessingException;
+
 
     /**
      * @param msg the PendingTransfer msg to process. May want to make this into generic PendingAdt if we implement admit and discharge.
