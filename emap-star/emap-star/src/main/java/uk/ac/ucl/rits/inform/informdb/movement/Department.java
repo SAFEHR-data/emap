@@ -43,6 +43,21 @@ public class Department implements Serializable {
     private String name;
 
     /**
+     * \brief rptGrpNine of this department.
+     */
+    private String rptGrpNine;
+
+    /**
+     * \brief Indicates if this department is a ward or flow area.
+     */
+    private boolean isWardOrFlowArea;
+
+    /**
+     * \brief Indicates if this department is a core inpatient area.
+     */
+    private boolean isCoreInpatientArea;
+
+    /**
      * Create minimal department.
      * @param internalId ID of the department in EPIC.
      */

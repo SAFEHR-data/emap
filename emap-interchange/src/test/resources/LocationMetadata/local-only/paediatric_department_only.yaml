@@ -2,3 +2,6 @@
 hl7String: "100000060^null^null"
 sourceSystem: "clarity"
 departmentId: "1020610068"
+rptGrpNine: "ACUN"
+isWardOrFlowArea: true
+isCoreInpatientArea: true  

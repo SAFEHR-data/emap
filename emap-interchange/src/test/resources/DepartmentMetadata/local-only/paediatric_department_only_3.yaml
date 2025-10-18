@@ -10,3 +10,6 @@ departmentRecordStatus: "ACTIVE"
 departmentContactDate: "2021-08-25T23:00:00Z"
 specialityUpdate: "2021-10-08T23:00:20Z"
 combinedUpdate: "2021-10-08T23:00:20Z"
+rptGrpNine: "ACUN"
+isWardOrFlowArea: true
+isCoreInpatientArea: true  

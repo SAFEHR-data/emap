@@ -10,3 +10,6 @@ departmentContactDate: "2021-08-25T23:00:00Z"
 # missing previous department will be null
 specialityUpdate: "2021-08-26T11:28:51Z"
 combinedUpdate: "2021-08-26T11:28:51Z"
+rptGrpNine: "ACUN"
+isWardOrFlowArea: true
+isCoreInpatientArea: true  

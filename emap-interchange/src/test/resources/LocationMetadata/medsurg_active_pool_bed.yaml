@@ -2,6 +2,9 @@
 hl7String: "MEDSURG^MED/SURG^Med/Surg"
 sourceSystem: "clarity"
 departmentId: "1"
+rptGrpNine: "ACUN"
+isWardOrFlowArea: true
+isCoreInpatientArea: true  
 roomMetadata:
   "@class": "uk.ac.ucl.rits.inform.interchange.location.RoomMetadata"
   roomCsn: 274

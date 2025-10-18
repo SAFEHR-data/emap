@@ -57,9 +57,9 @@ INSERT INTO public.hospital_visit (
 
 -- locations
 
-INSERT INTO public.department (department_id, hl7string, name, internal_id) VALUES
-(11001, 'ACUN', 'EGA E03 ACU NURSERY', 2),
-(11002, 'MEDSURG', 'EMH MED SURG', 1);
+INSERT INTO public.department (department_id, hl7string, name, internal_id, rptGrpNine, isWardOrFlowArea, isCoreInpatientArea) VALUES
+(11001, 'ACUN', 'EGA E03 ACU NURSERY', 2, 'ACUN', true, true),
+(11002, 'MEDSURG', 'EMH MED SURG', 1, 'ACUN', true, true);
 
 
 INSERT INTO public.department_state

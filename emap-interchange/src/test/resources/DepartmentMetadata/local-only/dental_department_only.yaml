@@ -9,3 +9,6 @@ departmentContactDate: "2018-08-22T00:00:00Z"
 departmentSpeciality: "Dental - Oral Medicine"
 specialityUpdate: "2020-09-22T13:47:56Z"
 combinedUpdate: "2020-09-22T13:47:56Z"
+rptGrpNine: "ACUN"
+isWardOrFlowArea: true
+isCoreInpatientArea: true  
