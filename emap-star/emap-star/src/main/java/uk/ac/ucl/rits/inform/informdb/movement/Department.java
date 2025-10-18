@@ -37,7 +37,7 @@ public class Department implements Serializable {
 
     @Column(nullable = false)
     private Long internalId;
-    
+
     /**
      * \brief Name of this department.
      */
@@ -47,7 +47,7 @@ public class Department implements Serializable {
      * \brief Indicates if this department is a ward or flow area.
      */
     private boolean isWardOrFlowArea;
-    
+
     /**
      *  \brief Indicates if this department is a core inpatient area.
      */

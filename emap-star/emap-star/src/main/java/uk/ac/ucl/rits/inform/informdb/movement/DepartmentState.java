@@ -64,7 +64,7 @@ public class DepartmentState extends AuditCore<DepartmentState> {
      * \brief Indicates if this department is a ward or flow area.
      */
     private boolean isWardOrFlowArea;
-    
+
     /**
      *  \brief Indicates if this department is a core inpatient area.
      */
@@ -80,11 +80,11 @@ public class DepartmentState extends AuditCore<DepartmentState> {
      * @param speciality name of the current speciality of this department
      * @param departmentRptGrpNine RPT GRP NINE of the department
      */
-    public DepartmentState(Department department, String status, String speciality, String rptGrpNine, Instant validFrom, Instant storedFrom) {
+    public DepartmentState(Department department, String status, String speciality, String departmentRptGrpNine, Instant validFrom, Instant storedFrom) {
         departmentId = department;
         this.status = status;
         this.speciality = speciality;
-        this.departmentRptGrpNine = rptGrpNine;
+        this.departmentRptGrpNine = departmentRptGrpNine;
         setValidFrom(validFrom);
         setStoredFrom(storedFrom);
     }
