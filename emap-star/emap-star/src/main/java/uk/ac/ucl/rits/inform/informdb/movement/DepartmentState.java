@@ -80,7 +80,9 @@ public class DepartmentState extends AuditCore<DepartmentState> {
      * @param speciality name of the current speciality of this department
      * @param departmentRptGrpNine RPT GRP NINE of the department
      */
-    public DepartmentState(Department department, String status, String speciality, String departmentRptGrpNine, Instant validFrom, Instant storedFrom) {
+    public DepartmentState(Department department, String status, 
+    String speciality, String departmentRptGrpNine, Instant validFrom, 
+    Instant storedFrom) {
         departmentId = department;
         this.status = status;
         this.speciality = speciality;
