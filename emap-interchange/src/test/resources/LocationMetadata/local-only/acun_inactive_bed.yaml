@@ -2,6 +2,9 @@
 hl7String: "ACUN^E03ACUN BY12^BY12-Cxyz"
 sourceSystem: "clarity"
 departmentId: "2"
+rptGrpNine: "ACUN"
+isWardOrFlowArea: true
+isCoreInpatientArea: true  
 roomMetadata:
   "@class": "uk.ac.ucl.rits.inform.interchange.location.RoomMetadata"
   roomCsn: 1158

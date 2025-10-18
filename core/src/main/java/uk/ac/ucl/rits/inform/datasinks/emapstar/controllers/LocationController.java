@@ -199,7 +199,7 @@ class DepartmentController {
     }
 
     /**
-     * Get or create minomal department entity.
+     * Get or create minimal department entity.
      * @param msg minimal department message
      * @return saved department entity
      */
@@ -207,7 +207,7 @@ class DepartmentController {
         return departmentRepo
                 .findByInternalId(msg.getDepartmentId())
                 .orElseGet(() -> departmentRepo.save(
-                        new Department(msg.getDepartmentId())));
+                        new Department(msg.getDepartmentId(), msg.isWardOrFlowArea(), msg.isCoreInpatientArea())));
     }
 
     /**
@@ -219,7 +219,7 @@ class DepartmentController {
     Department getOrCreateFullDepartment(DepartmentMetadata msg) throws IncompatibleDatabaseStateException {
         Department department = departmentRepo
                 .findByInternalId(msg.getDepartmentId())
-                .orElseGet(() -> departmentRepo.save(new Department(msg.getDepartmentId())));
+                .orElseGet(() -> departmentRepo.save(new Department(msg.getDepartmentId(), msg.isWardOrFlowArea(), msg.isCoreInpatientArea())));
         addMissingDataAndSave(msg, department);
         return department;
     }
@@ -227,6 +227,8 @@ class DepartmentController {
     private void addMissingDataAndSave(DepartmentMetadata msg, Department department) throws IncompatibleDatabaseStateException {
         boolean updated = updateFieldIfNull(department.getHl7String(), msg.getDepartmentHl7(), department::setHl7String);
         updated = updateFieldIfNull(department.getName(), msg.getDepartmentName(), department::setName) || updated;
+        updated = updateFieldIfDifferent(department.isCoreInpatientArea(), msg.isCoreInpatientArea(), department::setCoreInpatientArea) || updated;
+        updated = updateFieldIfDifferent(department.isWardOrFlowArea(), msg.isWardOrFlowArea(), department::setWardOrFlowArea) || updated;
         if (updated) {
             departmentRepo.save(department);
         }
@@ -238,6 +240,14 @@ class DepartmentController {
                 String errorMessage = String.format("Unexpected department name change '%s' to '%s'", currentData, newdata);
                 throw new IncompatibleDatabaseStateException(errorMessage);
             }
+            setter.accept(newdata);
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean updateFieldIfDifferent(Boolean currentData, Boolean newdata, Consumer<Boolean> setter) throws IncompatibleDatabaseStateException {
+        if (!Objects.equals(currentData, newdata)) {
             setter.accept(newdata);
             return true;
         }
@@ -257,7 +267,7 @@ class DepartmentController {
     void processDepartmentStates(DepartmentMetadata msg, Department department, Instant storedFrom) throws IncompatibleDatabaseStateException {
         Instant validFrom = msg.getSpecialityUpdate() == null ? msg.getDepartmentContactDate() : msg.getSpecialityUpdate();
         DepartmentState currentState = new DepartmentState(
-                department, msg.getDepartmentRecordStatus().toString(), msg.getDepartmentSpeciality(), validFrom, storedFrom);
+                department, msg.getDepartmentRecordStatus().toString(), msg.getDepartmentSpeciality(), msg.getDepartmentRptGrpNine(),validFrom, storedFrom);
 
         if (departmentStateRepo.existsByDepartmentIdAndSpecialityAndValidFrom(department, msg.getDepartmentSpeciality(), validFrom)) {
             logger.debug("Department State already exists in the database, no need to process further");
@@ -272,10 +282,12 @@ class DepartmentController {
         // if a state already exists and is different from the current state then we should make a new valid state from the current message
         if (possiblePreviousState.isPresent()) {
             invalidatePreviousStateIfChanged(msg.getPreviousDepartmentSpeciality(), currentState, possiblePreviousState.get());
+            invalidatePreviousStateIfChanged(msg.isCoreInpatientArea(), currentState, possiblePreviousState.get());
+            invalidatePreviousStateIfChanged(msg.isWardOrFlowArea(), currentState, possiblePreviousState.get());
         } else if (msg.getPreviousDepartmentSpeciality() != null) {
             // if the previous department speciality is not in the database
             DepartmentState previousState = new DepartmentState(
-                    department, msg.getDepartmentRecordStatus().toString(), msg.getPreviousDepartmentSpeciality(),
+                    department, msg.getDepartmentRecordStatus().toString(), msg.getPreviousDepartmentSpeciality(), msg.getDepartmentRptGrpNine(),
                     msg.getDepartmentContactDate(), storedFrom);
             previousState.setStoredUntil(currentState.getStoredFrom());
             previousState.setValidUntil(currentState.getValidFrom());
@@ -319,6 +331,25 @@ class DepartmentController {
         }
     }
 
+    private void invalidatePreviousStateIfChanged(Boolean msgPreviousValue, DepartmentState currentState, DepartmentState previousState)
+            throws IncompatibleDatabaseStateException {
+        // if not different, the current state doesn't get saved
+        if (stateIsDifferent(currentState, previousState)) {
+            if (msgPreviousValue != previousState.isCoreInpatientArea()) {
+                String errorMsg = String.format(
+                        "Previous Department isCoreInpatientArea/isWardOrFlowArea  is different from the database value. Database previous: %s, Message previous: %s",
+                        previousState.isCoreInpatientArea(), msgPreviousValue
+                );
+                logger.error(errorMsg);
+                throw new IncompatibleDatabaseStateException(errorMsg);
+            }
+            // Add new department states to EMAP
+            previousState.setStoredUntil(currentState.getStoredFrom());
+            previousState.setValidUntil(currentState.getValidFrom());
+            departmentStateRepo.saveAll(List.of(previousState, currentState));
+        }
+    }
+    
     private boolean stateIsDifferent(DepartmentState currentState, DepartmentState previousState) {
         return !previousState.getStatus().equals(currentState.getStatus())
                 || !Objects.equals(currentState.getSpeciality(), previousState.getSpeciality());

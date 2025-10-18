@@ -37,31 +37,41 @@ public class Department implements Serializable {
 
     @Column(nullable = false)
     private Long internalId;
+    
     /**
      * \brief Name of this department.
      */
     private String name;
 
     /**
-     * \brief rptGrpNine of this department.
-     */
-    private String rptGrpNine;
-
-    /**
      * \brief Indicates if this department is a ward or flow area.
      */
     private boolean isWardOrFlowArea;
-
+    
     /**
-     * \brief Indicates if this department is a core inpatient area.
+     *  \brief Indicates if this department is a core inpatient area.
      */
     private boolean isCoreInpatientArea;
+
+
+
+    /**
+     * Create minimal department.
+     * @param internalId ID of the department in EPIC.
+     * @param isWardOrFlowArea whether department is ward or flow area
+     * @param isCoreInpatientArea whether department is core inpatient area
+     */
+    public Department(Long internalId, boolean isWardOrFlowArea, boolean isCoreInpatientArea) {
+        this.internalId = internalId;
+        this.isWardOrFlowArea = isWardOrFlowArea;
+        this.isCoreInpatientArea = isCoreInpatientArea;
+    }
 
     /**
      * Create minimal department.
      * @param internalId ID of the department in EPIC.
      */
     public Department(Long internalId) {
-        this.internalId = internalId;
+        this(internalId, false, true);
     }
 }

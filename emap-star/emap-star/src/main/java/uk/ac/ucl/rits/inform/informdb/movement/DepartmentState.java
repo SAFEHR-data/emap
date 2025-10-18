@@ -54,6 +54,23 @@ public class DepartmentState extends AuditCore<DepartmentState> {
      * \brief Current speciality of the department.
      */
     private String speciality;
+
+    /**
+     * \brief Current RPT GRP NINE of the department.
+     */
+    private String departmentRptGrpNine;
+
+    /**
+     * \brief Indicates if this department is a ward or flow area.
+     */
+    private boolean isWardOrFlowArea;
+    
+    /**
+     *  \brief Indicates if this department is a core inpatient area.
+     */
+    private boolean isCoreInpatientArea;
+
+
     /**
      * Create valid department state.
      * @param department parent department
@@ -61,11 +78,13 @@ public class DepartmentState extends AuditCore<DepartmentState> {
      * @param validFrom  time that the message was valid from
      * @param storedFrom time that emap core stared processing the message
      * @param speciality name of the current speciality of this department
+     * @param departmentRptGrpNine RPT GRP NINE of the department
      */
-    public DepartmentState(Department department, String status, String speciality, Instant validFrom, Instant storedFrom) {
+    public DepartmentState(Department department, String status, String speciality, String rptGrpNine, Instant validFrom, Instant storedFrom) {
         departmentId = department;
         this.status = status;
         this.speciality = speciality;
+        this.departmentRptGrpNine = rptGrpNine;
         setValidFrom(validFrom);
         setStoredFrom(storedFrom);
     }
@@ -78,6 +97,7 @@ public class DepartmentState extends AuditCore<DepartmentState> {
         departmentId = other.departmentId;
         status = other.status;
         speciality = other.speciality;
+        departmentRptGrpNine = other.departmentRptGrpNine;
     }
 
     @Override
