@@ -54,6 +54,22 @@ public class DepartmentState extends AuditCore<DepartmentState> {
      * \brief Current speciality of the department.
      */
     private String speciality;
+
+    /**
+     * \brief Report Group Nine (RPT_GRP_NINE) value associated with this department.
+     */
+    private String rptGrpNine;
+
+    /**
+     * \brief Predicate determining whether the Department is a ward or flow area.
+     */
+    private Boolean isWardOrFlowArea;
+
+    /**
+     * \brief Predicate determining whether the Department is a core inpatient area.
+     */
+    private Boolean isCoreInpatientArea;
+
     /**
      * Create valid department state.
      * @param department parent department
@@ -61,11 +77,19 @@ public class DepartmentState extends AuditCore<DepartmentState> {
      * @param validFrom  time that the message was valid from
      * @param storedFrom time that emap core stared processing the message
      * @param speciality name of the current speciality of this department
+     * @param rptGrpNine Report Group Nine value associated with this department
+     * @param isWardOrFlowArea is this department a ward or flow area
+     * @param isCoreInpatientArea is this department a core inpatient area
      */
-    public DepartmentState(Department department, String status, String speciality, Instant validFrom, Instant storedFrom) {
+    public DepartmentState(Department department, String status,
+    String speciality, String rptGrpNine, Boolean isWardOrFlowArea,
+    Boolean isCoreInpatientArea, Instant validFrom, Instant storedFrom) {
         departmentId = department;
         this.status = status;
         this.speciality = speciality;
+        this.rptGrpNine = rptGrpNine;
+        this.isWardOrFlowArea = isWardOrFlowArea;
+        this.isCoreInpatientArea = isCoreInpatientArea;
         setValidFrom(validFrom);
         setStoredFrom(storedFrom);
     }
@@ -78,6 +102,9 @@ public class DepartmentState extends AuditCore<DepartmentState> {
         departmentId = other.departmentId;
         status = other.status;
         speciality = other.speciality;
+        rptGrpNine = other.rptGrpNine;
+        isWardOrFlowArea = other.isWardOrFlowArea;
+        isCoreInpatientArea = other.isCoreInpatientArea;
     }
 
     @Override
