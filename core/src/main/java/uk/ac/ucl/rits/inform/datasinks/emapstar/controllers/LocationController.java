@@ -199,7 +199,7 @@ class DepartmentController {
     }
 
     /**
-     * Get or create minomal department entity.
+     * Get or create minimal department entity.
      * @param msg minimal department message
      * @return saved department entity
      */
@@ -257,7 +257,10 @@ class DepartmentController {
     void processDepartmentStates(DepartmentMetadata msg, Department department, Instant storedFrom) throws IncompatibleDatabaseStateException {
         Instant validFrom = msg.getSpecialityUpdate() == null ? msg.getDepartmentContactDate() : msg.getSpecialityUpdate();
         DepartmentState currentState = new DepartmentState(
-                department, msg.getDepartmentRecordStatus().toString(), msg.getDepartmentSpeciality(), validFrom, storedFrom);
+            department, msg.getDepartmentRecordStatus().toString(),
+            msg.getDepartmentSpeciality(), msg.getRptGrpNine(),
+            msg.getIsWardOrFlowArea(), msg.getIsCoreInpatientArea(),
+            validFrom, storedFrom);
 
         if (departmentStateRepo.existsByDepartmentIdAndSpecialityAndValidFrom(department, msg.getDepartmentSpeciality(), validFrom)) {
             logger.debug("Department State already exists in the database, no need to process further");
@@ -274,9 +277,11 @@ class DepartmentController {
             invalidatePreviousStateIfChanged(msg.getPreviousDepartmentSpeciality(), currentState, possiblePreviousState.get());
         } else if (msg.getPreviousDepartmentSpeciality() != null) {
             // if the previous department speciality is not in the database
-            DepartmentState previousState = new DepartmentState(
-                    department, msg.getDepartmentRecordStatus().toString(), msg.getPreviousDepartmentSpeciality(),
-                    msg.getDepartmentContactDate(), storedFrom);
+            DepartmentState previousState = new DepartmentState(department,
+                msg.getDepartmentRecordStatus().toString(),
+                msg.getPreviousDepartmentSpeciality(), msg.getRptGrpNine(),
+                msg.getIsWardOrFlowArea(), msg.getIsCoreInpatientArea(),
+                msg.getDepartmentContactDate(), storedFrom);
             previousState.setStoredUntil(currentState.getStoredFrom());
             previousState.setValidUntil(currentState.getValidFrom());
             departmentStateRepo.saveAll(List.of(previousState, currentState));
