@@ -129,6 +129,10 @@ class TestUpdateSubSpeciality extends MessageProcessingBase {
         assertEquals(1, coreDemographicRepository.count());
         assertEquals(1, hospitalVisitRepository.count());
 
-        assertThrows(NoSuchElementException.class, () -> getPlannedMovementOrThrow(VISIT_NUMBER, LOCATION_STRING));
+        // one entry should have been added to the planned movement table with the correct matched planned movement id
+        List<PlannedMovement> movements = plannedMovementRepository.findAllByHospitalVisitIdEncounter(VISIT_NUMBER);
+        assertEquals(1, movements.size());
+        assertEquals("TRANSFER", movements.get(0).getEventType());
+        //assertThrows(NoSuchElementException.class, () -> getPlannedMovementOrThrow(VISIT_NUMBER, LOCATION_STRING));
     }
 }

@@ -166,6 +166,7 @@ public class PendingAdtController {
         // look for matching entry here
 
         Instant eventDateTime = msg.getEventOccurredDateTime();
+
         List<PlannedMovement> movements = plannedMovementRepo.findMatchingMovementsFromZ99(visit, fullLocation, eventDateTime);
         if (!movements.isEmpty()) {
 
@@ -176,13 +177,11 @@ public class PendingAdtController {
             if (!Objects.equals(currentService, editedService)) {
                 Long matchedMovementId = movements.get(mostRecentMoveIndex).getPlannedMovementId();
                 RowState<PlannedMovement, PlannedMovementAudit> plannedState = getOrCreate(
-                        allFromRequest, visit, fullLocation, "EDIT/HOSPITAL_SERVICE_CHANGE", msg.getEventOccurredDateTime(), validFrom, storedFrom
+                        allFromRequest, visit, fullLocation, "EDIT/HOSPITAL_SERVICE_CHANGE", eventDateTime, validFrom, storedFrom
                 );
                 PlannedMovement movement = plannedState.getEntity();
                 // not sure why but event date time isn't being set. Add it here.
-                if (movement.getEventDatetime() == null) {
-                    plannedState.assignIfDifferent(msg.getEventOccurredDateTime(), movement.getEventDatetime(), movement::setEventDatetime);
-                }
+                plannedState.assignIfDifferent(eventDateTime, movement.getEventDatetime(), movement::setEventDatetime);
                 plannedState.assignInterchangeValue(msg.getHospitalService(), movement.getHospitalService(), movement::setHospitalService);
                 plannedState.assignIfDifferent(matchedMovementId, movement.getMatchedMovementId(), movement::setMatchedMovementId);
                 plannedState.saveEntityOrAuditLogIfRequired(plannedMovementRepo, plannedMovementAuditRepo);
