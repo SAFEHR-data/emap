@@ -36,10 +36,12 @@ class TestUpdateSubSpeciality extends MessageProcessingBase {
 
     // end to end messages
     private UpdateSubSpeciality updateSubSpeciality;
+    private PendingTransfer pendingTransfer;
+    private PendingTransfer pendingTransferLater;
+    private PendingTransfer pendingTransferAfter;
 
     private static final String VISIT_NUMBER = "123412341234";
     private static final String LOCATION_STRING = "1020100166^SDEC BY02^11 SDEC";
-
 
 
     private PlannedMovement getPlannedMovementOrThrow(String visitNumber, String location) {
@@ -50,6 +52,16 @@ class TestUpdateSubSpeciality extends MessageProcessingBase {
     @BeforeEach
     void setup() throws IOException {
         updateSubSpeciality = messageFactory.getAdtMessage("Location/Moves/09_Z99.yaml");
+
+        pendingTransfer = messageFactory.getAdtMessage("pending/A15.yaml");
+        pendingTransferLater = messageFactory.getAdtMessage("pending/A15.yaml");
+        pendingTransferAfter = messageFactory.getAdtMessage("pending/A15.yaml");
+
+        Instant laterTime = pendingTransferLater.getEventOccurredDateTime().plus(1, ChronoUnit.MINUTES);
+        pendingTransferLater.setEventOccurredDateTime(laterTime);
+
+        Instant afterTime = pendingTransferAfter.getEventOccurredDateTime().plus(1, ChronoUnit.HOURS);
+        pendingTransferAfter.setEventOccurredDateTime(afterTime);
     }
 
     /**
@@ -77,15 +89,6 @@ class TestUpdateSubSpeciality extends MessageProcessingBase {
      */
     @Test
     void testEditMessageInsertedIfHospitalServicesAreDifferent() throws Exception {
-        PendingTransfer pendingTransfer = messageFactory.getAdtMessage("pending/A15.yaml");
-        PendingTransfer pendingTransferLater = messageFactory.getAdtMessage("pending/A15.yaml");
-        PendingTransfer pendingTransferAfter = messageFactory.getAdtMessage("pending/A15.yaml");
-
-        Instant laterTime = pendingTransferLater.getEventOccurredDateTime().plus(1, ChronoUnit.MINUTES);
-        pendingTransferLater.setEventOccurredDateTime(laterTime);
-
-        Instant afterTime = pendingTransferAfter.getEventOccurredDateTime().plus(1, ChronoUnit.HOURS);
-        pendingTransferAfter.setEventOccurredDateTime(afterTime);
 
         dbOps.processMessage(pendingTransfer);
         dbOps.processMessage(pendingTransferLater);
@@ -104,8 +107,6 @@ class TestUpdateSubSpeciality extends MessageProcessingBase {
     */
     @Test
     void testEditMessageNotInsertedIfHospitalServicesAreTheSame() throws Exception {
-        PendingTransfer pendingTransfer = messageFactory.getAdtMessage("pending/A15.yaml");
-
         dbOps.processMessage(pendingTransfer);
         updateSubSpeciality.setHospitalService(pendingTransfer.getHospitalService());
         dbOps.processMessage(updateSubSpeciality);
@@ -114,5 +115,20 @@ class TestUpdateSubSpeciality extends MessageProcessingBase {
         List<PlannedMovement> movements = plannedMovementRepository.findAllByHospitalVisitIdEncounter(VISIT_NUMBER);
         assertEquals(1, movements.size());
         assertEquals("TRANSFER", movements.get(0).getEventType());
+    }
+
+    /**
+     * If pending transfers only exist after the edit event, don't add edit message.
+     */
+    @Test
+    void testEditMessageNotInsertedIfTransfersAreAfter() throws Exception {
+        dbOps.processMessage(pendingTransferAfter);
+        dbOps.processMessage(updateSubSpeciality);
+
+        assertEquals(1, mrnRepository.count());
+        assertEquals(1, coreDemographicRepository.count());
+        assertEquals(1, hospitalVisitRepository.count());
+
+        assertThrows(NoSuchElementException.class, () -> getPlannedMovementOrThrow(VISIT_NUMBER, LOCATION_STRING));
     }
 }
