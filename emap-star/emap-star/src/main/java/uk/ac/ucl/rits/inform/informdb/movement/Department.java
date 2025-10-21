@@ -43,7 +43,7 @@ public class Department implements Serializable {
     private String name;
 
     /**
-     * \brief Hospital site where this department is located
+     * \brief Hospital site where this department is located.
      */
     private String siteLocation;
 
