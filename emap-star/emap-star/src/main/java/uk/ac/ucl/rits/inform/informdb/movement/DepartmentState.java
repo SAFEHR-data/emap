@@ -56,9 +56,9 @@ public class DepartmentState extends AuditCore<DepartmentState> {
     private String speciality;
 
     /**
-     * \brief Report Group Nine (RPT_GRP_NINE) value associated with this department.
+     * \brief Report Group Nine (departmentType) value associated with this department.
      */
-    private String rptGrpNine;
+    private String departmentType;
 
     /**
      * \brief Predicate determining whether the Department is a ward or flow area.
@@ -77,17 +77,17 @@ public class DepartmentState extends AuditCore<DepartmentState> {
      * @param validFrom  time that the message was valid from
      * @param storedFrom time that emap core stared processing the message
      * @param speciality name of the current speciality of this department
-     * @param rptGrpNine Report Group Nine value associated with this department
+     * @param departmentType Report Group Nine value associated with this department
      * @param isWardOrFlowArea is this department a ward or flow area
      * @param isCoreInpatientArea is this department a core inpatient area
      */
     public DepartmentState(Department department, String status,
-    String speciality, String rptGrpNine, Boolean isWardOrFlowArea,
+    String speciality, String departmentType, Boolean isWardOrFlowArea,
     Boolean isCoreInpatientArea, Instant validFrom, Instant storedFrom) {
         departmentId = department;
         this.status = status;
         this.speciality = speciality;
-        this.rptGrpNine = rptGrpNine;
+        this.departmentType = departmentType;
         this.isWardOrFlowArea = isWardOrFlowArea;
         this.isCoreInpatientArea = isCoreInpatientArea;
         setValidFrom(validFrom);
@@ -102,7 +102,7 @@ public class DepartmentState extends AuditCore<DepartmentState> {
         departmentId = other.departmentId;
         status = other.status;
         speciality = other.speciality;
-        rptGrpNine = other.rptGrpNine;
+        departmentType = other.departmentType;
         isWardOrFlowArea = other.isWardOrFlowArea;
         isCoreInpatientArea = other.isCoreInpatientArea;
     }

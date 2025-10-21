@@ -26,6 +26,7 @@ public abstract class AdtMessage extends EmapOperationMessage {
     private String mrn;
     private String nhsNumber;
     private String visitNumber;
+    private String siteLocation;
     private InterchangeValue<String> modeOfArrival = InterchangeValue.unknown();
     private InterchangeValue<String> ethnicGroup = InterchangeValue.unknown();
     private InterchangeValue<String> fullLocationString = InterchangeValue.unknown();

@@ -43,6 +43,11 @@ public class Department implements Serializable {
     private String name;
 
     /**
+     * \brief Hospital site where this department is located
+     */
+    private String siteLocation;
+
+    /**
      * Create minimal department.
      * @param internalId ID of the department in EPIC.
      */

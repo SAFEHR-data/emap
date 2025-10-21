@@ -105,6 +105,7 @@ public class AdtMessageFactory {
         if (sendingApplication.isEmpty()) {
             throw new Hl7MessageIgnoredException("No sending application in message");
         }
+        msg.setSiteLocation(patientInfoHl7.getSendingFacility());
         msg.setSourceSystem(patientInfoHl7.getSendingApplication());
         // will be replaced if there is an evn segment
         msg.setRecordedDateTime(patientInfoHl7.getMessageTimestamp());
