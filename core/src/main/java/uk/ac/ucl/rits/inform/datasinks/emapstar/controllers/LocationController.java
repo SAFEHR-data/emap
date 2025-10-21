@@ -258,7 +258,7 @@ class DepartmentController {
         Instant validFrom = msg.getSpecialityUpdate() == null ? msg.getDepartmentContactDate() : msg.getSpecialityUpdate();
         DepartmentState currentState = new DepartmentState(
             department, msg.getDepartmentRecordStatus().toString(),
-            msg.getDepartmentSpeciality(), msg.getRptGrpNine(),
+            msg.getDepartmentSpeciality(), msg.getDepartmentType(),
             msg.getIsWardOrFlowArea(), msg.getIsCoreInpatientArea(),
             validFrom, storedFrom);
 
@@ -279,7 +279,7 @@ class DepartmentController {
             // if the previous department speciality is not in the database
             DepartmentState previousState = new DepartmentState(department,
                 msg.getDepartmentRecordStatus().toString(),
-                msg.getPreviousDepartmentSpeciality(), msg.getRptGrpNine(),
+                msg.getPreviousDepartmentSpeciality(), msg.getDepartmentType(),
                 msg.getIsWardOrFlowArea(), msg.getIsCoreInpatientArea(),
                 msg.getDepartmentContactDate(), storedFrom);
             previousState.setStoredUntil(currentState.getStoredFrom());
