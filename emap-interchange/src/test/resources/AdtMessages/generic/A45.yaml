@@ -7,6 +7,7 @@ sourceSystem: "EPIC"
 visitNumber: "123412341234"
 mrn: "60600000"
 nhsNumber: "1111111111"
+siteLocation: "UCLH"
 fullLocationString:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
   value: "T42E^T42E BY02^BY02-17"

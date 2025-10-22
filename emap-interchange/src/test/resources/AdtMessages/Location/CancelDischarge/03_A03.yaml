@@ -9,6 +9,7 @@ mrn: "40800000"
 dischargeDateTime: "2013-02-11T12:30:52Z"
 dischargeDisposition: "Feeling great"
 dischargeLocation: "Home"
+siteLocation: "UCLH"
 admissionDateTime:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
   status: "SAVE"

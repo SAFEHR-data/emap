@@ -5,6 +5,7 @@ eventReasonCode: "ADT_EVENT"
 sourceSystem: "EPIC"
 mrn: "40800000"
 nhsNumber: "9999999999"
+siteLocation: "UCLH"
 visitNumber: "123412341234"
 admissionDateTime:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
