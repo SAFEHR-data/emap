@@ -100,6 +100,7 @@ class TestUpdateSubSpeciality extends MessageProcessingBase {
         assertEquals(4, movements.size());
         assertEquals("EDIT/HOSPITAL_SERVICE_CHANGE", movements.get(3).getEventType());
         assertEquals(7, movements.get(3).getMatchedMovementId());
+        assertEquals(Instant.parse("2022-04-22T00:00:00Z"), movements.get(3).getEventDatetime());
     }
 
     /**
