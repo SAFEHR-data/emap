@@ -4,7 +4,6 @@ eventOccurredDateTime: "2013-02-11T13:45:00Z"
 visitNumber: "123412341234"
 sourceSystem: "EPIC"
 mrn: "40800000"
-siteLocation: "UCLH"
 cancelledDateTime: "2013-02-11T13:45:00Z"
 fullLocationString:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"

@@ -6,7 +6,6 @@ visitNumber: "1234567890"
 sourceSystem: "EPIC"
 mrn: "A/AA1111"
 nhsNumber: "9999999999"
-siteLocation: "UCLH"
 admissionDateTime:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
   status: "SAVE"

@@ -7,7 +7,6 @@ nhsNumber: "9999999999"
 sourceSystem: "EPIC"
 mrn: "40800000"
 cancelledDateTime: "2010-09-16T10:00:00Z"
-siteLocation: "UCLH"
 fullLocationString:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
   status: "SAVE"

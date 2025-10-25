@@ -6,7 +6,6 @@ sourceSystem: "EPIC"
 mrn: "40800000"
 nhsNumber: "9999999999"
 visitNumber: "123412341234"
-siteLocation: "UCLH"
 cancelledDateTime: "2013-02-11T12:30:52Z"
 cancelledLocation: "ED^DELETE ME^DELETE"
 fullLocationString:
