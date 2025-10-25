@@ -73,7 +73,7 @@ public class DepartmentState extends AuditCore<DepartmentState> {
     /**
      * \brief hospital location where this department is situated.
      */
-    private String siteLocation; 
+    private String siteLocation;
 
     /**
      * Create valid department state.

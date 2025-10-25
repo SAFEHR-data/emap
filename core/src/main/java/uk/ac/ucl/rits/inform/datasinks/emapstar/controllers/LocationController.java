@@ -281,7 +281,7 @@ class DepartmentController {
                 msg.getDepartmentRecordStatus().toString(),
                 msg.getPreviousDepartmentSpeciality(), msg.getDepartmentType(),
                 msg.getIsWardOrFlowArea(), msg.getIsCoreInpatientArea(),
-                msg.getSiteLocation(), msg.getDepartmentContactDate(),storedFrom);
+                msg.getSiteLocation(), msg.getDepartmentContactDate(), storedFrom);
             previousState.setStoredUntil(currentState.getStoredFrom());
             previousState.setValidUntil(currentState.getValidFrom());
             departmentStateRepo.saveAll(List.of(previousState, currentState));
