@@ -5,7 +5,7 @@ previousMrn: "40800000"
 sourceSystem: "EPIC"
 mrn: "40800001"
 nhsNumber: "9999999999"
-siteLocation: "RRV03"
+siteLocation: "UCLH"
 patientBirthDate:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
   status: "SAVE"
