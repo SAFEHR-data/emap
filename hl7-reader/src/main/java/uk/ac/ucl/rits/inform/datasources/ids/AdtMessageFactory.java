@@ -47,6 +47,7 @@ import uk.ac.ucl.rits.inform.interchange.adt.RegisterPatient;
 import uk.ac.ucl.rits.inform.interchange.adt.SwapLocations;
 import uk.ac.ucl.rits.inform.interchange.adt.TransferPatient;
 import uk.ac.ucl.rits.inform.interchange.adt.UpdatePatientInfo;
+import uk.ac.ucl.rits.inform.interchange.adt.UpdateSubSpeciality;
 
 /**
  * Build an AdtMessage Emap interchange object from an HL7 message.
@@ -297,6 +298,12 @@ public class AdtMessageFactory {
                 setPreviousIdentifiers(changePatientIdentifiers, hl7Msg);
                 msg = changePatientIdentifiers;
                 break;
+            case "Z99":
+                // Z99 messages may be used to update the sub - speciality
+                UpdateSubSpeciality updateSubSpeciality = new UpdateSubSpeciality();
+                setHospitalService(pv1Wrap, updateSubSpeciality);
+                msg = updateSubSpeciality;
+                break;
             default:
                 throw new Hl7MessageNotImplementedException(String.format("Unimplemented ADT trigger event %s", triggerEvent));
         }
@@ -468,5 +475,9 @@ public class AdtMessageFactory {
     private void setHospitalService(PV1Wrap pv1Wrap, PendingEvent pendingEvent) throws HL7Exception {
         String hospitalService = pv1Wrap.getHospitalService();
         pendingEvent.setHospitalService(InterchangeValue.buildFromHl7(hospitalService));
+    }
+    private void setHospitalService(PV1Wrap pv1Wrap, UpdateSubSpeciality updateSubSpeciality) throws HL7Exception {
+        String hospitalService = pv1Wrap.getHospitalService();
+        updateSubSpeciality.setHospitalService(InterchangeValue.buildFromHl7(hospitalService));
     }
 }

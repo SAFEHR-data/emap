@@ -14,9 +14,11 @@ import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.PendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingDischarge;
 import uk.ac.ucl.rits.inform.interchange.adt.PendingDischarge;
+import uk.ac.ucl.rits.inform.interchange.adt.UpdateSubSpeciality;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 
@@ -172,6 +174,54 @@ public class PendingAdtController {
         }
 
         plannedState.saveEntityOrAuditLogIfRequired(plannedMovementRepo, plannedMovementAuditRepo);
+    }
+
+     /**
+     * Process an Update subspeciality (Z99) request.
+     * <p>
+     * The Hl7 feed will eventually be changed so that we have an identifier per pending transfer, until then we guarantee the order of cancellations.
+     * If we get messages out of order and have several cancellation messages before we receive any requests,
+     * then the first request message for the location and encounter will add the eventDatetime to the earliest cancellation.
+     * Subsequent requests will add the eventDatetime to the earliest cancellation with no eventDatetime, or create a new request if none exist
+     * after the pending request eventDatetime.
+     * @param visit      associated visit
+     * @param msg        update sub speciality
+     * @param validFrom  time in the hospital when the message was created
+     * @param storedFrom time that emap core started processing the message
+     */
+    public void processMsg(HospitalVisit visit, UpdateSubSpeciality msg, Instant validFrom, Instant storedFrom) {
+        Location fullLocation = null;
+
+        if (msg.getFullLocationString().isSave()) {
+            fullLocation = locationController.getOrCreateLocation(msg.getFullLocationString().get());
+        }
+        // pseudo from issue
+        // match pending adt by hospital_visit and location
+        // if if a match is found, add in new row to the planned_movement table, event_type = EDIT/HOSPTIAL_SERVICE_CHANGE
+        // look for matching entry here
+
+        Instant eventDateTime = msg.getEventOccurredDateTime();
+
+        List<PlannedMovement> movements = plannedMovementRepo.findMatchingMovementsFromZ99(visit, fullLocation, eventDateTime);
+        if (!movements.isEmpty()) {
+
+            int mostRecentMoveIndex = movements.size() - 1;
+            String currentService = movements.get(mostRecentMoveIndex).getHospitalService();
+            String editedService = msg.getHospitalService().get();
+
+            if (!Objects.equals(currentService, editedService)) {
+                Long matchedMovementId = movements.get(mostRecentMoveIndex).getPlannedMovementId();
+                RowState<PlannedMovement, PlannedMovementAudit> plannedState = getOrCreate(
+                        allFromRequest, visit, fullLocation, "EDIT/HOSPITAL_SERVICE_CHANGE", eventDateTime, validFrom, storedFrom
+                );
+                PlannedMovement movement = plannedState.getEntity();
+                // not sure why but event date time isn't being set. Add it here.
+                plannedState.assignIfDifferent(eventDateTime, movement.getEventDatetime(), movement::setEventDatetime);
+                plannedState.assignInterchangeValue(msg.getHospitalService(), movement.getHospitalService(), movement::setHospitalService);
+                plannedState.assignIfDifferent(matchedMovementId, movement.getMatchedMovementId(), movement::setMatchedMovementId);
+                plannedState.saveEntityOrAuditLogIfRequired(plannedMovementRepo, plannedMovementAuditRepo);
+            }
+        }
     }
 
     /**
