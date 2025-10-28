@@ -60,6 +60,7 @@ public class TestAdtProcessingVisit extends MessageProcessingBase {
 
         HospitalVisit visit = visits.get(0);
         assertNotNull(visit.getAdmissionDatetime());
+        assertNotNull(visit.getAdmissionType());
         assertNull(visit.getPresentationDatetime());
         // no audit log should be added
         assertTrue(getAllAuditHospitalVisits().isEmpty());

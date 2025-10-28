@@ -10,6 +10,10 @@ admissionDateTime:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
   status: "SAVE"
   value: "2020-04-01T18:30:00Z"
+admissionType:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "Emergency"
 modeOfArrival:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
   status: "SAVE"

@@ -10,6 +10,10 @@ admissionDateTime:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
   status: "SAVE"
   value: "2012-10-17T11:24:53Z"
+admissionType:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "Emerg Other"
 fullLocationString:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
   status: "SAVE"

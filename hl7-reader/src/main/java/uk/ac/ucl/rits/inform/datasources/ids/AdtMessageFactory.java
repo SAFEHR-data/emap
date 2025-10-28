@@ -193,6 +193,7 @@ public class AdtMessageFactory {
             case "A01":
                 AdmitPatient admitPatient = new AdmitPatient();
                 admitPatient.setAdmissionDateTime(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionDateTime()));
+                admitPatient.setAdmissionType(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionType()));
                 msg = admitPatient;
                 break;
             case "A02":
@@ -200,11 +201,13 @@ public class AdtMessageFactory {
             case "A07":
                 TransferPatient transferPatient = new TransferPatient();
                 transferPatient.setAdmissionDateTime(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionDateTime()));
+                transferPatient.setAdmissionType(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionType()));
                 msg = transferPatient;
                 break;
             case "A03":
                 DischargePatient dischargeMsg = new DischargePatient();
                 dischargeMsg.setAdmissionDateTime(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionDateTime()));
+                dischargeMsg.setAdmissionType(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionType()));
                 dischargeMsg.setDischargeDateTime(pv1Wrap.getDischargeDateTime());
                 dischargeMsg.setDischargeDisposition(pv1Wrap.getDischargeDisposition());
                 dischargeMsg.setDischargeLocation(pv1Wrap.getDischargeLocation());
@@ -216,6 +219,7 @@ public class AdtMessageFactory {
                 }
                 RegisterPatient registerPatient = new RegisterPatient();
                 registerPatient.setPresentationDateTime(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionDateTime()));
+                registerPatient.setAdmissionType(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionType()));
                 msg = registerPatient;
                 break;
             case "A08":
