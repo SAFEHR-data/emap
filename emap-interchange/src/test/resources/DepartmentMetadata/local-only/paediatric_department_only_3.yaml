@@ -9,8 +9,8 @@ previousDepartmentSpeciality: "Paediatric - Infectious Diseases"
 departmentRecordStatus: "ACTIVE"
 departmentContactDate: "2021-08-25T23:00:00Z"
 specialityUpdate: "2021-10-08T23:00:20Z"
-combinedUpdate: "2021-10-08T23:00:20Z"
-siteLocation: "DENTAL HOSPITAL"
 departmentType: "CLINICAL"
 isWardOrFlowArea: false
 isCoreInpatientArea: false
+siteLocation: "DENTAL HOSPITAL"
+combinedUpdate: "2021-10-08T23:00:20Z"

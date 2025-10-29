@@ -9,8 +9,8 @@ previousDepartmentSpeciality: "Paediatric - Respiratory Medicine"
 departmentRecordStatus: "ACTIVE"
 departmentContactDate: "2021-08-25T23:00:00Z"
 specialityUpdate: "2021-09-06T06:42:26Z"
-combinedUpdate: "2021-09-06T06:42:26Z"
-siteLocation: "DENTAL HOSPITAL"
 departmentType: "CLINICAL"
 isWardOrFlowArea: false
 isCoreInpatientArea: false
+siteLocation: "DENTAL HOSPITAL"
+combinedUpdate: "2021-09-06T06:42:26Z"

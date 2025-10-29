@@ -8,5 +8,8 @@ departmentRecordStatus: "ACTIVE"
 previousDepartmentSpeciality: "Dental - Oral Medicine"
 departmentContactDate: "2012-02-09T00:00:00Z"
 specialityUpdate: "2022-02-09T00:00:20Z"
+departmentType: "CLINICAL"
+isWardOrFlowArea: false
+isCoreInpatientArea: false
+siteLocation: "DENTAL HOSPITAL"
 combinedUpdate: "2022-02-09T00:00:20Z"
-siteLocation: "UCLH"
