@@ -7,8 +7,9 @@ departmentId: "1"
 departmentSpeciality: null
 departmentRecordStatus: "DELETED_AND_HIDDEN"
 departmentContactDate: "2005-12-08T00:00:00Z"
+departmentType: "2"
+isWardOrFlowArea: true
+isCoreInpatientArea: true
+siteLocation: "UCLH"
 combinedUpdate: "2021-04-23T09:00:00Z"
-siteLocation: "DENTAL HOSPITAL"
-departmentType: "CLINICAL"
-isWardOrFlowArea: false
-isCoreInpatientArea: false
+
