@@ -9,3 +9,6 @@ SPRING_RABBITMQ_PASSWORD=my_pw
 
 WAVEFORM_HL7_SOURCE_ADDRESS_ALLOW_LIST=
 WAVEFORM_HL7_TEST_DUMP_FILE=
+# Directory where incoming HL7 messages will be saved (optional, leave empty to disable)
+# Messages are organized into hourly subdirectories: {save_dir}/{YYYY-MM-DD}/{HH}/
+WAVEFORM_HL7_SAVE_DIRECTORY=

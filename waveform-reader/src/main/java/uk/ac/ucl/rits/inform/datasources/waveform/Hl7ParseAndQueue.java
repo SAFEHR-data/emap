@@ -12,6 +12,7 @@ import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7Segment;
 import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
 
+import java.io.IOException;
 import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
@@ -30,23 +31,31 @@ import java.util.Set;
  */
 @Component
 public class Hl7ParseAndQueue {
-    private final Logger logger = LoggerFactory.getLogger(Hl7ParseAndQueue.class);
+    private static final Logger logger = LoggerFactory.getLogger(Hl7ParseAndQueue.class);
     private final WaveformOperations waveformOperations;
     private final WaveformCollator waveformCollator;
     private final SourceMetadata sourceMetadata;
     private final LocationMapping locationMapping;
+    private final Hl7MessageSaver hl7MessageSaver;
     private long numHl7 = 0;
 
     Hl7ParseAndQueue(WaveformOperations waveformOperations,
                      WaveformCollator waveformCollator,
-                     SourceMetadata sourceMetadata, LocationMapping locationMapping) {
+                     SourceMetadata sourceMetadata, LocationMapping locationMapping, Hl7MessageSaver hl7MessageSaver) {
         this.waveformOperations = waveformOperations;
         this.waveformCollator = waveformCollator;
         this.sourceMetadata = sourceMetadata;
         this.locationMapping = locationMapping;
+        this.hl7MessageSaver = hl7MessageSaver;
     }
 
-    List<WaveformMessage> parseHl7(String messageAsStr) throws Hl7ParseException {
+    record ParsedMessagesWithMetadata(
+            List<WaveformMessage> waveformMessages,
+            String rawHl7Trimmed,
+            String bedLocation,
+            Instant messageTimestamp) {}
+
+    ParsedMessagesWithMetadata parseHl7(String messageAsStr) throws Hl7ParseException {
         List<WaveformMessage> allWaveformMessages = new ArrayList<>();
         int origSize = messageAsStr.length();
         // messages are separated with vertical tabs and extra carriage returns, so remove
@@ -54,11 +63,14 @@ public class Hl7ParseAndQueue {
         if (messageAsStr.isEmpty()) {
             // message was all whitespace, ignore
             logger.info("Ignoring empty or all-whitespace message");
-            return allWaveformMessages;
+            return new ParsedMessagesWithMetadata(allWaveformMessages, messageAsStr, null, null);
         }
         logger.debug("Parsing message of size {} ({} including stray whitespace)", messageAsStr.length(), origSize);
         Hl7Message message = new Hl7Message(messageAsStr);
         String messageIdBase = message.getField("MSH", 10);
+        // Because each OBR could have its own timestamp, to obtain a timestamp for the whole message,
+        // use MSH-7
+        Instant messageHeaderTimestamp = interpretWaveformTimestamp(message.getField("MSH", 7));
         String pv1LocationId = message.getField("PV1", 3);
         String messageType = message.getField("MSH", 9);
         if (!messageType.equals("ORU^R01")) {
@@ -79,15 +91,7 @@ public class Hl7ParseAndQueue {
                     throw new Hl7ParseException("Unexpected location " + locationId + "|" + pv1LocationId);
                 }
 
-                logger.trace("Parsing datetime {}", obsDatetimeStr);
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss.SSSZZ");
-                Instant obsDatetime;
-                try {
-                    TemporalAccessor ta = formatter.parse(obsDatetimeStr);
-                    obsDatetime = Instant.from(ta);
-                } catch (DateTimeException e) {
-                    throw (Hl7ParseException) new Hl7ParseException("Datetime parsing failed").initCause(e);
-                }
+                Instant obsDatetime = interpretWaveformTimestamp(obsDatetimeStr);
 
                 String streamId = obx.getField(3);
 
@@ -132,7 +136,27 @@ public class Hl7ParseAndQueue {
             }
         }
 
-        return allWaveformMessages;
+        return new ParsedMessagesWithMetadata(allWaveformMessages, messageAsStr, pv1LocationId, messageHeaderTimestamp);
+    }
+
+    /**
+     * Interpret timestamps as they are found in waveform HL7 messages.
+     * "Basic" ISO8601 format, missing the "T", with a zone offset.
+     * @param datetimeStr timestamp as string
+     * @return the Instant it represents
+     * @throws Hl7ParseException if it didn't match the expected format
+     */
+    private static Instant interpretWaveformTimestamp(String datetimeStr) throws Hl7ParseException {
+        logger.trace("Parsing datetime {}", datetimeStr);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss.SSSZZ");
+        Instant obsDatetime;
+        try {
+            TemporalAccessor ta = formatter.parse(datetimeStr);
+            obsDatetime = Instant.from(ta);
+        } catch (DateTimeException e) {
+            throw (Hl7ParseException) new Hl7ParseException("Datetime parsing failed").initCause(e);
+        }
+        return obsDatetime;
     }
 
     @SuppressWarnings("checkstyle:ParameterNumber")
@@ -160,14 +184,31 @@ public class Hl7ParseAndQueue {
      * @throws WaveformCollator.CollationException if the data has a logical error that prevents collation
      */
     public void parseAndQueue(String messageAsStr) throws WaveformCollator.CollationException {
-        List<WaveformMessage> msgs;
+        ParsedMessagesWithMetadata parsedMessagesWithMetadata = null;
         try {
-            msgs = parseHl7(messageAsStr);
+            parsedMessagesWithMetadata = parseHl7(messageAsStr);
         } catch (Hl7ParseException e) {
             logger.error("HL7 parsing failed, first 100 chars: {}\nstacktrace {}",
                     messageAsStr.substring(0, Math.min(100, messageAsStr.length())),
                     e.getStackTrace());
             return;
+        }
+
+        List<WaveformMessage> msgs = parsedMessagesWithMetadata.waveformMessages();
+
+        /*
+         * Since we're saving as individual files, save the trimmed version
+         * with no separating whitespace.
+         */
+        String messageToSave = parsedMessagesWithMetadata.rawHl7Trimmed();
+        try {
+            hl7MessageSaver.saveMessage(
+                    messageToSave,
+                    parsedMessagesWithMetadata.messageTimestamp(),
+                    parsedMessagesWithMetadata.bedLocation());
+        } catch (IOException e) {
+            // XXX: log?
+            logger.error("HL7 saving failed", e);
         }
 
         logger.trace("HL7 message generated {} Waveform messages, sending for collation", msgs.size());

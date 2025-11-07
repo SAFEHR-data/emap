@@ -19,12 +19,23 @@ services:
       rabbitmq:
         condition: service_healthy
   rabbitmq:
-    image: rabbitmq:management
+    build:
+      context: .
+      dockerfile: ./init/rabbitmq/Dockerfile.rabbitmq
     env_file:
       - ../../config/rabbitmq-config-envs
     ports:
       - "${RABBITMQ_PORT}:5672"
       - "${RABBITMQ_ADMIN_PORT}:15672"
+#    volumes:
+#      - type: bind
+#        source: ./init/rabbitmq/definitions/
+#        target: /etc/rabbitmq/definitions/
+#        read_only: true
+#      - type: bind
+#        source: ./init/rabbitmq/config/
+#        target: /etc/rabbitmq/conf.d/
+#        read_only: true
     restart: on-failure
     healthcheck:
       # rabbitmq server crashes if any rabbitmq-diagnostics cmd is run very soon
@@ -33,6 +44,19 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  rabbitmq-init:
+      build:
+        context: .
+        dockerfile: ./init/rabbitmq/Dockerfile.rabbitmq
+      env_file:
+        - ../../config/rabbitmq-config-envs
+      depends_on:
+        rabbitmq:
+          condition: service_healthy
+      restart: "no"
+      entrypoint: /bin/bash
+      command: /definitions-init.sh
   cassandra:
     image: cassandra
     restart: on-failure

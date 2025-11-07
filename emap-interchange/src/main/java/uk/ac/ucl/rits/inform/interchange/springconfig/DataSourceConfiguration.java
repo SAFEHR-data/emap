@@ -74,7 +74,7 @@ public class DataSourceConfiguration {
     @Profile("default")
     public RabbitTemplate rabbitTemp(@Autowired MessageConverter messageConverter, @Autowired ConnectionFactory connectionFactory) {
         RabbitAdmin rabbitAdmin = new RabbitAdmin(connectionFactory);
-        String queueName = getEmapDataSource().getQueueName();
+        String queueName = getEmapDataSource().queueName().getQueueName();
         Map<String, Object> args = new HashMap<>();
         args.put("x-max-length", queueLength);
         args.put("x-overflow", "reject-publish");

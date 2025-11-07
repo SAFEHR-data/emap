@@ -11,6 +11,7 @@ import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -48,7 +49,7 @@ class TestHl7ParseAndQueue {
 
     void checkMessage(String hl7String, String expectedSourceLocation, String expectedMappedLocation)
             throws IOException, URISyntaxException, Hl7ParseException {
-        List<WaveformMessage> msgs = hl7ParseAndQueue.parseHl7(hl7String);
+        List<WaveformMessage> msgs = hl7ParseAndQueue.parseHl7(hl7String).waveformMessages();
         assertEquals(5, msgs.size());
         List<String> actualSource = msgs.stream().map(WaveformMessage::getSourceLocationString).distinct().toList();
         assertEquals(1, actualSource.size());

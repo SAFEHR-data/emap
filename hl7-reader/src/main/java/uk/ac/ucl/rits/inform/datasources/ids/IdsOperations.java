@@ -116,7 +116,10 @@ public class IdsOperations implements AutoCloseable {
      */
     @Bean
     public EmapDataSource getHl7DataSource() {
-        return EmapDataSource.HL7_QUEUE;
+        return new EmapDataSource(
+                EmapDataSource.EmapDataSourceQueue.HL7_QUEUE,
+                EmapDataSource.EmapDataSourceExchange.DEFAULT_EXCHANGE
+                );
     }
 
     /**

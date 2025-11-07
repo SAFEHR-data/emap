@@ -167,7 +167,11 @@ public class Publisher implements Runnable, Releasable {
             throw e;
         }
         waitingMap.put(correlationId, message);
-        rabbitTemplate.convertAndSend(getEmapDataSource.getQueueName(), message, correlationData);
+        rabbitTemplate.convertAndSend(
+                getEmapDataSource.exchangeName().getExchangeName(),
+                getEmapDataSource.queueName().getQueueName(),
+                message,
+                correlationData);
     }
 
     /**
@@ -263,7 +267,11 @@ public class Publisher implements Runnable, Releasable {
         executorService.schedule(new Runnable() {
             @Override
             public void run() {
-                rabbitTemplate.convertAndSend(getEmapDataSource.getQueueName(), message, correlationData);
+                rabbitTemplate.convertAndSend(
+                        getEmapDataSource.exchangeName().getExchangeName(),
+                        getEmapDataSource.queueName().getQueueName(),
+                        message,
+                        correlationData);
                 String queueFull = "Failed to deliver message (correlationData {}) was resent after a delay of {} seconds";
                 if (currentDelayIsFirstThreeRounds()) {
                     logger.trace(queueFull, correlationData, currentDelay);

@@ -163,6 +163,8 @@ public class Hl7ListenerConfig {
     public void handler(Message<byte[]> msg) throws Hl7ParseException, WaveformCollator.CollationException {
         byte[] asBytes = msg.getPayload();
         String asStr = new String(asBytes, StandardCharsets.UTF_8);
+        // XXX: on second thoughts I think we need to separate out the parsing and queueing,
+        // so that we can save here as well, or something...
         // parse message from HL7 to interchange message, send to internal queue
         hl7ParseAndQueue.parseAndQueue(asStr);
     }
