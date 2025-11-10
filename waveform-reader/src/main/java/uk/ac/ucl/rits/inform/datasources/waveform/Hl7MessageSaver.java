@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class Hl7MessageSaver {
     private final Logger logger = LoggerFactory.getLogger(Hl7MessageSaver.class);
 
+    @Getter
     private final Path saveDirectory;
     @Getter
     private final boolean saveEnabled;
@@ -112,14 +113,6 @@ public class Hl7MessageSaver {
                 .format(timestamp);
 
         return saveDirectory.resolve(dateDir).resolve(bedId).resolve(fileName);
-    }
-
-    /**
-     * Get the configured save directory.
-     * @return Path to save directory, or null if saving is disabled
-     */
-    public Path getSaveDirectory() {
-        return saveDirectory;
     }
 
     /**
