@@ -7,13 +7,13 @@ import uk.ac.ucl.rits.inform.informdb.TemporalCore;
 import uk.ac.ucl.rits.inform.informdb.annotation.AuditTable;
 import uk.ac.ucl.rits.inform.informdb.identity.Mrn;
 
-import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Index;
 import javax.persistence.JoinColumn;
+import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import java.time.Instant;
@@ -59,7 +59,6 @@ public class LabSample extends TemporalCore<LabSample, LabSampleAudit> {
      *
      * where there test was being performed.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant receiptAtLabDatetime;
 
     /**
@@ -67,7 +66,6 @@ public class LabSample extends TemporalCore<LabSample, LabSampleAudit> {
      *
      * (e.g. time of phlebotomy).
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant sampleCollectionDatetime;
 
     /**
@@ -89,7 +87,7 @@ public class LabSample extends TemporalCore<LabSample, LabSampleAudit> {
      *
      * E.g. Bone marrow trephine biopsy
      */
-    @Column(columnDefinition = "text")
+    @Lob
     private String collectionMethod;
 
     public LabSample() {}

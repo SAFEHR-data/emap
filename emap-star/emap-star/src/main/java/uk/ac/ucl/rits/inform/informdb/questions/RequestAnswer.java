@@ -13,6 +13,7 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Index;
 import javax.persistence.JoinColumn;
+import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import java.time.Instant;
@@ -46,7 +47,7 @@ public class RequestAnswer extends TemporalCore<RequestAnswer, RequestAnswerAudi
     /**
      * \brief Text content of the requestAnswer.
      */
-    @Column(columnDefinition = "text")
+    @Lob
     private String answer;
 
     /**

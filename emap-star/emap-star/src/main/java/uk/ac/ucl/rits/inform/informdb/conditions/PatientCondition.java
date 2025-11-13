@@ -9,13 +9,13 @@ import uk.ac.ucl.rits.inform.informdb.annotation.AuditTable;
 import uk.ac.ucl.rits.inform.informdb.identity.HospitalVisit;
 import uk.ac.ucl.rits.inform.informdb.identity.Mrn;
 
-import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Index;
 import javax.persistence.JoinColumn;
+import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import java.time.Instant;
@@ -84,7 +84,6 @@ public class PatientCondition extends TemporalCore<PatientCondition, PatientCond
      * It will only ever addedDatetime OR addedDate depending on the granularity available for the kind of
      * condition, i.e. whether it is a problem list, allergy or infection.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant addedDatetime;
 
     /**
@@ -100,7 +99,6 @@ public class PatientCondition extends TemporalCore<PatientCondition, PatientCond
      * It will only ever resolutionDatetime OR resolutionDate depending on the granularity available for the kind of
      * condition, i.e. whether it is a problem list, allergy or infection.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant resolutionDatetime;
 
     /**
@@ -141,7 +139,7 @@ public class PatientCondition extends TemporalCore<PatientCondition, PatientCond
     /**
      * \brief Comments added by clinician.
      */
-    @Column(columnDefinition = "text")
+    @Lob
     private String comment;
 
     /**

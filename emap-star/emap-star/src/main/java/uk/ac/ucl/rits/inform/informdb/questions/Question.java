@@ -9,6 +9,7 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.Lob;
 import java.time.Instant;
 
 /**
@@ -38,19 +39,20 @@ public class Question {
     /**
      * \brief Text content of the question.
      */
-    @Column(columnDefinition = "text", nullable = false)
+    @Lob
+    @Column(nullable = false)
     private String question;
 
     /**
      * \brief Date and time from which this question is stored.
      */
-    @Column(columnDefinition = "timestamp with time zone", nullable = false)
+    @Column(nullable = false)
     private Instant storedFrom;
 
     /**
      * \brief Date and time from which this question is valid.
      */
-    @Column(columnDefinition = "timestamp with time zone", nullable = false)
+    @Column(nullable = false)
     private Instant validFrom;
 
     /**

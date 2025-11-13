@@ -71,13 +71,11 @@ public class AdvanceDecision extends TemporalCore<AdvanceDecision, AdvanceDecisi
     /**
      * \brief Date and time at which this advanceDecision was last updated.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant statusChangeDatetime;
 
     /**
      * \brief Date and time at which this advanceDecision was first recorded.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant requestedDatetime;
 
      /**

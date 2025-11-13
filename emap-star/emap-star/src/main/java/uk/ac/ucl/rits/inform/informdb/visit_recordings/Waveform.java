@@ -77,7 +77,7 @@ public class Waveform extends TemporalCore<Waveform, WaveformAudit> {
      *
      * The validFrom {@link TemporalCore#getValidFrom()} is the recording time, or last updated time.
      */
-    @Column(columnDefinition = "timestamp with time zone", nullable = false)
+    @Column(nullable = false)
     private Instant observationDatetime;
 
     /**
@@ -107,7 +107,7 @@ public class Waveform extends TemporalCore<Waveform, WaveformAudit> {
      * \brief Value as a floating point array.
      */
     @Type(type = "uk.ac.ucl.rits.inform.informdb.visit_recordings.WaveformArray")
-    @Column(columnDefinition = "DOUBLE PRECISION ARRAY", nullable = false)
+    @Column(nullable = false)
     private Double[] valuesArray;
 
     /* unit goes in visit observation type (or equivalent table...) */

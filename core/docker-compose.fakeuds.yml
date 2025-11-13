@@ -12,6 +12,25 @@ services:
     restart: unless-stopped
     ports:
       - "${FAKEUDS_PORT}:5432"
+    profiles:
+      - fakeuds-pg
+  fakeuds-mssql:
+    image: mcr.microsoft.com/mssql/server:2019-CU32-ubuntu-20.04
+    env_file:
+      - ../../config/fakeuds-mssql-config-envs
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Express"
+      TZ: "Europe/London"
+    volumes:
+      - mssql-data-fakeuds:/var/opt/mssql
+    restart: unless-stopped
+    ports:
+      - "${FAKEUDS_MSSQL_PORT}:1433"
+    profiles:
+      - fakeuds-mssql
+
 
 volumes:
   postgres-data-fakeuds:
+  mssql-data-fakeuds:

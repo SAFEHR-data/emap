@@ -22,6 +22,7 @@ class GlobalConfiguration(dict):
         "glowroot",
         "common",
         "fake_uds",
+        "fake_mssql",
         "waveform",
         "monitoring",
     )

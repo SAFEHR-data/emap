@@ -13,6 +13,7 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Index;
 import javax.persistence.JoinColumn;
+import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import java.time.Instant;
@@ -64,7 +65,6 @@ public class LabResult extends TemporalCore<LabResult, LabResultAudit> {
     /**
      * \brief Date and time at which the labResult was last modified.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant resultLastModifiedDatetime;
 
     /**
@@ -82,7 +82,7 @@ public class LabResult extends TemporalCore<LabResult, LabResultAudit> {
     /**
      * \brief Value as text.
      */
-    @Column(columnDefinition = "text")
+    @Lob
     private String valueAsText;
 
     /**
@@ -92,8 +92,9 @@ public class LabResult extends TemporalCore<LabResult, LabResultAudit> {
 
     /**
      * \brief Value as bytes.
+     * Array length is maximum allowed by all of H2, Postgres, and SQL Server.
      */
-    @Column(columnDefinition = "bytea") //TODO should this be bytes not bytea
+    @Column(length = 1000000000)
     private byte[] valueAsBytes;
 
     /**
@@ -127,7 +128,7 @@ public class LabResult extends TemporalCore<LabResult, LabResultAudit> {
     /**
      * \brief Additional comments.
      */
-    @Column(columnDefinition = "text")
+    @Lob
     private String comment;
 
     public LabResult() {}

@@ -22,6 +22,7 @@ import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Index;
 import javax.persistence.JoinColumn;
+import javax.persistence.Lob;
 import javax.persistence.MapsId;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
@@ -192,6 +193,7 @@ public class AuditTableProcessor extends AbstractProcessor {
         out.println("import javax.persistence.Inheritance;");
         out.println("import javax.persistence.InheritanceType;");
         out.println("import javax.persistence.Index;");
+        out.println("import javax.persistence.Lob;");
         out.println("import javax.persistence.ManyToOne;");
         out.println("import javax.persistence.OneToOne;");
         out.println("import javax.persistence.Table;");
@@ -270,7 +272,7 @@ public class AuditTableProcessor extends AbstractProcessor {
         List<FieldStore> fieldShorts = new ArrayList<>();
 
         // Primary key
-        this.generateSingleField(out, "\t@Id\n\t@GeneratedValue(strategy = GenerationType.AUTO)", "Long", primaryKey);
+        this.generateSingleField(out, List.of("\t@Id\n\t@GeneratedValue(strategy = GenerationType.AUTO)"), "Long", primaryKey);
 
         // All other fields
         for (VariableElement field : fields) {
@@ -414,18 +416,28 @@ public class AuditTableProcessor extends AbstractProcessor {
 
             }
 
-            String annotation = null;
+            List<String> annotations = new ArrayList<>();
             String foreignKeyName = null;
 
             if (!isForeignKey) {
                 // If it's a normal column, then get the @Column properties
                 Column col = field.getAnnotation(Column.class);
                 if (col != null) {
+                    // Because all these values have defaults, we will generate code
+                    // that explicitly specifies the values even if they're not present in the source.
+                    // Confusingly, 255 is always the default length even when type = "text",
+                    // but it's ignored for that type (at least in postgres).
                     boolean nullable = col.nullable();
                     String columnDefinition = col.columnDefinition();
                     String name = col.name();
-                    annotation = String.format("\t@Column(columnDefinition = \"%s\", nullable=%s, name=\"%s\")",
-                            columnDefinition, nullable ? "true" : "false", name);
+                    int length = col.length();
+                    annotations.add(String.format(
+                            "\t@Column(columnDefinition = \"%s\", nullable=%s, name=\"%s\", length=%d)",
+                            columnDefinition, nullable ? "true" : "false", name, length));
+                }
+                Lob lob = field.getAnnotation(Lob.class);
+                if (lob != null) {
+                    annotations.add("\t@Lob");
                 }
             } else if (!isTemporal) {
                 // If it's a non-temporal FK then preserve the foreign key
@@ -442,7 +454,7 @@ public class AuditTableProcessor extends AbstractProcessor {
                     annot.append(mirror.toString());
                     annot.append("\n");
                 }
-                annotation = annot.toString().stripTrailing();
+                annotations.add(annot.toString().stripTrailing());
 
             } else {
                 // If it's a foreign key that gets turned in to a long because
@@ -471,15 +483,15 @@ public class AuditTableProcessor extends AbstractProcessor {
                     String colDef = joinColumn.columnDefinition();
                     boolean nullable = joinColumn.nullable();
                     String name = joinColumn.name();
-                    annotation = String.format("\t@Column(columnDefinition = \"%s\", nullable=%s, name=\"%s\")", colDef,
-                            nullable ? "true" : "false", name);
+                    annotations.add(String.format("\t@Column(columnDefinition = \"%s\", nullable=%s, name=\"%s\")", colDef,
+                            nullable ? "true" : "false", name));
                 }
             }
 
             String fieldName = field.getSimpleName().toString();
             // Foreign keys are only treated specially if they are temporal!
             fieldShorts.add(new FieldStore(fieldName, isTemporal && isForeignKey, foreignKeyName));
-            this.generateSingleField(out, annotation, typeName, fieldName);
+            this.generateSingleField(out, annotations, typeName, fieldName);
         }
 
         return fieldShorts;
@@ -492,10 +504,12 @@ public class AuditTableProcessor extends AbstractProcessor {
      * @param typeName    The type of the field.
      * @param fieldName   The name of the field.
      */
-    private void generateSingleField(PrintWriter out, String annotations, String typeName, String fieldName) {
+    private void generateSingleField(PrintWriter out, List<String> annotations, String typeName, String fieldName) {
         // Field declaration
         if (annotations != null) {
-            out.println(annotations);
+            for (String annotation : annotations) {
+                out.println(annotation);
+            }
         }
         out.print("\tprivate ");
         out.print(typeName);

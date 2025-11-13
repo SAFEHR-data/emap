@@ -16,6 +16,7 @@ import javax.persistence.Index;
 import javax.persistence.Inheritance;
 import javax.persistence.InheritanceType;
 import javax.persistence.JoinColumn;
+import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import java.time.Instant;
@@ -73,13 +74,13 @@ public class VisitObservation extends TemporalCore<VisitObservation, VisitObserv
      *
      * The validFrom {@link TemporalCore#getValidFrom()} is the recording time, or last updated time.
      */
-    @Column(columnDefinition = "timestamp with time zone", nullable = false)
+    @Column(nullable = false)
     private Instant observationDatetime;
 
     /**
      * \brief Value as text.
      */
-    @Column(columnDefinition = "text")
+    @Lob
     private String valueAsText;
 
     /**
@@ -101,7 +102,7 @@ public class VisitObservation extends TemporalCore<VisitObservation, VisitObserv
     /**
      * \brief Comments added by clinician.
      */
-    @Column(columnDefinition = "text")
+    @Lob
     private String comment;
 
     /**
