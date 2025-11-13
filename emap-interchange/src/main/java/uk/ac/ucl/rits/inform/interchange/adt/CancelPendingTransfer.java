@@ -21,6 +21,7 @@ import java.time.Instant;
 public class CancelPendingTransfer extends AdtMessage implements PendingEvent, AdtCancellation {
     private PendingType pendingEventType = PendingType.TRANSFER;
     private InterchangeValue<String> pendingDestination = InterchangeValue.unknown();
+    private InterchangeValue<String> hospitalService = InterchangeValue.unknown();
     private Instant cancelledDateTime;
 
 

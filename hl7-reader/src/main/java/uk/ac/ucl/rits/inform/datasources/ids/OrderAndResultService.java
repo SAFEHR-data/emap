@@ -173,7 +173,7 @@ public class OrderAndResultService {
         String codingSystem = obr.getObr4_UniversalServiceIdentifier().getCwe3_NameOfCodingSystem().getValueOrEmpty();
         String alternativeIdentifier = obr.getObr4_UniversalServiceIdentifier().getCwe4_AlternateIdentifier().getValueOrEmpty();
 
-        if ("WinPath".equals(codingSystem)) {
+        if ("WinPath".equals(codingSystem) || (codingSystem.isBlank() && "WinPath".equals(sendingApplication))) {
             return OrderCodingSystem.WIN_PATH;
         } else if ("CoPathPlus".equals(fillerNamespace) || "CPEAP".equals(codingSystem)) {
             return OrderCodingSystem.CO_PATH;

@@ -1,7 +1,7 @@
 import os
 
 from shutil import rmtree, copy
-from distutils.dir_util import copy_tree
+import setuptools
 from pathlib import Path
 from tempfile import mkdtemp
 from functools import wraps
@@ -22,7 +22,7 @@ def work_in_tmp_directory(to_copy: Optional[list]):
 
             for item in to_copy:
                 if Path(item).is_dir():
-                    copy_tree(item, tmpdir_path)
+                    setuptools.distutils.dir_util.copy_tree(item, tmpdir_path)
                 else:
                     copy(item, tmpdir_path)
 

@@ -362,6 +362,18 @@ class TestWinPathLabOruR01Results {
         assertEquals(LabResultStatus.FINAL, sensitivity.getResultStatus());
     }
 
+    /**
+     * GIVEN a helix message (has WinPath as sending application and no coding system
+     * WHEN this HL7 message is processed
+     * THEN the message should be processed successfully with an isolate
+     * @throws Exception shouldn't happen
+     */
+    @Test
+    void testIsolateFromHelix() throws Exception {
+        LabIsolateMsg isolate = getFirstLabIsolate("isolate_helix");
+        assertEquals("KLEOXY", isolate.getIsolateCode());
+    }
+
     @Test
     void testClinicalInformationIsAddedToSensitivity() throws Exception {
         LabOrderMsg orderMsg = labReader.getFirstOrder(FILE_TEMPLATE, "isolate_clinical_notes");

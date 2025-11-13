@@ -324,6 +324,10 @@
 
 ## T
 
+- <a id="tdl">**TCI**</a>
+
+	To Come In (a patient is TCI for ward X if they are on the way to the ward but not admitted).
+
 - <a id="tdl">**TDL**</a>
 
 	The Doctors Laboratory provide the biochemistry and microbiology analysis for the hospital.

@@ -21,4 +21,16 @@ public interface PendingEvent {
      * @param location Concatenated location string
      */
     void setPendingDestination(InterchangeValue<String> location);
+
+
+    /**
+     * @return Hospital service from PV1-10.
+     */
+    InterchangeValue<String> getHospitalService();
+
+    /**
+     * @param hospitalService
+     */
+    void  setHospitalService(InterchangeValue<String> hospitalService);
+
 }

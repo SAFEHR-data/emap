@@ -35,7 +35,11 @@ import java.util.List;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
-@Table(indexes = {@Index(name = "encounterIndex", columnList = "encounter", unique = false)})
+@Table(indexes = {
+    @Index(name = "encounterIndex", columnList = "encounter", unique = false),
+    @Index(name = "admissionDatetimeIndex", columnList = "admissionDatetime"),
+    @Index(name = "dischargeDatetimeIndex", columnList = "dischargeDatetime")
+})
 @Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
 @AuditTable
 public class HospitalVisit extends TemporalCore<HospitalVisit, HospitalVisitAudit> {

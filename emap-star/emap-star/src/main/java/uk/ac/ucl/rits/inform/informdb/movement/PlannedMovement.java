@@ -82,6 +82,13 @@ public class PlannedMovement extends TemporalCore<PlannedMovement, PlannedMoveme
     private Instant cancelledDatetime;
 
     /**
+     * \brief The hospital service associated with this planned movement.
+     *
+     * Also known as the subspeciality.
+     */
+    private String hospitalService;
+
+    /**
      * Minimal constructor.
      * @param hospitalVisitId associated hospital visit
      * @param locationId      planned location, may be null
@@ -106,6 +113,7 @@ public class PlannedMovement extends TemporalCore<PlannedMovement, PlannedMoveme
         eventDatetime = other.eventDatetime;
         cancelled = other.cancelled;
         cancelledDatetime = other.cancelledDatetime;
+        hospitalService = other.hospitalService;
     }
 
     @Override

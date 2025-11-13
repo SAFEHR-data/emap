@@ -12,10 +12,14 @@ import uk.ac.ucl.rits.inform.informdb.movement.PlannedMovement;
 import uk.ac.ucl.rits.inform.informdb.movement.PlannedMovementAudit;
 import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.PendingTransfer;
+import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingDischarge;
+import uk.ac.ucl.rits.inform.interchange.adt.PendingDischarge;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+
+
 
 /**
  * Carries out the business logic part of pending ADT messages.
@@ -75,6 +79,8 @@ public class PendingAdtController {
         RowState<PlannedMovement, PlannedMovementAudit> plannedState = getOrCreate(
                 allFromRequest, visit, plannedLocation, msg.getPendingEventType().toString(), msg.getEventOccurredDateTime(), validFrom, storedFrom
         );
+        addHospitalService(msg, plannedState);
+
         PlannedMovement plannedMovement = plannedState.getEntity();
         // If we receive a cancelled message before the original request then add it in
         if (plannedMovement.getEventDatetime() == null) {
@@ -83,7 +89,37 @@ public class PendingAdtController {
 
         plannedState.saveEntityOrAuditLogIfRequired(plannedMovementRepo, plannedMovementAuditRepo);
     }
+    /**
+     * Process pending ADT request (discharge).
+     * <p>
+     * The Hl7 feed will eventually be changed so that we have an identifier per pending transfer, until then we guarantee the order of cancellations.
+     * If we get messages out of order and have several cancellation messages before we receive any requests,
+     * then the first request message for the location and encounter will add the eventDatetime to the earliest cancellation.
+     * Subsequent requests will add the eventDatetime to the earliest cancellation with no eventDatetime, or create a new request if none exist
+     * after the pending request eventDatetime.
+     * @param visit      associated visit
+     * @param msg        pending adt
+     * @param validFrom  time in the hospital when the message was created
+     * @param storedFrom time that emap core started processing the message
+     */
+    public void processMsg(HospitalVisit visit, PendingDischarge msg, Instant validFrom, Instant storedFrom) {
+        Location plannedLocation = null;
+        if (msg.getPendingDestination().isSave()) {
+            plannedLocation = locationController.getOrCreateLocation(msg.getPendingDestination().get());
+        }
 
+        RowState<PlannedMovement, PlannedMovementAudit> plannedState = getOrCreate(
+                allFromRequest, visit, plannedLocation, msg.getPendingEventType().toString(), msg.getEventOccurredDateTime(), validFrom, storedFrom
+        );
+
+        PlannedMovement plannedMovement = plannedState.getEntity();
+        // If we receive a cancelled message before the original request then add it in
+        if (plannedMovement.getEventDatetime() == null) {
+            plannedState.assignIfDifferent(msg.getEventOccurredDateTime(), plannedMovement.getEventDatetime(), plannedMovement::setEventDatetime);
+        }
+
+        plannedState.saveEntityOrAuditLogIfRequired(plannedMovementRepo, plannedMovementAuditRepo);
+    }
     /**
      * Get existing planned movement or create a new one, with parameterised query.
      * @param findMovement     method reference for how to get an optional PlannedMovement from the database
@@ -139,6 +175,35 @@ public class PendingAdtController {
     }
 
     /**
+     * Process pending ADT cancellation.
+     * <p>
+     * If multiple pending ADT events exist that aren't cancelled, will cancel the earliest one that occurs before the cancellation time.
+     * @param visit      associated visit
+     * @param msg        pending adt cancellation msg
+     * @param validFrom  time in the hospital when the message was created
+     * @param storedFrom time that emap core started processing the message
+     */
+    public void processMsg(HospitalVisit visit, CancelPendingDischarge msg, Instant validFrom, Instant storedFrom) {
+        Location plannedLocation = null;
+        if (msg.getPendingDestination().isSave()) {
+            plannedLocation = locationController.getOrCreateLocation(msg.getPendingDestination().get());
+        }
+
+        RowState<PlannedMovement, PlannedMovementAudit> plannedState = getOrCreate(
+                allFromCancel, visit, plannedLocation, msg.getPendingEventType().toString(), msg.getCancelledDateTime(), validFrom, storedFrom
+        );
+        PlannedMovement plannedMovement = plannedState.getEntity();
+        // Cancel the message if it hasn't been cancelled already
+        if (plannedMovement.getCancelledDatetime() == null) {
+            plannedState.assignIfDifferent(msg.getCancelledDateTime(), plannedMovement.getCancelledDatetime(), plannedMovement::setCancelledDatetime);
+            plannedState.assignIfDifferent(true, plannedMovement.getCancelled(), plannedMovement::setCancelled);
+        }
+
+        plannedState.saveEntityOrAuditLogIfRequired(plannedMovementRepo, plannedMovementAuditRepo);
+    }
+
+
+    /**
      * Delete planned movements from a delete patient information message.
      * @param visit            Hospital visit that should have their planned movements deleted
      * @param invalidationTime Time of the delete information message
@@ -159,6 +224,17 @@ public class PendingAdtController {
         plannedMovementAuditRepo.save(plannedMovement.createAuditEntity(deletionTime, storedUntil));
         plannedMovementRepo.delete(plannedMovement);
     }
+
+    /**
+     * Add hospital service.
+     * @param msg           PendingTransfer
+     * @param movementState movement wrapped in state class
+     */
+    private void addHospitalService(final PendingTransfer msg, RowState<PlannedMovement, PlannedMovementAudit> movementState) {
+        PlannedMovement movement = movementState.getEntity();
+        movementState.assignInterchangeValue(msg.getHospitalService(), movement.getHospitalService(), movement::setHospitalService);
+    }
+
 }
 
 /**

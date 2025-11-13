@@ -34,8 +34,12 @@ import java.time.Instant;
  */
 @SuppressWarnings("serial")
 @Entity
-@Table(indexes = {@Index(name = "lv_hospital_visit_id", columnList = "hospitalVisitId"),
-        @Index(name = "lv_location_id", columnList = "locationId")})
+@Table(indexes = {
+    @Index(name = "lv_hospital_visit_id", columnList = "hospitalVisitId"),
+    @Index(name = "lv_location_id", columnList = "locationId"),
+    @Index(name = "lv_admission_datetime", columnList = "admissionDatetime"),
+    @Index(name = "lv_discharge_datetime", columnList = "dischargeDatetime")
+    })
 @Data
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)

@@ -1,0 +1,47 @@
+name: emap setup tests
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop, sk/waveform-dev ]
+  repository_dispatch:
+permissions:
+  contents: read
+  checks: write
+  id-token: write
+  pull-requests: read # needed by paths-filter
+jobs:
+  filter:
+    runs-on: ubuntu-latest
+    outputs:
+      emap-setup: ${{ steps.filter.outputs.emap-setup }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            emap-setup:
+              - '.github/**'
+              - 'emap-checker.xml'
+              - 'emap-setup/**'
+  emap-setup-tests:
+    needs: [filter]
+    runs-on: ubuntu-latest
+    env:
+       GITHUB_TOKEN: ${{ secrets.GH_PAT_READ_AND_COMMENT }}
+    if: needs.filter.outputs.emap-setup == 'true'
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: "pip"
+      - name: Install Python Dependencies
+        run: | 
+          python -m pip install -r emap-setup/requirements.txt
+      - name: Run tests
+        run: |
+          cd emap-setup
+          pytest  --cov=./ --cov-report=term
