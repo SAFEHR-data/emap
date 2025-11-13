@@ -1,6 +1,8 @@
 package uk.ac.ucl.rits.inform.datasources.waveform;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -11,7 +13,6 @@ import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -102,6 +103,20 @@ class TestHl7ParseAndQueue {
         String hl7WithReps = hl7String.replace("PV1||I|UCHT03ICURM08|", "PV1||I|UCHT03ICURM07|");
         Hl7ParseException e = assertThrows(Hl7ParseException.class, () -> hl7ParseAndQueue.parseHl7(hl7WithReps));
         assertTrue(e.getMessage().contains("Unexpected location"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings =
+            {
+                    "MSH^",
+                    "MSH|^~\\&^|DATACAPTOR||||20240731142108.741+0100||ORU^R01|44444444444449ab|P|2.3||||||UNICODE UTF-8|\r",
+                    "MSH|^~\\&",
+                    "MSH|^~&\\|",
+            }
+    )
+    void messageWithUnusualSeparators(String hl7String) throws IOException, URISyntaxException {
+        Hl7ParseException e = assertThrows(Hl7ParseException.class, () -> hl7ParseAndQueue.parseHl7(hl7String));
+        assertTrue(e.getMessage().contains("separators"));
     }
 
 }

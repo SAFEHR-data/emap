@@ -33,8 +33,15 @@ import java.util.Map;
 public class DataSourceConfiguration {
     private static final Logger logger = LoggerFactory.getLogger(DataSourceConfiguration.class);
 
-    public DataSourceConfiguration(EmapDataSource emapDataSource) {
-        this.emapDataSource = emapDataSource;
+    private final EmapRabbitMqRoute emapDataSource;
+
+    /**
+     * Constructor that accepts EmapRabbitMqRoute.
+     * @param emapRabbitMqRoute the data source route
+     */
+    @Autowired
+    public DataSourceConfiguration(EmapRabbitMqRoute emapRabbitMqRoute) {
+        this.emapDataSource = emapRabbitMqRoute;
     }
 
     /**
@@ -45,8 +52,6 @@ public class DataSourceConfiguration {
         ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
         return new Jackson2JsonMessageConverter(mapper);
     }
-
-    private final EmapDataSource emapDataSource;
 
     private @Value("${rabbitmq.queue.length:100000}")
     int queueLength;
@@ -75,25 +80,10 @@ public class DataSourceConfiguration {
     public RabbitTemplate rabbitTemp(@Autowired MessageConverter messageConverter, @Autowired ConnectionFactory connectionFactory) {
         RabbitAdmin rabbitAdmin = new RabbitAdmin(connectionFactory);
         String queueName = getEmapDataSource().queueName().getQueueName();
-        Map<String, Object> args = new HashMap<>();
-        args.put("x-max-length", queueLength);
-        args.put("x-overflow", "reject-publish");
-        Queue q = new Queue(queueName, true, false, false, args);
-        while (true) {
-            try {
-                rabbitAdmin.declareQueue(q);
-                break;
-            } catch (AmqpException e) {
-                int secondsSleep = 5;
-                logger.warn("Creating RabbitMQ queue '{}' failed with exception {}, retrying in {} seconds",
-                        queueName, e.getMessage(), secondsSleep);
-                try {
-                    Thread.sleep(secondsSleep * 1000);
-                } catch (InterruptedException e1) {
-                    logger.warn("Sleep interrupted");
-                }
-                continue;
-            }
+        // If (for example) the publisher is sending to a fanout exchange, no
+        // queue needs to be created.
+        if (queueName != null && !queueName.isEmpty()) {
+            declareQueue(rabbitAdmin, queueName);
         }
 
         RetryTemplate retryTemplate = new RetryTemplate();
@@ -108,14 +98,37 @@ public class DataSourceConfiguration {
         template.setRetryTemplate(retryTemplate);
         template.setMandatory(true);
 
-        logger.info("Created queue " + queueName + ", properties = " + rabbitAdmin.getQueueProperties(queueName));
         return template;
+    }
+
+    private void declareQueue(RabbitAdmin rabbitAdmin, String queueName) {
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-max-length", queueLength);
+        args.put("x-overflow", "reject-publish");
+        Queue q = new Queue(queueName, true, false, false, args);
+        while (true) {
+            try {
+                rabbitAdmin.declareQueue(q);
+                logger.info("Created queue " + queueName + ", properties = " + rabbitAdmin.getQueueProperties(queueName));
+                break;
+            } catch (AmqpException e) {
+                int secondsSleep = 5;
+                logger.warn("Creating RabbitMQ queue '{}' failed with exception {}, retrying in {} seconds",
+                        queueName, e.getMessage(), secondsSleep);
+                try {
+                    Thread.sleep(secondsSleep * 1000);
+                } catch (InterruptedException e1) {
+                    logger.warn("Sleep interrupted");
+                }
+                continue;
+            }
+        }
     }
 
     /**
      * @return the data source
      */
-    public EmapDataSource getEmapDataSource() {
+    public EmapRabbitMqRoute getEmapDataSource() {
         return emapDataSource;
     }
 

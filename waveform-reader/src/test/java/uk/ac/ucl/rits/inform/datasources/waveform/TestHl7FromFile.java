@@ -12,7 +12,6 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7ParseException;
 
 import java.io.BufferedOutputStream;
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;

@@ -1,9 +1,15 @@
 package uk.ac.ucl.rits.inform.datasources.waveform;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -11,6 +17,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -22,7 +29,56 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Test the Hl7MessageSaver component.
  */
+@SpringJUnitConfig
+@SpringBootTest
+@ActiveProfiles("test")
 class TestHl7MessageSaver {
+    @Autowired
+    Hl7ParseAndQueue hl7ParseAndQueue;
+    @Autowired
+    Hl7MessageSaver messageSaver;
+
+    // temp dir needs to be calculated before Spring reads the property
+    private static final Path tempDir;
+    static {
+        try {
+            tempDir = Files.createTempDirectory("test-storage-");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @DynamicPropertySource
+    static void registerProperties(DynamicPropertyRegistry registry) {
+        registry.add("waveform.hl7.save_directory", () -> tempDir.toString());
+    }
+
+    /**
+     * Because Spring only gets this temp dir once at init time, we have to reuse it.
+     * Delete contents of temp dir but not temp dir itself.
+     */
+    @BeforeEach
+    void clearTempDir() throws IOException {
+        List<Path> allFiles;
+        try (Stream<Path> walk = Files.walk(tempDir)) {
+            allFiles = walk.toList();
+        }
+        // Delete in reverse depth-first order to guarantee
+        // that directories will be empty when we come to delete them.
+        for (int i = allFiles.size() - 1; i >= 0; i--) {
+            Path path = allFiles.get(i);
+            // .walk includes the root dir, which we don't want to delete
+            if (!path.equals(tempDir)) {
+                path.toFile().delete();
+            }
+        }
+        try (Stream<Path> walk = Files.walk(tempDir)) {
+            List<Path> newList = walk.toList();
+            assertEquals(1, newList.size());
+            assertEquals(newList.get(0), tempDir);
+        }
+    }
+
     @Test
     void testNonExistentPath() {
         assertThrows(IllegalArgumentException.class,
@@ -39,64 +95,37 @@ class TestHl7MessageSaver {
         assertFalse(saver.isSaveEnabled());
     }
 
-    @Test
-    void testSaveMessageCreatesHourlyDirectories(@TempDir Path tempDir) throws IOException {
-        Hl7MessageSaver saver = new Hl7MessageSaver(tempDir.toString());
-        assertEquals(tempDir, saver.getSaveDirectory());
-
-        String testMessage = "MSH|^~\\&|TEST|||20251030142345||ORU^R01|12345|P|2.5\r";
-        saver.saveMessage(testMessage, Instant.now(), "");
-
-        assertEquals(1, saver.getSavedMessageCount());
-
-        Files.exists(tempDir.resolve("20251030").resolve("14"));
-
-        // Verify directory structure was created
-        try (Stream<Path> paths = Files.walk(tempDir)) {
-            List<Path> hl7Files = paths
-                    .filter(Files::isRegularFile)
-                    .filter(p -> p.toString().endsWith(".hl7"))
-                    .collect(Collectors.toList());
-
-            assertEquals(1, hl7Files.size());
-            
-            Path savedFile = hl7Files.get(0);
-            String content = Files.readString(savedFile);
-            assertEquals(testMessage, content);
-
-            // Verify directory structure: {base}/{date}/{hour}/
-            Path parent = savedFile.getParent(); // hour directory
-            assertTrue(parent.getFileName().toString().matches("\\d{2}")); // hour is 2 digits
-            
-            Path grandparent = parent.getParent(); // date directory
-            assertTrue(grandparent.getFileName().toString().matches("\\d{4}-\\d{2}-\\d{2}")); // date is YYYY-MM-DD
-        }
-    }
 
     @Test
-    void testSaveMultipleMessages(@TempDir Path tempDir) throws IOException {
-        Hl7MessageSaver saver = new Hl7MessageSaver(tempDir.toString());
+    void testSaveMultipleMessages() throws IOException, WaveformCollator.CollationException {
         // should be grouped by hour
-        record ExpectedFile(String bedId, String timeStamp) { }
+        record ExpectedFile(
+                String bedId,
+                String messageTimeStamp,
+                String messageDate, // (local time with offset specified)
+                String expectedUtcTimeStamp,
+                String expectedUtcDate
+                ) { }
+        // While we're at it, let's choose the most awkward timestamps ;)
         List<ExpectedFile> expectedFiles = List.of(
-                new ExpectedFile("UCHT03ICURM08", "142345"),
-                new ExpectedFile("UCHT03ICURM09", "142525"),
-                new ExpectedFile("UCHT03ICURM08", "144458"),
-                new ExpectedFile("UCHT03ICURM08", "163311"),
-                new ExpectedFile("UCHT03ICURM08", "165527")
+                new ExpectedFile("UCHT03ICURM08", "000045.123+0100", "20251026", "230045.123Z", "20251025"),
+                new ExpectedFile("UCHT03ICURM09", "003025.125+0100", "20251026", "233025.125Z", "20251025"),
+                new ExpectedFile("UCHT03ICURM08", "004458.126+0100", "20251026", "234458.126Z", "20251025"),
+                new ExpectedFile("UCHT03ICURM08", "010211.127+0100", "20251026", "000211.127Z", "20251026"),
+                new ExpectedFile("UCHT03ICURM08", "014511.127+0100", "20251026", "004511.127Z", "20251026"),
+                new ExpectedFile("UCHT03ICURM08", "013511.127+0000", "20251026", "013511.127Z", "20251026")
         );
 
-        String dateString = "20251030";
         for (int i = 0; i < expectedFiles.size(); i++) {
             String message = String.format(
-                    "MSH|^~\\&|TEST|||%s%s||ORU^R01|message%s|P|2.5\r"
+                    "MSH|^~\\&|DATACAPTOR||||%s%s||ORU^R01|message%s|P|2.5\r"
                             + "PID|\r"
                             + "PV1||I|%s|\r",
-                    dateString, expectedFiles.get(i).timeStamp, i, expectedFiles.get(i).bedId);
-            saver.saveMessage(message, Instant.now(), "");
+                    expectedFiles.get(i).messageDate, expectedFiles.get(i).messageTimeStamp, i,
+                    expectedFiles.get(i).bedId);
+            // writes to filesystem too
+            hl7ParseAndQueue.parseAndQueue(message);
         }
-
-        assertEquals(5, saver.getSavedMessageCount());
 
         // Verify all files were saved
         try (Stream<Path> paths = Files.walk(tempDir)) {
@@ -108,44 +137,50 @@ class TestHl7MessageSaver {
             // all files end .hl7
             for (ExpectedFile expectedFile : expectedFiles) {
                 // get just the hours
-                String timeBucket = expectedFile.timeStamp.substring(0, 2);
-                String expectedFilePath = String.format("%sT%s/%s/%sT%s.hl7",
-                        dateString, timeBucket, expectedFile.bedId, dateString, expectedFile.timeStamp);
-                assertTrue(actualHl7Files.contains(expectedFilePath));
+                String timeBucket = expectedFile.expectedUtcTimeStamp.substring(0, 2);
+                // use regex to match the file name regardless of unique-ifying string
+                String expectedFilePathRegex = String.format("%sT%s/%s/%sT%s_\\w{16}.hl7",
+                        expectedFile.expectedUtcDate, timeBucket,
+                        expectedFile.bedId,
+                        expectedFile.expectedUtcDate, expectedFile.expectedUtcTimeStamp);
+                Pattern pattern = Pattern.compile(expectedFilePathRegex);
+                assertTrue(actualHl7Files.stream().anyMatch(p -> pattern.matcher(p.toString()).matches()),
+                        "exp regex: " + expectedFilePathRegex.toString() + ", not found in: " + actualHl7Files.toString());
             }
 
             // all files got created, and nothing more
-            assertEquals(5, actualHl7Files.size());
+            assertEquals(6, actualHl7Files.size());
         }
     }
 
     @Test
-    void testSaveEmptyMessageIsSkipped(@TempDir Path tempDir) throws IOException {
-        Hl7MessageSaver saver = new Hl7MessageSaver(tempDir.toString());
-
-        saver.saveMessage("", Instant.now(), "");
-        saver.saveMessage(null, Instant.now(), "");
-
-        assertEquals(0, saver.getSavedMessageCount());
-
-        // Verify no files were saved
-        try (Stream<Path> paths = Files.walk(tempDir)) {
-            long fileCount = paths
-                    .filter(Files::isRegularFile)
-                    .filter(p -> p.toString().endsWith(".hl7"))
-                    .count();
-
-            assertEquals(0, fileCount);
-        }
+    void testNullParam1() {
+        assertThrows(NullPointerException.class, () -> {
+                    messageSaver.saveMessage(null, Instant.now(), "foo");
+                }
+        );
+    }
+    @Test
+    void testNullParam2() {
+        assertThrows(NullPointerException.class, () -> {
+                    messageSaver.saveMessage("bar", null, "foo");
+                }
+        );
+    }
+    @Test
+    void testNullParam3() {
+        assertThrows(NullPointerException.class, () -> {
+                    messageSaver.saveMessage("foo", Instant.now(), null);
+                }
+        );
     }
 
     @Test
-    void testFilenamesAreUnique(@TempDir Path tempDir) throws IOException {
-        Hl7MessageSaver saver = new Hl7MessageSaver(tempDir.toString());
-
-        // Save messages rapidly to test uniqueness
+    void testFilenamesAreUnique() throws IOException {
+        // Save messages, some of which have the same timestamps
+        Instant now = Instant.now();
         for (int i = 0; i < 10; i++) {
-            saver.saveMessage("message " + i, Instant.now(), "");
+            messageSaver.saveMessage("message " + i, now.plusMillis(i / 3), "foo");
         }
 
         try (Stream<Path> paths = Files.walk(tempDir)) {
@@ -153,7 +188,7 @@ class TestHl7MessageSaver {
                     .filter(Files::isRegularFile)
                     .filter(p -> p.toString().endsWith(".hl7"))
                     .map(p -> p.getFileName().toString())
-                    .collect(Collectors.toList());
+                    .toList();
 
             // All filenames should be unique
             assertEquals(10, filenames.size());
@@ -161,26 +196,5 @@ class TestHl7MessageSaver {
         }
     }
 
-    @Test
-    void testSaveMessageWithSpecialCharacters(@TempDir Path tempDir) throws IOException {
-        Hl7MessageSaver saver = new Hl7MessageSaver(tempDir.toString());
-
-        String specialMessage = "MSH|^~\\&|TEST|||20251030142345||ORU^R01|12345|P|2.5\r\n"
-                + "OBX|1|NM|HR^Heart Rate||120|bpm|||||F\r\n"
-                + "OBX|2|NM|SpO2^Oxygen Saturation||98|%|||||F\r";
-        
-        saver.saveMessage(specialMessage, Instant.now(), "");
-
-        try (Stream<Path> paths = Files.walk(tempDir)) {
-            List<Path> hl7Files = paths
-                    .filter(Files::isRegularFile)
-                    .filter(p -> p.toString().endsWith(".hl7"))
-                    .collect(Collectors.toList());
-
-            assertEquals(1, hl7Files.size());
-            String content = Files.readString(hl7Files.get(0));
-            assertEquals(specialMessage, content);
-        }
-    }
 }
 

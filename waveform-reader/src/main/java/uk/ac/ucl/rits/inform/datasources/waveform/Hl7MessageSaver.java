@@ -1,6 +1,7 @@
 package uk.ac.ucl.rits.inform.datasources.waveform;
 
 import lombok.Getter;
+import lombok.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +15,7 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -65,27 +67,27 @@ public class Hl7MessageSaver {
      *
      * @param messageContent The raw HL7 message string to save
      * @param messageTimestamp timestamp at the message (not observation) level
-     * @param bedId bed (lcoation) Id
+     * @param bedId bed (location) Id
      * @throws IOException If writing failed
      */
-    public void saveMessage(String messageContent, Instant messageTimestamp, String bedId) throws IOException {
-        Path targetPath = buildTargetPath(bedId, messageTimestamp);
+    public void saveMessage(@NonNull String messageContent, @NonNull Instant messageTimestamp, @NonNull String bedId) throws IOException {
+        if (saveEnabled) {
+            Path targetPath = buildTargetPath(bedId, messageTimestamp);
 
-        // Ensure the hourly directory exists
-        Files.createDirectories(targetPath.getParent());
+            // Ensure the hourly directory exists
+            Files.createDirectories(targetPath.getParent());
 
-        // Write the message to file
-        try (FileWriter writer = new FileWriter(targetPath.toFile())) {
-            writer.write(messageContent);
+            // Write the message to file
+            try (FileWriter writer = new FileWriter(targetPath.toFile())) {
+                writer.write(messageContent);
+            }
         }
 
         long count = messageCounter.incrementAndGet();
-        if (count % 1000 == 0) {
-            logger.info("Saved {} HL7 messages to disk so far", count);
-        } else {
-            logger.debug("Saved HL7 message to {}", targetPath);
+        if (count % 100000 == 1) {
+            String verb = saveEnabled ? "SAVED" : "Saving DISABLED: would have saved";
+            logger.info("{} {} HL7 message(s) to disk so far", verb, count);
         }
-
     }
 
     /**
@@ -108,10 +110,15 @@ public class Hl7MessageSaver {
                 .format(timestamp);
 
         // Eg. "20251030T142345.123Z"
-        String fileName = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss.SSS'Z'")
+        String timestampStr = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss.SSS'Z'")
                 .withZone(ZoneOffset.UTC)
                 .format(timestamp);
 
+        // Ensure uniqueness. Messages for different channels (streams) could come
+        // through with the same timestamp. The channel ID cannot be used because there
+        // are often multiple streams within a message.
+        String randomSuffix = String.format("%016x", new Random().nextLong());
+        String fileName = String.format("%s_%s.hl7", timestampStr, randomSuffix);
         return saveDirectory.resolve(dateDir).resolve(bedId).resolve(fileName);
     }
 

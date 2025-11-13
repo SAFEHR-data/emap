@@ -109,7 +109,7 @@ assuming 5 samples per message, and 50–300Hz frequency.
 If we store that much in memory, we risk losing it in the event of a sudden outage (system crash,
 power outage, etc). It is safer to write each message to disk as a separate file, and then come back later
 to archive it. This increases the amount of disk churn, but I believe that it's worth this trade-off.
-This means that the replay function must be able to recognise either the plain or .tar.bz2 "schemas".
+This means that the replay function must be able to recognise both the plain and .tar.bz2 "schemas".
 
 # Consequences/limitations
 Storing raw messages has the extra advantage of allowing us to reprocess old data
@@ -121,7 +121,8 @@ There is a limited amount of space on the GAE local storage. `/gae` is currently
 storage will be added, but it can't be guaranteed.
 
 The total amount of data we plan to collect is in the order of 15TB. So clearly this raw HL7 buffer
-can only buy us a certain amount of time.
+can only buy us a certain amount of time. There is also the possibility of uploading raw HL7 messages
+to a share on the DSH, although a plan for getting them back out again would be required.
 
 ## Relationship to Emap-star
 

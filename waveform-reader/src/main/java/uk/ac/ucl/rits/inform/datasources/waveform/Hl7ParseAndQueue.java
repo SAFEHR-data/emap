@@ -201,13 +201,22 @@ public class Hl7ParseAndQueue {
          * with no separating whitespace.
          */
         String messageToSave = parsedMessagesWithMetadata.rawHl7Trimmed();
+        Instant messageTimestamp = parsedMessagesWithMetadata.messageTimestamp();
+        String bedId = parsedMessagesWithMetadata.bedLocation();
+        // We can't save unless we known the time and bed ID, but also the message is so malformed that processing
+        // in general is likely pointless.
+        if (messageTimestamp == null || bedId == null) {
+            logger.error("HL7 parsing could not find timestamp or bed ID, will not process further. First 100 chars: {}",
+                    messageAsStr.substring(0, Math.min(100, messageAsStr.length())));
+            return;
+        }
         try {
             hl7MessageSaver.saveMessage(
                     messageToSave,
-                    parsedMessagesWithMetadata.messageTimestamp(),
-                    parsedMessagesWithMetadata.bedLocation());
+                    messageTimestamp,
+                    bedId);
         } catch (IOException e) {
-            // XXX: log?
+            // swallow the exception so that processing will still continue even if disk writing fails
             logger.error("HL7 saving failed", e);
         }
 

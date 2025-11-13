@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessage;
-import uk.ac.ucl.rits.inform.interchange.springconfig.EmapDataSource;
+import uk.ac.ucl.rits.inform.interchange.springconfig.EmapRabbitMqRoute;
 
 import javax.annotation.PreDestroy;
 import java.util.ArrayList;
@@ -37,6 +37,7 @@ public class Publisher implements Runnable, Releasable {
     private final Map<String, ImmutablePair<Integer, Runnable>> batchWaitingMap;
     private final ScheduledThreadPoolExecutor executorService;
     private final int maxInTransit;
+    private final EmapRabbitMqRoute emapRabbitMqRoute;
     private volatile boolean failedSend = false;
     private final int initialDelay;
     private int currentDelay;
@@ -50,11 +51,9 @@ public class Publisher implements Runnable, Releasable {
 
     private final Logger logger = LoggerFactory.getLogger(Publisher.class);
 
-    private final EmapDataSource getEmapDataSource;
-
     /**
      * @param rabbitTemplate rabbitTemplate bean
-     * @param emapDataSource emapDataSource bean
+     * @param emapRabbitMqRoute emapDataSource bean
      * @param maxBatches     Application properties value rabbitmq.max.batches
      *                       Sets the maximum number of batches allowed before blocking
      * @param maxInTransit   Application properties value rabbitmq.max.batches
@@ -63,14 +62,14 @@ public class Publisher implements Runnable, Releasable {
      */
     @Autowired
     public Publisher(RabbitTemplate rabbitTemplate,
-                     EmapDataSource emapDataSource,
+                     EmapRabbitMqRoute emapRabbitMqRoute,
                      @Value("${rabbitmq.max.batches:1}") int maxBatches,
                      @Value("${rabbitmq.max.intransit:1}") int maxInTransit,
                      @Value("${rabbitmq.retry.delay.initial:1}") int initialDelay) {
         semaphore = new Semaphore(maxInTransit, true);
         rabbitTemplate.setConfirmCallback(new MessagesConfirmCallback(this));
         this.rabbitTemplate = rabbitTemplate;
-        this.getEmapDataSource = emapDataSource;
+        this.emapRabbitMqRoute = emapRabbitMqRoute;
         blockingQueue = new ArrayBlockingQueue<>(maxBatches);
         waitingMap = new ConcurrentHashMap<>();
         batchWaitingMap = new ConcurrentHashMap<>();
@@ -84,7 +83,7 @@ public class Publisher implements Runnable, Releasable {
     }
 
     /**
-     * Submit single message for publication to rabbitmq queue defined in the configs EmapDataSource bean.
+     * Submit single message for publication to rabbitmq queue defined in the configs EmapRabbitMqRoute bean.
      * @param message       Emap message to be sent.
      * @param correlationId Unique Id for the message. Must not contain a colon character.
      * @param batchId       Unique Id for the batch, in most cases this can be the correlationId.
@@ -103,7 +102,7 @@ public class Publisher implements Runnable, Releasable {
     }
 
     /**
-     * Submit batch of messages for publication to rabbitmq queue defined in the configs EmapDataSource bean.
+     * Submit batch of messages for publication to rabbitmq queue defined in the configs EmapRabbitMqRoute bean.
      * @param batch    Batch of messages to be sent (pairs of Emap messages and their unique correlationIds)
      *                 CorrelationIds should be unique within the batch and not contain a colon character.
      * @param batchId  Unique Id for the batch, in most cases this can be the first correlationId of the batch.
@@ -168,8 +167,8 @@ public class Publisher implements Runnable, Releasable {
         }
         waitingMap.put(correlationId, message);
         rabbitTemplate.convertAndSend(
-                getEmapDataSource.exchangeName().getExchangeName(),
-                getEmapDataSource.queueName().getQueueName(),
+                emapRabbitMqRoute.exchangeName().getExchangeName(),
+                emapRabbitMqRoute.queueName().getQueueName(),
                 message,
                 correlationData);
     }
@@ -268,8 +267,8 @@ public class Publisher implements Runnable, Releasable {
             @Override
             public void run() {
                 rabbitTemplate.convertAndSend(
-                        getEmapDataSource.exchangeName().getExchangeName(),
-                        getEmapDataSource.queueName().getQueueName(),
+                        emapRabbitMqRoute.exchangeName().getExchangeName(),
+                        emapRabbitMqRoute.queueName().getQueueName(),
                         message,
                         correlationData);
                 String queueFull = "Failed to deliver message (correlationData {}) was resent after a delay of {} seconds";

@@ -37,7 +37,7 @@ import uk.ac.ucl.rits.inform.datasources.ids.hl7.parser.PatientInfoHl7;
 import uk.ac.ucl.rits.inform.datasources.idstables.IdsMaster;
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessage;
 import uk.ac.ucl.rits.inform.interchange.messaging.Publisher;
-import uk.ac.ucl.rits.inform.interchange.springconfig.EmapDataSource;
+import uk.ac.ucl.rits.inform.interchange.springconfig.EmapRabbitMqRoute;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -115,10 +115,10 @@ public class IdsOperations implements AutoCloseable {
      * @return the datasource enum for the hl7 queue
      */
     @Bean
-    public EmapDataSource getHl7DataSource() {
-        return new EmapDataSource(
-                EmapDataSource.EmapDataSourceQueue.HL7_QUEUE,
-                EmapDataSource.EmapDataSourceExchange.DEFAULT_EXCHANGE
+    public EmapRabbitMqRoute getHl7DataSource() {
+        return new EmapRabbitMqRoute(
+                EmapRabbitMqRoute.EmapDataSourceQueue.HL7_QUEUE,
+                EmapRabbitMqRoute.EmapDataSourceExchange.DEFAULT_EXCHANGE
                 );
     }
 
