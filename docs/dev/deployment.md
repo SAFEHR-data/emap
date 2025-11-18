@@ -118,7 +118,7 @@ Then run `emap setup -g` to propagate the config into the individual `config/xxx
 Config tips:
 - On the GAE we use an external postgres server (the "UDS"). See `fake_uds` for enabling postgres in a docker container for non-GAE setups.
 - Be sure to set `UDS_SCHEMA` to match the name/purpose of the instance that you are deploying. This schema must already exist.
-- Use the database user that has the minimum permissions necessary for your task. Ie. only the live user can write to live, so important to reserve use of this user for this purpose only. (See Lastpass for details)
+- Use the database user that has the minimum permissions necessary for your task. Ie. only the live user can write to live, so it is important to reserve use of this user for this purpose only. (See Lastpass for details)
 - If you're running on your own machine, you can set `EMAP_PROJECT_NAME` to whatever you like. If running on the GAE it should be the same as the current directory (i.e. `emap-test` if in `/gae/emap-test`)
 - All passwords must be strong. Remember that Emap needs to expose certain ports outside the GAE to operate.
 - All config must stay local and not be committed to git.
