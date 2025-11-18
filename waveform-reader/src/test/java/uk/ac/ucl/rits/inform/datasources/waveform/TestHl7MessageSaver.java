@@ -37,6 +37,8 @@ class TestHl7MessageSaver {
     Hl7ParseAndQueue hl7ParseAndQueue;
     @Autowired
     Hl7MessageSaver messageSaver;
+    @Autowired
+    Hl7MessageCompressor hl7MessageCompressor;
 
     // temp dir needs to be calculated before Spring reads the property
     private static final Path tempDir;
@@ -151,6 +153,18 @@ class TestHl7MessageSaver {
             // all files got created, and nothing more
             assertEquals(6, actualHl7Files.size());
         }
+    }
+
+    @Test
+    void testSaveMultipleMessagesWithCompression() throws IOException, WaveformCollator.CollationException {
+        testSaveMultipleMessages();
+        Instant compressTime = Instant.parse("2025-10-26T00:01:00.000Z");
+        hl7MessageCompressor.compressOldMessages(compressTime);
+        checkExpectedArchives();
+    }
+
+    private void checkExpectedArchives() {
+
     }
 
     @Test

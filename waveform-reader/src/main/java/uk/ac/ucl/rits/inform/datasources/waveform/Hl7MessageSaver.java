@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Component
 public class Hl7MessageSaver {
+    static final DateTimeFormatter HOURLY_DIR_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd'T'HH");
     private final Logger logger = LoggerFactory.getLogger(Hl7MessageSaver.class);
 
     @Getter
@@ -100,12 +101,7 @@ public class Hl7MessageSaver {
      * @return Path object for the target file
      */
     private Path buildTargetPath(String bedId, Instant timestamp) {
-        String dateDir = DateTimeFormatter.ofPattern("yyyyMMdd'T'HH")
-                .withZone(ZoneOffset.UTC)
-                .format(timestamp);
-
-        // eg. "14"
-        String hourDir = DateTimeFormatter.ofPattern("HH")
+        String dateDir = HOURLY_DIR_FORMATTER
                 .withZone(ZoneOffset.UTC)
                 .format(timestamp);
 
