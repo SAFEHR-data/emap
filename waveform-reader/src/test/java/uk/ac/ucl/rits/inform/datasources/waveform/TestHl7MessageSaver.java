@@ -85,7 +85,7 @@ class TestHl7MessageSaver {
     void testNonExistentPath() {
         assertThrows(IllegalArgumentException.class,
                 () -> {
-                    Hl7MessageSaver saver = new Hl7MessageSaver("/non-existent-path");
+                    Hl7MessageSaver saver = new Hl7MessageSaver("/non-existent-path", hl7MessageCompressor);
                 }
         );
     }
@@ -93,7 +93,7 @@ class TestHl7MessageSaver {
     @ParameterizedTest
     @NullAndEmptySource
     void testNullEmptyPath(String saveDirectoryPath) throws IOException {
-        Hl7MessageSaver saver = new Hl7MessageSaver(saveDirectoryPath);
+        Hl7MessageSaver saver = new Hl7MessageSaver(saveDirectoryPath, hl7MessageCompressor);
         assertFalse(saver.isSaveEnabled());
     }
 
@@ -158,8 +158,7 @@ class TestHl7MessageSaver {
     @Test
     void testSaveMultipleMessagesWithCompression() throws IOException, WaveformCollator.CollationException {
         testSaveMultipleMessages();
-        Instant compressTime = Instant.parse("2025-10-26T00:01:00.000Z");
-        hl7MessageCompressor.compressOldMessages(compressTime);
+//        Instant compressTime = Instant.parse("2025-10-26T00:01:00.000Z");
         checkExpectedArchives();
     }
 

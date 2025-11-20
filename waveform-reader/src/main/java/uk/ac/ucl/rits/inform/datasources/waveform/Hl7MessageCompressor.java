@@ -1,335 +1,288 @@
 package uk.ac.ucl.rits.inform.datasources.waveform;
 
-import lombok.NonNull;
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
+import lombok.Getter;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 
-import java.io.BufferedOutputStream;
+import javax.annotation.PreDestroy;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Stream;
 
 /**
- * Compresses HL7 messages saved to disk into tar.bz2 archives.
- * Only processes hour directories that are fully in the past, to avoid
- * compressing something that's still being written to.
- * Compresses files on a per-bed-ID basis and deletes originals only after successful compression.
- * Runs as a scheduled task in a separate thread to avoid blocking other application tasks.
+ * Handle the per-bed, per-time period, bz2 archives.
  */
 @Component
 public class Hl7MessageCompressor {
     private static final Logger logger = LoggerFactory.getLogger(Hl7MessageCompressor.class);
+    static final DateTimeFormatter HOURLY_DIR_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd'T'HH");
 
-    private final Hl7MessageSaver messageSaver;
-    private final boolean compressionEnabled;
+    @Getter
+    private final Path saveDirectory;
+
     private final AtomicLong totalFilesCompressed = new AtomicLong(0);
     private final AtomicLong totalArchivesCreated = new AtomicLong(0);
 
+    // bedId + timeslot -> output stream
+    private final Map<ImmutablePair<String, Instant>, BZip2CompressorOutputStream> openArchives
+            = new HashMap<>();
+    // bedId + timeslot -> last written to
+    private final Map<ImmutablePair<String, Instant>, Instant> openArchivesLastWritten
+            = new HashMap<>();
+    private final ThreadPoolTaskExecutor closeFileExecutor;
+    private volatile boolean isShuttingDown = false;
+
     /**
      * Constructor for the HL7 message compressor.
-     *
-     * @param messageSaver The HL7 message saver that defines the save directory
-     * @param compressionEnabled Whether compression is enabled (default: true)
+     * @param saveDirectory base directory to save compressed archives in
+     * @param closeFileThreadPoolExecutor single-thread executor for closing files
      */
     @Autowired
     public Hl7MessageCompressor(
-            @NonNull Hl7MessageSaver messageSaver,
-            @Value("${waveform.hl7.compression.enabled:true}") boolean compressionEnabled) {
-        this.messageSaver = messageSaver;
-        this.compressionEnabled = compressionEnabled;
+            @Value("${waveform.hl7.save_directory:#{null}}") String saveDirectory,
+            ThreadPoolTaskExecutor closeFileThreadPoolExecutor) {
+        this.saveDirectory = Path.of(saveDirectory);
+        this.closeFileExecutor = closeFileThreadPoolExecutor;
+    }
 
-        if (!messageSaver.isSaveEnabled()) {
-            logger.info("HL7 message compression DISABLED (saving is disabled)");
-        } else if (!compressionEnabled) {
-            logger.info("HL7 message compression DISABLED (explicitly disabled in config)");
-        } else {
-            logger.info("HL7 message compression ENABLED. Will compress complete directories");
+    private BZip2CompressorOutputStream getOutputStream(String bedId, Instant roundedTime) throws IOException {
+        var key = new ImmutablePair<>(bedId, roundedTime);
+        synchronized (openArchives) {
+            if (isShuttingDown) {
+                logger.warn("Is shutting down, will not create any more archives");
+                return null;
+            }
+            var currentStream = openArchives.get(key);
+            if (currentStream != null) {
+                // stream exists, return it
+                openArchivesLastWritten.put(key, Instant.now());
+                return currentStream;
+            }
+
+            // if stream didn't exist, start a new one and keep track of it
+            BZip2CompressorOutputStream newOutputStream = makeNewArchive(bedId, roundedTime);
+
+            openArchives.put(key, newOutputStream);
+            openArchivesLastWritten.put(key, Instant.now());
+            return newOutputStream;
         }
     }
 
     /**
-     * Scheduled task that runs compression.
-     * Can be overridden with waveform.hl7.compression.cron property.
-     * @throws IOException if disk IO fails
+     * Close archives if we haven't written to them for a minute or so.
+     * A new one can always be opened if more data comes in.
      */
-    @Scheduled(cron = "${waveform.hl7.compression.cron:0 5 * * * *}")
-    public void compressOldMessagesScheduledTask() throws IOException {
-        // In production, always call with real "now" time.
-        // In test, scheduling will be disabled and you can pass anything in
-        compressOldMessages(Instant.now());
+    @Scheduled(fixedDelay = 30000)
+    public void closeStreamsNotRecentlyUsed() {
+        Instant startTime = Instant.now();
+        Instant mainLockAcquiredTime;
+        List<BZip2CompressorOutputStream> toClose = new ArrayList<>();
+        synchronized (openArchives) {
+            mainLockAcquiredTime = Instant.now();
+            logger.info("closeStreamsNotRecentlyUsed: |openArchives| = {}, |openArchivesLastWritten| = {}",
+                    openArchives.size(), openArchivesLastWritten.size());
+            var iterator = openArchives.entrySet().iterator();
+            while (iterator.hasNext()) {
+                var entry = iterator.next();
+                var key = entry.getKey();
+                Instant lastWritten = openArchivesLastWritten.get(key);
+                if (lastWritten == null) {
+                    logger.error("closeStreamsNotRecentlyUsed: stream {} has null last written value, this is weird so let's close it just in case",
+                            key);
+                } else {
+                    Duration lastWriteDuration = Duration.between(lastWritten, Instant.now());
+                    if (lastWriteDuration.getSeconds() > 60) {
+                        logger.warn("closeStreamsNotRecentlyUsed: stream {} not written for {} seconds, queue for closure",
+                                key, lastWriteDuration.getSeconds());
+                    } else {
+                        // keep it open
+                        continue;
+                    }
+                }
+                // Don't immediately close, but take out of action by removing from the map,
+                // waiting for any writes to finish first (writes lock on the stream too)
+                Instant preFileLock = Instant.now(), postFileLock;
+                synchronized (entry.getValue()) {
+                    postFileLock = Instant.now();
+                    iterator.remove(); // only permissible way to remove during iteration
+                    openArchivesLastWritten.remove(key);
+                }
+                long gapMillis = Duration.between(preFileLock, postFileLock).toMillis();
+                if (gapMillis > 2) {
+                    logger.warn("closeStreamsNotRecentlyUsed: SLOW ({} ms) file lock acquisition for {}", gapMillis, key);
+                }
+                // Because the bz2 block size is so large, the final close
+                // can take quite a long time. We can't do it while we have
+                // locked the entire data structure as it blocks ALL writes.
+                toClose.add(entry.getValue());
+            }
+        }
+        long gapMillis = Duration.between(startTime, mainLockAcquiredTime).toMillis();
+        if (gapMillis > 2) {
+            logger.warn("closeStreamsNotRecentlyUsed: SLOW ({} ms) main lock acquisition", gapMillis);
+        }
+        // Submit the slow file closes to single-thread executor.
+        // Don't do it in the synchronized block in case we get
+        // a "caller runs" rejection, because tying up the main
+        // data structure is bad.
+        // They have been removed from the main data structure so nothing
+        // will attempt to use them while they're waiting to be closed.
+        int queueSizeBefore = closeFileExecutor.getThreadPoolExecutor().getQueue().size();
+        int queueCapacity = closeFileExecutor.getThreadPoolExecutor().getQueue().remainingCapacity() + queueSizeBefore;
+        for (var stream : toClose) {
+            closeFileExecutor.execute(() -> {
+                try {
+                    Instant preCloseTime = Instant.now();
+                    stream.close();
+                    long closeTimeMillis = Duration.between(preCloseTime, Instant.now()).toMillis();
+                    logger.info("closeStreamsNotRecentlyUsed closed in {} ms", closeTimeMillis);
+                } catch (IOException e) {
+                    logger.error("closeStreamsNotRecentlyUsed - Error closing archive stream", e);
+                }
+            });
+        }
+        int queueSizeAfter = closeFileExecutor.getThreadPoolExecutor().getQueue().size();
+        logger.info("closeStreamsNotRecentlyUsed: submitted {} tasks to queue (capacity {}), size went {} -> {}",
+                toClose.size(), queueCapacity, queueSizeBefore, queueSizeAfter);
     }
 
-    void compressOldMessages(Instant nowTime) throws IOException {
-        if (!messageSaver.isSaveEnabled() || !compressionEnabled) {
+    private Path buildArchivePath(String bedId, Instant roundedTime) {
+        // hourly directories, minutely archive files
+        String dateDir = HOURLY_DIR_FORMATTER
+                .withZone(ZoneOffset.UTC)
+                .format(roundedTime);
+
+        // Eg. "20251030T1423Z"
+        String timestampStr = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmm'Z'")
+                .withZone(ZoneOffset.UTC)
+                .format(roundedTime);
+
+        // The channel ID cannot be used in the path because there
+        // are often multiple channels within a message.
+
+        // Ensure uniqueness. If messages came out of order we might end up re-opening the archive
+        // for an old one-minute slot, and we wouldn't want to overwrite it.
+        String randomSuffix = String.format("%016x", new Random().nextLong());
+        String fileName = String.format("%s_%s_%s.hl7archive.bz2", bedId, timestampStr, randomSuffix);
+        return saveDirectory.resolve(dateDir).resolve(bedId).resolve(fileName);
+    }
+
+    BZip2CompressorOutputStream makeNewArchive(String bedId, Instant roundedTime) throws IOException {
+        Path path = buildArchivePath(bedId, roundedTime);
+
+        logger.warn("Creating new archive {}", path);
+        // Ensure the directory exists
+        Files.createDirectories(path.getParent());
+
+        FileOutputStream fos = null;
+        try {
+            fos = new FileOutputStream(path.toFile());
+            return new BZip2CompressorOutputStream(fos);
+        } catch (IOException e) {
+            if (fos != null) {
+                fos.close();
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Add a message to the correct compressed archive.
+     * @param messageText the message text itself
+     * @param bedId location/bed ID
+     * @param nowTime the time that under which to file the message
+     * @throws IOException
+     */
+    public void saveMessage(String messageText, String bedId, Instant nowTime) throws IOException {
+        logger.trace("JES: Starting HL7 message compression task");
+        Instant time1 = Instant.now();
+        Instant roundedTime = nowTime.truncatedTo(ChronoUnit.MINUTES);
+        // this method call can be slow, presumably if it's waiting to acquire the lock
+        BZip2CompressorOutputStream outputStream = getOutputStream(bedId, roundedTime);
+        if (outputStream == null) {
             return;
         }
-
-        logger.info("Starting HL7 message compression task");
-        long startTime = System.currentTimeMillis();
-        int directoriesProcessed = 0;
-        int archivesCreated = 0;
-
-        Path saveDirectory = messageSaver.getSaveDirectory();
-
-        // Find all hour directories that should be compressed
-        List<Path> hourDirectories = findEligibleHourDirectories(saveDirectory, nowTime);
-
-        for (Path hourDir : hourDirectories) {
-            int archives = compressHourDirectory(hourDir);
-            archivesCreated += archives;
-            directoriesProcessed++;
+        Instant time2 = Instant.now();
+        long gapGetHandle = Duration.between(time1, time2).toMillis();
+        if (gapGetHandle > 2) {
+            logger.info("saveMessage: slow getOutputStream: {} ms", gapGetHandle);
         }
-
-        long duration = System.currentTimeMillis() - startTime;
-        logger.info("HL7 compression task completed in {}ms. Processed {} hour directories, created {} archives. "
-                        + "Total stats: {} files compressed into {} archives",
-                duration, directoriesProcessed, archivesCreated,
-                totalFilesCompressed.get(), totalArchivesCreated.get());
-
+        // multiple threads write to the same outputStream concurrently
+        Instant time3, time4, time5;
+        time3 = Instant.now();
+        synchronized (outputStream) {
+            time4 = Instant.now();
+            outputStream.write(messageText.getBytes());
+            // Put separator after each message (not just in between messages), so we can be sure
+            // when unarchiving that the message didn't get truncated.
+            outputStream.write(0x1c);
+            time5 = Instant.now();
+            // There is not much point in flushing here, because
+            // we are limited by bzip2's large block size, so it's not going to be
+            // flushed to disk anyway.
+        }
+        long gapWriteLock = Duration.between(time3, time4).toMillis();
+        if (gapWriteLock > 2) {
+            logger.info("saveMessage: slow write lock acquisition: {} ms", gapWriteLock);
+        }
+        long gapWrite = Duration.between(time4, time5).toMillis();
+        if (gapWrite > 2) {
+            logger.info("saveMessage: slow write: {} ms", gapWrite);
+        }
     }
 
     /**
-     * Find all hour directories that are eligible for compression.
-     * A directory is eligible if it represents a complete hour that is fully in the past.
-     *
-     * @param saveDirectory The base save directory.
-     * @param nowTime what time is now? (should =Instant.now() in production)
-     * @return List of hour directory paths that should be compressed
-     * @throws IOException If directory reading fails
+     * As part of shutdown, ensure all files are closed.
+     * Spring will handle waiting for the executor tasks to complete due to
+     * setWaitForTasksToCompleteOnShutdown(true) on the closeFileExecutor.
      */
-    private List<Path> findEligibleHourDirectories(Path saveDirectory, Instant nowTime) throws IOException {
-        List<Path> eligibleDirs = new ArrayList<>();
-
-        // Directories are named by their start time but they last 1 hour, so the cutoff
-        // for start time is actually an hour before the nowTime
-        Instant startCutoffTime = nowTime.minus(1, ChronoUnit.HOURS);
-        DateTimeFormatter formatterAssumingUtc = Hl7MessageSaver.HOURLY_DIR_FORMATTER.withZone(ZoneId.of("UTC"));
-        // List all directories in the save directory
-        try (DirectoryStream<Path> timeDirs = Files.newDirectoryStream(saveDirectory, Files::isDirectory)) {
-            for (Path hourDir : timeDirs) {
-                String dirName = hourDir.getFileName().toString();
-
+    @PreDestroy
+    public void closeAllFiles() {
+        logger.warn("PreDestroy: Trying to close open HL7 archives in an orderly fashion");
+        int archivesQueued = 0;
+        synchronized (openArchives) {
+            isShuttingDown = true;
+            logger.warn("PreDestroy: JES0");
+            var entries = openArchives.entrySet().iterator();
+            while (entries.hasNext()) {
+                logger.warn("PreDestroy: JES1");
+                var entry = entries.next();
+                BZip2CompressorOutputStream openStream = entry.getValue();
+                entries.remove();
+                logger.warn("PreDestroy: JES2");
+                // Run the close in the current thread as the closeFileExecutor may
+                // have been shut down
                 try {
-                    // Parse the directory name as an Instant representing the UTC hour
-                    Instant dirInstant = Instant.from(formatterAssumingUtc.parse(dirName));
-
-                    // Check if this directory is old enough to compress
-                    if (dirInstant.isBefore(startCutoffTime)) {
-                        // Check if there are any uncompressed files in this directory
-                        if (hasUncompressedFiles(hourDir)) {
-                            eligibleDirs.add(hourDir);
-                        }
-                    } else {
-                        logger.debug("Skipping directory {}, too new", dirName);
-                    }
-                } catch (DateTimeParseException e) {
-                    // Not a valid hour directory, skip it
-                    logger.debug("Skipping non-hour directory: {}", dirName);
-                }
-            }
-        }
-
-        logger.debug("Found {} hour directories eligible for compression", eligibleDirs.size());
-        return eligibleDirs;
-    }
-
-    /**
-     * Check if a directory (or its subdirectories) contains any uncompressed .hl7 files.
-     *
-     * @param directory The directory to check
-     * @return true if uncompressed files exist, false otherwise
-     * @throws IOException If directory reading fails
-     */
-    private boolean hasUncompressedFiles(Path directory) throws IOException {
-        try (Stream<Path> walk = Files.walk(directory)) {
-            return walk.anyMatch(path -> path.toString().endsWith(".hl7"));
-        }
-    }
-
-    /**
-     * Compress all files in an hour directory, organized by bed ID.
-     * Creates one tar.bz2 file per bed ID subdirectory.
-     *
-     * @param hourDir The hour directory to compress
-     * @return Number of archives created
-     * @throws IOException If compression fails
-     */
-    private int compressHourDirectory(Path hourDir) throws IOException {
-        int archivesCreated = 0;
-
-        // List all bed ID subdirectories
-        try (DirectoryStream<Path> bedDirs = Files.newDirectoryStream(hourDir, Files::isDirectory)) {
-            for (Path bedDir : bedDirs) {
-                String bedId = bedDir.getFileName().toString();
-
-                // Check if there are any .hl7 files to compress
-                List<Path> hl7Files = findHl7Files(bedDir);
-                if (hl7Files.isEmpty()) {
-                    logger.debug("No HL7 files to compress in {}/{}", hourDir.getFileName(), bedId);
-                    continue;
-                }
-
-                // Create archive name: {hourDir}/{bedId}.tar.bz2
-                String archiveName = bedId + ".tar.bz2";
-                Path archivePath = bedDir.resolveSibling(archiveName);
-
-                // If archive already exists but we have managed to get to this point,
-                // assume that hl7 deletion got interrupted. Because HL7
-                // messages may be partially deleted, attempting to recreate the archive could
-                // result in data loss, so leave it intact and progress on to re-attempt the deletion.
-                if (Files.exists(archivePath)) {
-                    logger.warn("Archive already exists, not recreating: {}", archivePath);
-                }
-
-                Path tempArchive = bedDir.resolveSibling(archiveName + ".tmp");
-                try {
-                    // Create temporary archive first so we can always detect a partially created archive
-                    createTarBz2Archive(tempArchive, hl7Files, bedDir);
-
-                    // Atomically rename temp file to final name
-                    Files.move(tempArchive, archivePath);
-
-                    // Only delete originals if archive was created successfully
-                    deleteFiles(hl7Files);
-
-                    // Try to delete the now-empty bed directory
-                    deleteEmptyDirectory(bedDir);
-
-                    archivesCreated++;
-                    totalArchivesCreated.incrementAndGet();
-                    totalFilesCompressed.addAndGet(hl7Files.size());
-
-                    logger.info("Created archive {} with {} files", archivePath, hl7Files.size());
-
+                    openStream.close();
+                    logger.debug("Closed archive stream for {} during shutdown", entry.getKey());
                 } catch (IOException e) {
-                    logger.error("Failed to create archive for {}/{}: {}",
-                            hourDir.getFileName(), bedId, e.getMessage(), e);
-                    // To help in the case where this is caused by out of disk space,
-                    // delete temporary file if it exists, but you can't assume this
-                    // will run successfully
-                    if (Files.exists(tempArchive)) {
-                        try {
-                            Files.delete(tempArchive);
-                        } catch (IOException deleteEx) {
-                            logger.warn("Also failed to delete temporary archive: {}", tempArchive, deleteEx);
-                            throw deleteEx;
-                        }
-                    }
-                    throw e;
+                    logger.error("Could not gracefully close stream for {}",
+                            entry.getKey(), e);
                 }
+                archivesQueued++;
+                logger.warn("PreDestroy: JES3");
             }
         }
-
-        // Try to delete the hour directory if it's now empty
-        deleteEmptyDirectory(hourDir);
-
-        return archivesCreated;
-    }
-
-    /**
-     * Find all .hl7 files in a directory (non-recursive).
-     *
-     * @param directory The directory to search
-     * @return List of .hl7 file paths
-     * @throws IOException If directory reading fails
-     */
-    private List<Path> findHl7Files(Path directory) throws IOException {
-        List<Path> hl7Files = new ArrayList<>();
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory, "*.hl7")) {
-            for (Path file : stream) {
-                if (Files.isRegularFile(file)) {
-                    hl7Files.add(file);
-                }
-            }
-        }
-        return hl7Files;
-    }
-
-    /**
-     * Create a tar.bz2 archive containing the specified files.
-     * File paths in the archive are relative to the baseDir (just the filename).
-     *
-     * @param archivePath Path where the archive should be created
-     * @param filesToArchive       List of files to include in the archive
-     * @param baseDir     Base directory for calculating relative paths
-     * @throws IOException If archive creation fails
-     */
-    private void createTarBz2Archive(Path archivePath, List<Path> filesToArchive, Path baseDir) throws IOException {
-        try (BufferedOutputStream buffOut = new BufferedOutputStream(Files.newOutputStream(archivePath));
-             BZip2CompressorOutputStream bzOut = new BZip2CompressorOutputStream(buffOut);
-             TarArchiveOutputStream tarOut = new TarArchiveOutputStream(bzOut)) {
-
-            // Set to handle long file names
-            tarOut.setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX);
-            tarOut.setBigNumberMode(TarArchiveOutputStream.BIGNUMBER_POSIX);
-
-            for (Path file : filesToArchive) {
-                // Use the relative path in the archive because:
-                // - paths will look different inside vs outside the container so abs path doesn't make sense
-                // - including the bed ID allows the original file structure to be recreated (not that we intend to do so)
-                // - it's NOT about uniqueness, because the random string in the hl7 filenames already provides that
-//                Path relPath = file.relativize(baseDir);
-//                String tarEntryName = relPath.toString();
-
-                TarArchiveEntry entry = new TarArchiveEntry(file.toFile());
-                tarOut.putArchiveEntry(entry);
-
-                // Write file contents
-                Files.copy(file, tarOut);
-
-                tarOut.closeArchiveEntry();
-            }
-
-            tarOut.finish();
-        }
-    }
-
-    /**
-     * Delete a list of files.
-     *
-     * @param files Files to delete
-     */
-    private void deleteFiles(List<Path> files) {
-        for (Path file : files) {
-            try {
-                Files.delete(file);
-            } catch (IOException e) {
-                logger.error("Failed to delete file after compression: {}", file, e);
-            }
-        }
-    }
-
-    /**
-     * Try to delete a directory if it's empty.
-     *
-     * @param directory Directory to delete
-     */
-    private void deleteEmptyDirectory(Path directory) {
-        try {
-            // This will only succeed if the directory is empty
-            Files.delete(directory);
-            logger.debug("Deleted empty directory: {}", directory);
-        } catch (IOException e) {
-            // Directory is not empty or couldn't be deleted - that's fine
-            logger.trace("Could not delete directory (may not be empty): {}", directory);
-        }
+        logger.warn("PreDestroy: Closed {} open HL7 archives", archivesQueued);
     }
 
     /**

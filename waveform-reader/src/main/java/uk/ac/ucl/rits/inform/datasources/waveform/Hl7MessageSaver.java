@@ -4,18 +4,15 @@ import lombok.Getter;
 import lombok.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -24,7 +21,6 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Component
 public class Hl7MessageSaver {
-    static final DateTimeFormatter HOURLY_DIR_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd'T'HH");
     private final Logger logger = LoggerFactory.getLogger(Hl7MessageSaver.class);
 
     @Getter
@@ -32,15 +28,18 @@ public class Hl7MessageSaver {
     @Getter
     private final boolean saveEnabled;
     private final AtomicLong messageCounter = new AtomicLong(0);
+    private final Hl7MessageCompressor hl7MessageCompressor;
 
     /**
      * Constructor that initializes the message saver.
      * @param saveDirectoryPath Path to the directory where messages should be saved.
      *                          If null or empty, saving is disabled.
+     * @param hl7MessageCompressor message compressor
      * @throws IOException If cannot create directory.
      * @throws IllegalArgumentException if base directory does not exist
      */
-    public Hl7MessageSaver(@Value("${waveform.hl7.save_directory:#{null}}") String saveDirectoryPath) throws IOException {
+    public Hl7MessageSaver(@Value("${waveform.hl7.save_directory:#{null}}") String saveDirectoryPath,
+                           @Autowired Hl7MessageCompressor hl7MessageCompressor) throws IOException {
         if (saveDirectoryPath == null || saveDirectoryPath.trim().isEmpty()) {
             this.saveEnabled = false;
             this.saveDirectory = null;
@@ -57,6 +56,7 @@ public class Hl7MessageSaver {
             }
             logger.info("HL7 message saving in directory: {}", this.saveDirectory);
         }
+        this.hl7MessageCompressor = hl7MessageCompressor;
     }
 
     /**
@@ -73,15 +73,7 @@ public class Hl7MessageSaver {
      */
     public void saveMessage(@NonNull String messageContent, @NonNull Instant messageTimestamp, @NonNull String bedId) throws IOException {
         if (saveEnabled) {
-            Path targetPath = buildTargetPath(bedId, messageTimestamp);
-
-            // Ensure the hourly directory exists
-            Files.createDirectories(targetPath.getParent());
-
-            // Write the message to file
-            try (FileWriter writer = new FileWriter(targetPath.toFile())) {
-                writer.write(messageContent);
-            }
+            hl7MessageCompressor.saveMessage(messageContent, bedId, messageTimestamp);
         }
 
         long count = messageCounter.incrementAndGet();
@@ -89,33 +81,6 @@ public class Hl7MessageSaver {
             String verb = saveEnabled ? "SAVED" : "Saving DISABLED: would have saved";
             logger.info("{} {} HL7 message(s) to disk so far", verb, count);
         }
-    }
-
-    /**
-     * Build the target file path for a message.
-     * // XXX: wrong
-     * Format: {base_save_directory}/{YYYY-MM-DD}/{HH}/{timestamp}_{uuid}_{counter}.hl7
-     *
-     * @param bedId bed ID
-     * @param timestamp The timestamp for the message
-     * @return Path object for the target file
-     */
-    private Path buildTargetPath(String bedId, Instant timestamp) {
-        String dateDir = HOURLY_DIR_FORMATTER
-                .withZone(ZoneOffset.UTC)
-                .format(timestamp);
-
-        // Eg. "20251030T142345.123Z"
-        String timestampStr = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss.SSS'Z'")
-                .withZone(ZoneOffset.UTC)
-                .format(timestamp);
-
-        // Ensure uniqueness. Messages for different channels (streams) could come
-        // through with the same timestamp. The channel ID cannot be used because there
-        // are often multiple streams within a message.
-        String randomSuffix = String.format("%016x", new Random().nextLong());
-        String fileName = String.format("%s_%s.hl7", timestampStr, randomSuffix);
-        return saveDirectory.resolve(dateDir).resolve(bedId).resolve(fileName);
     }
 
     /**

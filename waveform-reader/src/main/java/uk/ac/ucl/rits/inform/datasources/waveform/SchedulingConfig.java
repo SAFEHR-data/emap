@@ -18,7 +18,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 public class SchedulingConfig {
     private final Logger logger = LoggerFactory.getLogger(SchedulingConfig.class);
 
-    @Value("${test.reader.scheduler_pool_size:2}")
+    @Value("${test.reader.scheduler_pool_size:4}")
     private int schedulerTaskPoolSize;
 
     /**

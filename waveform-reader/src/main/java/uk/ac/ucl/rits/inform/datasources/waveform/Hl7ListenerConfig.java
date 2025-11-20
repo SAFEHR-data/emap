@@ -23,6 +23,7 @@ import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7ParseException;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * Listen on a TCP port for incoming HL7 messages.
@@ -93,9 +94,12 @@ public class Hl7ListenerConfig {
     ThreadPoolTaskExecutor hl7HandlerTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(4);
-        executor.setMaxPoolSize(16);
+        executor.setMaxPoolSize(4);
         executor.setThreadNamePrefix("HL7Handler-");
-        executor.setQueueCapacity(5000);
+        executor.setQueueCapacity(500);
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(600);
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.initialize();
         return executor;
     }
@@ -106,7 +110,10 @@ public class Hl7ListenerConfig {
         executor.setCorePoolSize(4);
         executor.setMaxPoolSize(8);
         executor.setThreadNamePrefix("TcpListen-");
-        executor.setQueueCapacity(5000);
+        executor.setQueueCapacity(500);
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(600);
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.initialize();
         return executor;
     }
@@ -151,6 +158,12 @@ public class Hl7ListenerConfig {
         TcpReceivingChannelAdapter adapter = new TcpReceivingChannelAdapter();
         adapter.setConnectionFactory(connectionFactory);
         adapter.setOutputChannel(queueTcpStream);
+        // Shutdown happens from high to low phase number,
+        // so make sure the TCP listener is stopped before everything else so no new
+        // messages come in while we're trying to drain the queues.
+        // Default value (for a TcpReceivingChannelAdapter?) is 2^30-1, so set it higher
+        // to be sure.
+        adapter.setPhase(Integer.MAX_VALUE);
         return adapter;
     }
 
