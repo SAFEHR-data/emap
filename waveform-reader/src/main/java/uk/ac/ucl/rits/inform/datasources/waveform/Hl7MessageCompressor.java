@@ -111,7 +111,7 @@ public class Hl7MessageCompressor {
                 } else {
                     Duration lastWriteDuration = Duration.between(lastWritten, Instant.now());
                     if (lastWriteDuration.getSeconds() > 60) {
-                        logger.warn("closeStreamsNotRecentlyUsed: stream {} not written for {} seconds, queue for closure",
+                        logger.info("closeStreamsNotRecentlyUsed: stream {} not written for {} seconds, queue for closure",
                                 key, lastWriteDuration.getSeconds());
                     } else {
                         // keep it open
@@ -189,7 +189,7 @@ public class Hl7MessageCompressor {
     BZip2CompressorOutputStream makeNewArchive(String bedId, Instant roundedTime) throws IOException {
         Path path = buildArchivePath(bedId, roundedTime);
 
-        logger.warn("Creating new archive {}", path);
+        logger.info("Creating new archive {}", path);
         // Ensure the directory exists
         Files.createDirectories(path.getParent());
 
@@ -213,7 +213,7 @@ public class Hl7MessageCompressor {
      * @throws IOException
      */
     public void saveMessage(String messageText, String bedId, Instant nowTime) throws IOException {
-        logger.trace("JES: Starting HL7 message compression task");
+        logger.debug("Saving a message of size {} to an archive", messageText.length());
         Instant time1 = Instant.now();
         Instant roundedTime = nowTime.truncatedTo(ChronoUnit.MINUTES);
         // this method call can be slow, presumably if it's waiting to acquire the lock
@@ -224,7 +224,7 @@ public class Hl7MessageCompressor {
         Instant time2 = Instant.now();
         long gapGetHandle = Duration.between(time1, time2).toMillis();
         if (gapGetHandle > 2) {
-            logger.info("saveMessage: slow getOutputStream: {} ms", gapGetHandle);
+            logger.warn("saveMessage: SLOW getOutputStream: {} ms", gapGetHandle);
         }
         // multiple threads write to the same outputStream concurrently
         Instant time3, time4, time5;
@@ -236,17 +236,17 @@ public class Hl7MessageCompressor {
             // when unarchiving that the message didn't get truncated.
             outputStream.write(0x1c);
             time5 = Instant.now();
-            // There is not much point in flushing here, because
-            // we are limited by bzip2's large block size, so it's not going to be
+            // There is not much point in flushing here, because we are mainly
+            // limited by bzip2's large block size, so it's not going to be
             // flushed to disk anyway.
         }
         long gapWriteLock = Duration.between(time3, time4).toMillis();
         if (gapWriteLock > 2) {
-            logger.info("saveMessage: slow write lock acquisition: {} ms", gapWriteLock);
+            logger.info("saveMessage: SLOW write lock acquisition: {} ms", gapWriteLock);
         }
         long gapWrite = Duration.between(time4, time5).toMillis();
         if (gapWrite > 2) {
-            logger.info("saveMessage: slow write: {} ms", gapWrite);
+            logger.info("saveMessage: SLOW write: {} ms", gapWrite);
         }
     }
 
@@ -256,33 +256,31 @@ public class Hl7MessageCompressor {
      * setWaitForTasksToCompleteOnShutdown(true) on the closeFileExecutor.
      */
     @PreDestroy
-    public void closeAllFiles() {
-        logger.warn("PreDestroy: Trying to close open HL7 archives in an orderly fashion");
-        int archivesQueued = 0;
+    public void closeAllBz2Files() {
+        logger.info("PreDestroy: closing HL7 archives in an orderly fashion...");
+        int archivesClosed = 0;
         synchronized (openArchives) {
             isShuttingDown = true;
-            logger.warn("PreDestroy: JES0");
             var entries = openArchives.entrySet().iterator();
             while (entries.hasNext()) {
-                logger.warn("PreDestroy: JES1");
                 var entry = entries.next();
                 BZip2CompressorOutputStream openStream = entry.getValue();
                 entries.remove();
-                logger.warn("PreDestroy: JES2");
                 // Run the close in the current thread as the closeFileExecutor may
                 // have been shut down
                 try {
+                    Instant preCloseTime = Instant.now();
                     openStream.close();
-                    logger.debug("Closed archive stream for {} during shutdown", entry.getKey());
+                    long closeMillis = Duration.between(preCloseTime, Instant.now()).toMillis();
+                    logger.info("PreDestroy: Closed archive stream for {} in {} ms", entry.getKey(), closeMillis);
                 } catch (IOException e) {
-                    logger.error("Could not gracefully close stream for {}",
+                    logger.error("PreDestroy: Could not gracefully close stream for {}",
                             entry.getKey(), e);
                 }
-                archivesQueued++;
-                logger.warn("PreDestroy: JES3");
+                archivesClosed++;
             }
         }
-        logger.warn("PreDestroy: Closed {} open HL7 archives", archivesQueued);
+        logger.info("PreDestroy: Closed {} HL7 archives", archivesClosed);
     }
 
     /**

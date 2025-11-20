@@ -17,7 +17,7 @@ services:
     logging:
       driver: "json-file"
     restart: "no"
-    # hold a lot in memory that needs to be gracefully flushed
+    # we hold a lot in memory that needs to be gracefully flushed
     stop_grace_period: 3m
     volumes:
       - ../../waveform-test-data:/waveform-test-data:ro
