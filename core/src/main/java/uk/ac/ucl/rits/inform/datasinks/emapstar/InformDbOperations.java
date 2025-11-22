@@ -14,6 +14,7 @@ import uk.ac.ucl.rits.inform.datasinks.emapstar.dataprocessors.ConsultationReque
 import uk.ac.ucl.rits.inform.datasinks.emapstar.dataprocessors.FlowsheetProcessor;
 import uk.ac.ucl.rits.inform.datasinks.emapstar.dataprocessors.FormProcessor;
 import uk.ac.ucl.rits.inform.datasinks.emapstar.dataprocessors.LabProcessor;
+import uk.ac.ucl.rits.inform.datasinks.emapstar.dataprocessors.NotesMetadataProcessor;
 import uk.ac.ucl.rits.inform.datasinks.emapstar.dataprocessors.PatientStateProcessor;
 import uk.ac.ucl.rits.inform.datasinks.emapstar.dataprocessors.WaveformProcessor;
 import uk.ac.ucl.rits.inform.interchange.AdvanceDecisionMessage;
@@ -21,6 +22,7 @@ import uk.ac.ucl.rits.inform.interchange.ConsultMetadata;
 import uk.ac.ucl.rits.inform.interchange.ConsultRequest;
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessageProcessingException;
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessageProcessor;
+import uk.ac.ucl.rits.inform.interchange.NotesMetadataMessage;
 import uk.ac.ucl.rits.inform.interchange.PatientAllergy;
 import uk.ac.ucl.rits.inform.interchange.PatientInfection;
 import uk.ac.ucl.rits.inform.interchange.PatientProblem;
@@ -75,6 +77,8 @@ public class InformDbOperations implements EmapOperationMessageProcessor {
     private FormProcessor formProcessor;
     @Autowired
     private WaveformProcessor waveformProcessor;
+    @Autowired
+    private NotesMetadataProcessor notesMetadataProcessor;
 
     @Value("${features.sde:false}")
     private boolean sdeFeatureEnabled;
@@ -84,6 +88,18 @@ public class InformDbOperations implements EmapOperationMessageProcessor {
         logger.info("Feature flag: SDE = {}", sdeFeatureEnabled);
     }
 
+
+    /**
+     * Process a notes metadata message.
+     * @param msg the message
+     * @throws EmapOperationMessageProcessingException if message could not be processed
+     */
+    @Override
+    @Transactional
+    public void processMessage(NotesMetadataMessage msg) throws EmapOperationMessageProcessingException {
+        Instant storedFrom = Instant.now();
+        notesMetadataProcessor.processMessage(msg, storedFrom);
+    }
 
     /**
      * Process a lab order message.

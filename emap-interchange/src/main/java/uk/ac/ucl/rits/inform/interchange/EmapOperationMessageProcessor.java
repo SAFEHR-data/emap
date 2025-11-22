@@ -29,6 +29,13 @@ import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
  */
 public interface EmapOperationMessageProcessor {
     /**
+     * @param msg the notes metadata message to process
+     * @throws EmapOperationMessageProcessingException if message cannot be processed
+     */
+
+    void processMessage(NotesMetadataMessage msg) throws EmapOperationMessageProcessingException;
+
+    /**
      * @param msg the lab order message to process
      * @throws EmapOperationMessageProcessingException if message cannot be processed
      */

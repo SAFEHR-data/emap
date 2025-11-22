@@ -57,7 +57,7 @@ import java.util.stream.Collectors;
  * @author Roma Klapaukh
  */
 @SupportedAnnotationTypes("uk.ac.ucl.rits.inform.informdb.annotation.AuditTable")
-@SupportedSourceVersion(SourceVersion.RELEASE_11)
+@SupportedSourceVersion(SourceVersion.RELEASE_17)
 @AutoService(Processor.class)
 public class AuditTableProcessor extends AbstractProcessor {
 

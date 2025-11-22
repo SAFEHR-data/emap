@@ -4,6 +4,7 @@ import ca.uhn.hl7v2.HL7Exception;
 import ca.uhn.hl7v2.HapiContext;
 import ca.uhn.hl7v2.model.Message;
 import ca.uhn.hl7v2.model.v26.message.ADT_A60;
+import ca.uhn.hl7v2.model.v26.message.MDM_T02;
 import ca.uhn.hl7v2.model.v26.message.ORM_O01;
 import ca.uhn.hl7v2.model.v26.message.ORR_O02;
 import ca.uhn.hl7v2.model.v26.message.ORU_R01;
@@ -54,6 +55,7 @@ import java.util.concurrent.Semaphore;
  * @author Jeremy Stein
  * @author Stef Piatek
  * @author Anika Cawthorn
+ * @author Sarah Keating
  */
 @Component
 @EntityScan("uk.ac.ucl.rits.inform.datasources.ids")
@@ -67,6 +69,7 @@ public class IdsOperations implements AutoCloseable {
     private final PatientInfectionFactory patientInfectionFactory;
     private final PatientAllergyFactory patientAllergyFactory;
     private final PatientProblemFactory patientProblemFactory;
+    private final NotesMetadataFactory notesMetadataFactory;
     private final IdsProgressRepository idsProgressRepository;
     private final boolean idsEmptyOnInit;
     private final Integer defaultStartUnid;
@@ -79,6 +82,8 @@ public class IdsOperations implements AutoCloseable {
      * @param patientInfectionFactory  orchestrates processing of messages with patient status
      * @param patientProblemFactory orchestrates processing of messages with patient problems
      * @param patientAllergyFactory orchestrates processing of messages with patient allergies
+    * @param notesMetadataFactory orchestrates processing of messages with notes
+    metadata
      * @param idsProgressRepository interaction with ids progress table (stored in the star database)
      */
     public IdsOperations(
@@ -88,12 +93,14 @@ public class IdsOperations implements AutoCloseable {
             PatientInfectionFactory patientInfectionFactory,
             PatientAllergyFactory patientAllergyFactory,
             PatientProblemFactory patientProblemFactory,
+            NotesMetadataFactory notesMetadataFactory,
             IdsProgressRepository idsProgressRepository) {
         this.patientInfectionFactory = patientInfectionFactory;
         this.patientAllergyFactory = patientAllergyFactory;
         this.adtMessageFactory = adtMessageFactory;
         this.orderAndResultService = orderAndResultService;
         this.patientProblemFactory = patientProblemFactory;
+        this.notesMetadataFactory = notesMetadataFactory;
         this.idsProgressRepository = idsProgressRepository;
         idsFactory = idsConfiguration.getSessionFactory();
         idsEmptyOnInit = getIdsIsEmpty();
@@ -419,7 +426,7 @@ public class IdsOperations implements AutoCloseable {
         logger.debug("{}^{}", messageType, triggerEvent);
         String sourceId = String.format("%010d", idsUnid);
 
-        List<EmapOperationMessage> messages = new ArrayList<>();
+            List<EmapOperationMessage> messages = new ArrayList<>();
 
         switch (messageType) {
             case "ADT":
@@ -465,6 +472,20 @@ public class IdsOperations implements AutoCloseable {
                     logger.trace("Parsing Problem list");
                     messages.addAll(patientProblemFactory.buildPatientProblems(sourceId, (PPR_PC1) msgFromIds));
                     logger.trace("After parsing problem list {}", messages);
+                } else {
+                    logErrorConstructingFromType(messageType, triggerEvent);
+                }
+                break;
+            case "MDM":
+                // note there is no separate class for T08
+                if ("T02".equals(triggerEvent)) {
+                    logger.trace("Parsing NOTE");
+                    messages.add(notesMetadataFactory.buildNotesMetadata(sourceId, (MDM_T02) msgFromIds));
+                    logger.trace("After parsing notes metadata {}", messages);
+                } else if ("T08".equals(triggerEvent)) {
+                    logger.trace("Parsing  additional NOTE");
+                    messages.add(notesMetadataFactory.buildNotesMetadata(sourceId, (MDM_T02) msgFromIds));
+                    logger.trace("After parsing additionalnotes metadata {}", messages);
                 } else {
                     logErrorConstructingFromType(messageType, triggerEvent);
                 }

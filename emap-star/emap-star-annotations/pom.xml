@@ -44,6 +44,13 @@
           <source>${java.version}</source>
           <target>${java.version}</target>
           <forceJavacCompilerUse>true</forceJavacCompilerUse>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>com.google.auto.service</groupId>
+              <artifactId>auto-service</artifactId>
+              <version>${auto-service.version}</version>
+            </path>
+          </annotationProcessorPaths>
         </configuration>
         <executions>
           <execution>
