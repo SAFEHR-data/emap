@@ -52,7 +52,7 @@ class TestHl7MessageSaver {
 
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
-        registry.add("waveform.hl7.save_directory", () -> tempDir.toString());
+        registry.add("waveform.hl7.save.directory", () -> tempDir.toString());
     }
 
     /**
@@ -85,7 +85,7 @@ class TestHl7MessageSaver {
     void testNonExistentPath() {
         assertThrows(IllegalArgumentException.class,
                 () -> {
-                    Hl7MessageSaver saver = new Hl7MessageSaver("/non-existent-path", hl7MessageCompressor);
+                    Hl7MessageSaver saver = new Hl7MessageSaver(true, "/non-existent-path", hl7MessageCompressor);
                 }
         );
     }
@@ -93,7 +93,7 @@ class TestHl7MessageSaver {
     @ParameterizedTest
     @NullAndEmptySource
     void testNullEmptyPath(String saveDirectoryPath) throws IOException {
-        Hl7MessageSaver saver = new Hl7MessageSaver(saveDirectoryPath, hl7MessageCompressor);
+        Hl7MessageSaver saver = new Hl7MessageSaver(true, saveDirectoryPath, hl7MessageCompressor);
         assertFalse(saver.isSaveEnabled());
     }
 

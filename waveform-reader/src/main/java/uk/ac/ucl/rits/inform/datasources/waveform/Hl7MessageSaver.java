@@ -35,12 +35,14 @@ public class Hl7MessageSaver {
      * @param saveDirectoryPath Path to the directory where messages should be saved.
      *                          If null or empty, saving is disabled.
      * @param hl7MessageCompressor message compressor
-     * @throws IOException If cannot create directory.
+     * @param saveEnabled hl7 message saving enable/disable
      * @throws IllegalArgumentException if base directory does not exist
      */
-    public Hl7MessageSaver(@Value("${waveform.hl7.save_directory:#{null}}") String saveDirectoryPath,
-                           @Autowired Hl7MessageCompressor hl7MessageCompressor) throws IOException {
-        if (saveDirectoryPath == null || saveDirectoryPath.trim().isEmpty()) {
+    public Hl7MessageSaver(
+            @Value("${waveform.hl7.save.enabled:false}") boolean saveEnabled,
+            @Value("${waveform.hl7.save.directory:#{null}}") String saveDirectoryPath,
+                           @Autowired Hl7MessageCompressor hl7MessageCompressor) {
+        if (!saveEnabled || saveDirectoryPath == null || saveDirectoryPath.trim().isEmpty()) {
             this.saveEnabled = false;
             this.saveDirectory = null;
             logger.info("HL7 message saving DISABLED");
