@@ -96,7 +96,7 @@ public class Hl7ListenerConfig {
         executor.setCorePoolSize(4);
         executor.setMaxPoolSize(4);
         executor.setThreadNamePrefix("HL7Handler-");
-        executor.setQueueCapacity(500);
+        executor.setQueueCapacity(200);
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(600);
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
@@ -110,7 +110,7 @@ public class Hl7ListenerConfig {
         executor.setCorePoolSize(4);
         executor.setMaxPoolSize(8);
         executor.setThreadNamePrefix("TcpListen-");
-        executor.setQueueCapacity(500);
+        executor.setQueueCapacity(200);
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(600);
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
@@ -126,7 +126,7 @@ public class Hl7ListenerConfig {
 
     @Bean
     QueueChannel queueTcpStream() {
-        QueueChannel queueChannel = new QueueChannel(2000);
+        QueueChannel queueChannel = new QueueChannel(200);
         return queueChannel;
     }
 
