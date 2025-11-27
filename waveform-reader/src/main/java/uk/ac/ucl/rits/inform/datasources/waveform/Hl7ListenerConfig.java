@@ -8,6 +8,9 @@ import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.integration.channel.MessagePublishingErrorHandler;
 import org.springframework.integration.channel.QueueChannel;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
@@ -18,17 +21,20 @@ import org.springframework.integration.ip.tcp.connection.DefaultTcpNetConnection
 import org.springframework.integration.ip.tcp.connection.TcpNetConnection;
 import org.springframework.integration.ip.tcp.connection.TcpNetServerConnectionFactory;
 import org.springframework.integration.ip.tcp.serializer.ByteArraySingleTerminatorSerializer;
+import org.springframework.integration.util.ErrorHandlingTaskExecutor;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.util.ErrorHandler;
 import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7ParseException;
 
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
 
 /**
@@ -44,6 +50,8 @@ public class Hl7ListenerConfig {
 
     private final ConfigurableListableBeanFactory beanFactory;
     private final Hl7ParseAndQueue hl7ParseAndQueue;
+    private final AtomicBoolean contextShuttingDown = new AtomicBoolean(false);
+    private final ErrorHandler hl7ExecutorErrorHandler;
     private static final String PARTIAL_PARSED_HEADER_KEY = "partiallyParsed";
 
     /**
@@ -54,6 +62,16 @@ public class Hl7ListenerConfig {
     public Hl7ListenerConfig(ConfigurableListableBeanFactory beanFactory, Hl7ParseAndQueue hl7ParseAndQueue) {
         this.beanFactory = beanFactory;
         this.hl7ParseAndQueue = hl7ParseAndQueue;
+        MessagePublishingErrorHandler delegateErrorHandler = new MessagePublishingErrorHandler();
+        delegateErrorHandler.setBeanFactory(beanFactory);
+        this.hl7ExecutorErrorHandler = error -> {
+            if (contextShuttingDown.get()) {
+                logger.warn("JES: Suppressing handler error during shutdown", error);
+            } else {
+                logger.warn("JES: NOT suppressing handler error during shutdown", error);
+                delegateErrorHandler.handleError(error);
+            }
+        };
         registerHl7HandlerExecutors();
     }
 
@@ -171,7 +189,7 @@ public class Hl7ListenerConfig {
                 .enrichHeaders(h -> h.headerFunction(
                         PARTIAL_PARSED_HEADER_KEY,
                         message -> {
-                            byte[] asBytes = ((Message<byte[]>) (Message<?>) message).getPayload();
+                            byte[] asBytes = getBytePayload(message);
                             String asStr = new String(asBytes, StandardCharsets.UTF_8);
                             try {
                                 return hl7ParseAndQueue.parseHl7Headers(asStr);
@@ -186,12 +204,16 @@ public class Hl7ListenerConfig {
                                 String key = getRoutingKeyFromIndex(i);
                                 int finalI = i;
                                 mapping.subFlowMapping(key, flow ->
-                                        flow.channel(MessageChannels.executor(hl7HandlerTaskExecutors.get(finalI)))
-                                                .handle(
-                                                        message -> {
-                                                            hl7ParseAndQueue.saveParseQueue(getPartialParsing(message), true);
-                                                        }
-                                                ));
+                                        flow.channel(
+                                                MessageChannels.executor(
+                                                        new ErrorHandlingTaskExecutor(
+                                                                hl7HandlerTaskExecutors.get(finalI),
+                                                                hl7ExecutorErrorHandler)))
+                                                .handle(message -> {
+                                                    Hl7ParseAndQueue.PartiallyParsedMessage partialParsing =
+                                                            getPartialParsing(message);
+                                                    hl7ParseAndQueue.saveParseQueue(partialParsing, true);
+                                                }));
                             }
                         })
                 .get();
@@ -210,10 +232,20 @@ public class Hl7ListenerConfig {
         return String.format("bucket%02d", key + 1);
     }
 
+    @EventListener
+    public void onContextClosed(ContextClosedEvent event) {
+        contextShuttingDown.set(true);
+    }
+
 
     private Hl7ParseAndQueue.PartiallyParsedMessage getPartialParsing(Message<?> message) {
         MessageHeaders headers = message.getHeaders();
         return (Hl7ParseAndQueue.PartiallyParsedMessage) headers.get(PARTIAL_PARSED_HEADER_KEY);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static byte[] getBytePayload(Message<?> message) {
+        return ((Message<byte[]>) message).getPayload();
     }
 
     private void registerHl7HandlerExecutors() {
