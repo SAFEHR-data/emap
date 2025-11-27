@@ -42,19 +42,19 @@ public class Hl7ListenerConfig {
      * Specify the server config.
      * @param listenPort port to listen on (inside container)
      * @param sourceAddressAllowList list of source addresses that are allowed to connect to us
-     * @param listenTaskExecutor task executor to use for TCP listener
+     * @param hl7TcpListenTaskExecutor task executor to use for TCP listener
      * @return connection factory
      */
     @Bean
     public TcpNetServerConnectionFactory serverConnectionFactory(
             @Value("${waveform.hl7.listen_port}") int listenPort,
             @Value("${waveform.hl7.source_address_allow_list}") List<String> sourceAddressAllowList,
-            ThreadPoolTaskExecutor listenTaskExecutor
+            ThreadPoolTaskExecutor hl7TcpListenTaskExecutor
     ) {
         TcpNetServerConnectionFactory connFactory = new TcpNetServerConnectionFactory(listenPort);
         connFactory.setSoSendBufferSize(10 * 1024 * 1024);
         connFactory.setSoReceiveBufferSize(10 * 1024 * 1024);
-        connFactory.setTaskExecutor(listenTaskExecutor);
+        connFactory.setTaskExecutor(hl7TcpListenTaskExecutor);
         connFactory.setSoTimeout(10_000);
         connFactory.setSoTcpNoDelay(false);
         connFactory.setSoKeepAlive(true);
@@ -105,7 +105,7 @@ public class Hl7ListenerConfig {
     }
 
     @Bean
-    ThreadPoolTaskExecutor listenTaskExecutor() {
+    ThreadPoolTaskExecutor hl7TcpListenTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(4);
         executor.setMaxPoolSize(8);
@@ -119,21 +119,21 @@ public class Hl7ListenerConfig {
     }
 
     @Bean
-    MessageChannel executorStream(ThreadPoolTaskExecutor hl7HandlerTaskExecutor) {
+    MessageChannel hl7HandlerChannel(ThreadPoolTaskExecutor hl7HandlerTaskExecutor) {
         ExecutorChannel executorChannel = new ExecutorChannel(hl7HandlerTaskExecutor);
         return executorChannel;
     }
 
     @Bean
-    QueueChannel queueTcpStream() {
+    QueueChannel hl7MessageChannel() {
         QueueChannel queueChannel = new QueueChannel(200);
         return queueChannel;
     }
 
     @Bean
-    IntegrationFlow integrationFlow(MessageChannel executorStream, MessageChannel queueTcpStream) {
-        return IntegrationFlows.from(queueTcpStream)
-                .channel(executorStream)
+    IntegrationFlow hl7HandlerIntegrationFlow(MessageChannel hl7HandlerChannel, MessageChannel hl7MessageChannel) {
+        return IntegrationFlows.from(hl7MessageChannel)
+                .channel(hl7HandlerChannel)
                 .handle(msg -> {
                     try {
                         handler((Message<byte[]>) msg);
@@ -150,14 +150,14 @@ public class Hl7ListenerConfig {
     /**
      * Routes the TCP connection to the message handling.
      * @param connectionFactory connection factory
-     * @param queueTcpStream message channel for (split) HL7 messages
+     * @param hl7MessageChannel message channel for (split) HL7 messages
      * @return adapter
      */
     @Bean
-    TcpReceivingChannelAdapter inbound(TcpNetServerConnectionFactory connectionFactory, MessageChannel queueTcpStream) {
+    TcpReceivingChannelAdapter hl7InboundTcpAdapter(TcpNetServerConnectionFactory connectionFactory, MessageChannel hl7MessageChannel) {
         TcpReceivingChannelAdapter adapter = new TcpReceivingChannelAdapter();
         adapter.setConnectionFactory(connectionFactory);
-        adapter.setOutputChannel(queueTcpStream);
+        adapter.setOutputChannel(hl7MessageChannel);
         // Shutdown happens from high to low phase number,
         // so make sure the TCP listener is stopped before everything else so no new
         // messages come in while we're trying to drain the queues.

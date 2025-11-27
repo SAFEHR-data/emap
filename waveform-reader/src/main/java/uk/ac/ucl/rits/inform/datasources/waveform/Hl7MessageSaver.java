@@ -63,8 +63,7 @@ public class Hl7MessageSaver {
 
     /**
      * Save an HL7 message to disk.
-     * Messages are organized into hourly subdirectories with the structure:
-     * {base_directory}/{YYYY-MM-DD}/{HH}/{bedid}/{timestamp}.hl7
+     * Messages are organized into hourly subdirectories.
      * Parsing of timestamp and bed ID should have already happened, so
      * no need to parse it out here.
      *
