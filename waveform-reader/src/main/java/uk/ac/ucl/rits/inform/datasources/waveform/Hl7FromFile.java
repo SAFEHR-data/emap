@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7ParseException;
 
@@ -22,16 +21,13 @@ import java.util.stream.Stream;
 public class Hl7FromFile {
     private final Logger logger = LoggerFactory.getLogger(Hl7FromFile.class);
 
-    private final ThreadPoolTaskExecutor listenTaskExecutor;
     private final Hl7ParseAndQueue hl7ParseAndQueue;
     private final File hl7DumpFile;
     static final String MESSAGE_DELIMITER = "\u001c";
 
-    Hl7FromFile(ThreadPoolTaskExecutor listenTaskExecutor,
-                Hl7ParseAndQueue hl7ParseAndQueue,
+    Hl7FromFile(Hl7ParseAndQueue hl7ParseAndQueue,
                 @Value("${waveform.hl7.test_dump_file:#{null}}") File hl7DumpFile
     ) {
-        this.listenTaskExecutor = listenTaskExecutor;
         this.hl7ParseAndQueue = hl7ParseAndQueue;
         this.hl7DumpFile = hl7DumpFile;
     }

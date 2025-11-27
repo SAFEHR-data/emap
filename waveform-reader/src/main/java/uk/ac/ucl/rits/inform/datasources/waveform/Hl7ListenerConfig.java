@@ -10,6 +10,7 @@ import org.springframework.integration.channel.ExecutorChannel;
 import org.springframework.integration.channel.QueueChannel;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
+import org.springframework.integration.dsl.Pollers;
 import org.springframework.integration.ip.tcp.TcpReceivingChannelAdapter;
 import org.springframework.integration.ip.tcp.connection.DefaultTcpNetConnectionSupport;
 import org.springframework.integration.ip.tcp.connection.TcpNetConnection;
@@ -18,6 +19,7 @@ import org.springframework.integration.ip.tcp.serializer.ByteArraySingleTerminat
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7ParseException;
 
 import java.net.Socket;
@@ -125,14 +127,26 @@ public class Hl7ListenerConfig {
     }
 
     @Bean
+    ThreadPoolTaskScheduler pollerTaskScheduler() {
+        ThreadPoolTaskScheduler threadPoolTaskScheduler = new ThreadPoolTaskScheduler();
+        threadPoolTaskScheduler.setPoolSize(1);
+        threadPoolTaskScheduler.setThreadNamePrefix("HL7QueuePoller-");
+        threadPoolTaskScheduler.initialize();
+        return threadPoolTaskScheduler;
+    }
+
+    @Bean
     QueueChannel hl7MessageChannel() {
         QueueChannel queueChannel = new QueueChannel(200);
         return queueChannel;
     }
 
     @Bean
-    IntegrationFlow hl7HandlerIntegrationFlow(MessageChannel hl7MessageChannel, MessageChannel hl7HandlerChannel) {
+    IntegrationFlow hl7HandlerIntegrationFlow(MessageChannel hl7MessageChannel,
+                                              MessageChannel hl7HandlerChannel,
+                                              ThreadPoolTaskScheduler pollerTaskScheduler) {
         return IntegrationFlows.from(hl7MessageChannel)
+                .bridge(e -> e.poller(Pollers.fixedDelay(10).taskExecutor(pollerTaskScheduler)))
                 .channel(hl7HandlerChannel)
                 .handle(msg -> {
                     try {
