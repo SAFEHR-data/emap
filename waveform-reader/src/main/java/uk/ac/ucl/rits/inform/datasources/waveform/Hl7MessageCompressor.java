@@ -18,12 +18,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoField;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -52,23 +48,23 @@ public class Hl7MessageCompressor {
     private final Map<ImmutablePair<String, Instant>, Instant> openArchivesLastWritten
             = new HashMap<>();
     private final ThreadPoolTaskExecutor closeFileExecutor;
-    private final TimeSlotCalculator timeSlotCalculator;
+    private final Hl7MessageTimeSlotCalculator timeSlotCalculator;
     private volatile boolean isShuttingDown = false;
 
     /**
      * Constructor for the HL7 message compressor.
      * @param saveDirectory base directory to save compressed archives in
-     * @param timeSlotMinutes number of minutes of data to put in each archive file
      * @param closeFileThreadPoolExecutor single-thread executor for closing files
+     * @param timeSlotCalculator need to put messages into slots based on timestamp
      */
     @Autowired
     public Hl7MessageCompressor(
             @Value("${waveform.hl7.save.directory:#{null}}") String saveDirectory,
-            @Value("${waveform.hl7.save.archive_time_slot_minutes:1}") int timeSlotMinutes,
-            ThreadPoolTaskExecutor closeFileThreadPoolExecutor) {
+            ThreadPoolTaskExecutor closeFileThreadPoolExecutor,
+            Hl7MessageTimeSlotCalculator timeSlotCalculator) {
         this.saveDirectory = Path.of(saveDirectory);
         this.closeFileExecutor = closeFileThreadPoolExecutor;
-        this.timeSlotCalculator = new TimeSlotCalculator(timeSlotMinutes);
+        this.timeSlotCalculator = timeSlotCalculator;
     }
 
     private BZip2CompressorOutputStream getOutputStream(String bedId, Instant roundedTime) throws IOException {
@@ -209,39 +205,6 @@ public class Hl7MessageCompressor {
                 fos.close();
             }
             throw e;
-        }
-    }
-
-    class TimeSlotCalculator {
-        private int slotWidthMinutes;
-
-        /**
-         * @param slotWidthMinutes Size of a slot in which to put all data in the same file.
-         *                         Must be a factor of 60 (including 1 and 60) so that
-         *                         we know the pattern repeats every hour. Ie. the 00 minute
-         *                         slot will always exist.
-         * @throws IllegalArgumentException if slot width is not a factor of 60
-         */
-        TimeSlotCalculator(int slotWidthMinutes) {
-            if (slotWidthMinutes < 1 || slotWidthMinutes > 60 || (60 % slotWidthMinutes != 0)) {
-                throw new IllegalArgumentException("slotWidth must be a factor of 60");
-            }
-            this.slotWidthMinutes = slotWidthMinutes;
-        }
-
-        /**
-         * Truncate the given time down to the beginning of the time slot in which it should be archived.
-         * @param fullPrecisionTime the timestamp to truncate
-         * @return an Instant with a minute value that is a multiple of slotWidthMinutes, and seconds and fractions of second at zero
-         */
-        public Instant truncateTime(Instant fullPrecisionTime) {
-            // Instants don't support a lot of concepts, including minutes of the hour
-            ZonedDateTime zonedDateTime = ZonedDateTime.ofInstant(fullPrecisionTime, ZoneId.of("UTC"));
-            long minuteOfHour = zonedDateTime.getMinute();
-            long newMinuteOfHour = minuteOfHour - minuteOfHour % this.slotWidthMinutes;
-            // rounding will never change the hour due to the factor of 60 restriction
-            ZonedDateTime rounded = zonedDateTime.truncatedTo(ChronoUnit.HOURS).with(ChronoField.MINUTE_OF_HOUR, newMinuteOfHour);
-            return rounded.toInstant();
         }
     }
 

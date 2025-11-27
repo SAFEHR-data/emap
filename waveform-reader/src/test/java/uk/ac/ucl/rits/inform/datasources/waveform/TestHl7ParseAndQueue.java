@@ -50,7 +50,7 @@ class TestHl7ParseAndQueue {
 
     void checkMessage(String hl7String, String expectedSourceLocation, String expectedMappedLocation)
             throws IOException, URISyntaxException, Hl7ParseException {
-        List<WaveformMessage> msgs = hl7ParseAndQueue.parseHl7(hl7String).waveformMessages();
+        List<WaveformMessage> msgs = hl7ParseAndQueue.parseHl7Fully(hl7ParseAndQueue.parseHl7Headers(hl7String)).waveformMessages();
         assertEquals(5, msgs.size());
         List<String> actualSource = msgs.stream().map(WaveformMessage::getSourceLocationString).distinct().toList();
         assertEquals(1, actualSource.size());
@@ -93,7 +93,7 @@ class TestHl7ParseAndQueue {
     void messageWithMoreThanOneRepeat() throws IOException, URISyntaxException {
         String hl7String = readHl7FromResource("hl7/test1.hl7");
         String hl7WithReps = hl7String.replace("42.50^", "42.50~");
-        Hl7ParseException e = assertThrows(Hl7ParseException.class, () -> hl7ParseAndQueue.parseHl7(hl7WithReps));
+        Hl7ParseException e = assertThrows(Hl7ParseException.class, () -> hl7ParseAndQueue.parseHl7Fully(hl7ParseAndQueue.parseHl7Headers(hl7WithReps)));
         assertTrue(e.getMessage().contains("only be 1 repeat"));
     }
 
@@ -101,7 +101,8 @@ class TestHl7ParseAndQueue {
     void messageWithConflictingLocation() throws IOException, URISyntaxException {
         String hl7String = readHl7FromResource("hl7/test1.hl7");
         String hl7WithReps = hl7String.replace("PV1||I|UCHT03ICURM08|", "PV1||I|UCHT03ICURM07|");
-        Hl7ParseException e = assertThrows(Hl7ParseException.class, () -> hl7ParseAndQueue.parseHl7(hl7WithReps));
+
+        Hl7ParseException e = assertThrows(Hl7ParseException.class, () -> hl7ParseAndQueue.parseHl7Fully(hl7ParseAndQueue.parseHl7Headers(hl7WithReps)));
         assertTrue(e.getMessage().contains("Unexpected location"));
     }
 
@@ -115,7 +116,7 @@ class TestHl7ParseAndQueue {
             }
     )
     void messageWithUnusualSeparators(String hl7String) throws IOException, URISyntaxException {
-        Hl7ParseException e = assertThrows(Hl7ParseException.class, () -> hl7ParseAndQueue.parseHl7(hl7String));
+        Hl7ParseException e = assertThrows(Hl7ParseException.class, () -> hl7ParseAndQueue.parseHl7Fully(hl7ParseAndQueue.parseHl7Headers(hl7String)));
         assertTrue(e.getMessage().contains("separators"));
     }
 

@@ -5,11 +5,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7ParseException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -53,6 +55,7 @@ class TestHl7MessageSaver {
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
         registry.add("waveform.hl7.save.directory", () -> tempDir.toString());
+        registry.add("waveform.hl7.save.archive_time_slot_minutes", () -> 4);
     }
 
     /**
@@ -99,23 +102,24 @@ class TestHl7MessageSaver {
 
 
     @Test
-    void testSaveMultipleMessages() throws IOException, WaveformCollator.CollationException {
+    void testSaveMultipleMessages() throws IOException, WaveformCollator.CollationException, Hl7ParseException {
         // should be grouped by hour
         record ExpectedFile(
                 String bedId,
                 String messageTimeStamp,
                 String messageDate, // (local time with offset specified)
                 String expectedUtcTimeStamp,
+                String expectedUtcRoundedTimeStamp,
                 String expectedUtcDate
                 ) { }
         // While we're at it, let's choose the most awkward timestamps ;)
         List<ExpectedFile> expectedFiles = List.of(
-                new ExpectedFile("UCHT03ICURM08", "000045.123+0100", "20251026", "230045.123Z", "20251025"),
-                new ExpectedFile("UCHT03ICURM09", "003025.125+0100", "20251026", "233025.125Z", "20251025"),
-                new ExpectedFile("UCHT03ICURM08", "004458.126+0100", "20251026", "234458.126Z", "20251025"),
-                new ExpectedFile("UCHT03ICURM08", "010211.127+0100", "20251026", "000211.127Z", "20251026"),
-                new ExpectedFile("UCHT03ICURM08", "014511.127+0100", "20251026", "004511.127Z", "20251026"),
-                new ExpectedFile("UCHT03ICURM08", "013511.127+0000", "20251026", "013511.127Z", "20251026")
+                new ExpectedFile("UCHT03ICURM08", "000045.123+0100", "20251026", "230045.123Z", "2300", "20251025"),
+                new ExpectedFile("UCHT03ICURM09", "003025.125+0100", "20251026", "233025.125Z", "2328", "20251025"),
+                new ExpectedFile("UCHT03ICURM08", "004458.126+0100", "20251026", "234458.126Z", "2344", "20251025"),
+                new ExpectedFile("UCHT03ICURM08", "010211.127+0100", "20251026", "000211.127Z", "0000", "20251026"),
+                new ExpectedFile("UCHT03ICURM08", "014511.127+0100", "20251026", "004511.127Z", "0044", "20251026"),
+                new ExpectedFile("UCHT03ICURM08", "013511.127+0000", "20251026", "013511.127Z", "0132", "20251026")
         );
 
         for (int i = 0; i < expectedFiles.size(); i++) {
@@ -126,7 +130,7 @@ class TestHl7MessageSaver {
                     expectedFiles.get(i).messageDate, expectedFiles.get(i).messageTimeStamp, i,
                     expectedFiles.get(i).bedId);
             // writes to filesystem too
-            hl7ParseAndQueue.parseAndQueue(message);
+            hl7ParseAndQueue.saveParseQueue(message, true);
         }
 
         // Verify all files were saved
@@ -136,15 +140,15 @@ class TestHl7MessageSaver {
                     .map(f -> tempDir.relativize(f))
                     .collect(Collectors.toSet());
 
-            // all files end .hl7
+            // all files are bz2 archives but may contain more than one of the original HL7 files
             for (ExpectedFile expectedFile : expectedFiles) {
                 // get just the hours
                 String timeBucket = expectedFile.expectedUtcTimeStamp.substring(0, 2);
                 // use regex to match the file name regardless of unique-ifying string
-                String expectedFilePathRegex = String.format("%sT%s/%s/%sT%s_\\w{16}.hl7",
+                String expectedFilePathRegex = String.format("%sT%s/%s/%s_%sT%s_\\w{16}.hl7archive.bz2",
                         expectedFile.expectedUtcDate, timeBucket,
                         expectedFile.bedId,
-                        expectedFile.expectedUtcDate, expectedFile.expectedUtcTimeStamp);
+                        expectedFile.bedId, expectedFile.expectedUtcDate, expectedFile.expectedUtcRoundedTimeStamp);
                 Pattern pattern = Pattern.compile(expectedFilePathRegex);
                 assertTrue(actualHl7Files.stream().anyMatch(p -> pattern.matcher(p.toString()).matches()),
                         "exp regex: " + expectedFilePathRegex.toString() + ", not found in: " + actualHl7Files.toString());
@@ -156,7 +160,7 @@ class TestHl7MessageSaver {
     }
 
     @Test
-    void testSaveMultipleMessagesWithCompression() throws IOException, WaveformCollator.CollationException {
+    void testSaveMultipleMessagesWithCompression() throws IOException, WaveformCollator.CollationException, Hl7ParseException {
         testSaveMultipleMessages();
 //        Instant compressTime = Instant.parse("2025-10-26T00:01:00.000Z");
         checkExpectedArchives();
@@ -199,7 +203,7 @@ class TestHl7MessageSaver {
         try (Stream<Path> paths = Files.walk(tempDir)) {
             List<String> filenames = paths
                     .filter(Files::isRegularFile)
-                    .filter(p -> p.toString().endsWith(".hl7"))
+                    .filter(p -> p.toString().endsWith(".hl7archive.bz2"))
                     .map(p -> p.getFileName().toString())
                     .toList();
 

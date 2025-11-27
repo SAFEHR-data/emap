@@ -36,57 +36,88 @@ public class Hl7ParseAndQueue {
     private final WaveformCollator waveformCollator;
     private final SourceMetadata sourceMetadata;
     private final LocationMapping locationMapping;
+    private final Hl7MessageTimeSlotCalculator hl7MessageTimeSlotCalculator;
     private final Hl7MessageSaver hl7MessageSaver;
     private long numHl7 = 0;
 
     Hl7ParseAndQueue(WaveformOperations waveformOperations,
                      WaveformCollator waveformCollator,
-                     SourceMetadata sourceMetadata, LocationMapping locationMapping, Hl7MessageSaver hl7MessageSaver) {
+                     SourceMetadata sourceMetadata,
+                     LocationMapping locationMapping,
+                     Hl7MessageTimeSlotCalculator hl7MessageTimeSlotCalculator,
+                     Hl7MessageSaver hl7MessageSaver) {
         this.waveformOperations = waveformOperations;
         this.waveformCollator = waveformCollator;
         this.sourceMetadata = sourceMetadata;
         this.locationMapping = locationMapping;
+        this.hl7MessageTimeSlotCalculator = hl7MessageTimeSlotCalculator;
         this.hl7MessageSaver = hl7MessageSaver;
     }
 
-    public record PartiallyParsedMessagesWithMetadata(
+    public record PartiallyParsedMessage(
             String rawHl7Trimmed,
             Hl7Message hl7MessageParser, // to allow for continued parsing
             String bedLocation,
-            Instant messageTimestamp) {}
+            Instant messageTimestamp,
+            Instant messageTimeslot) {}
 
-    public record FullyParsedMessagesWithMetadata(
+    public record FullyParsedMessage(
             String rawHl7Trimmed,
             List<WaveformMessage> waveformMessages,
             String bedLocation,
-            Instant messageTimestamp) {}
+            Instant messageTimestamp,
+            Instant messageTimeslot) {}
 
-    PartiallyParsedMessagesWithMetadata parseHl7Headers(String messageAsStr) throws Hl7ParseException {
+    /**
+     * Parse just the timestamp and location so that the message can be routed appropriately.
+     * Store the parser object so parsing can be resumed when ready.
+     * @param messageAsStr HL7 message as a string
+     * @return partial information, possibly
+     * @throws Hl7ParseException if parsing failed
+     */
+    public PartiallyParsedMessage parseHl7Headers(String messageAsStr) throws Hl7ParseException {
         int origSize = messageAsStr.length();
         // messages are separated with vertical tabs and extra carriage returns, so remove
         messageAsStr = messageAsStr.strip();
         if (messageAsStr.isEmpty()) {
             // message was all whitespace, ignore
             logger.info("Ignoring empty or all-whitespace message");
-            return new PartiallyParsedMessagesWithMetadata(messageAsStr, null, null, null);
+            return new PartiallyParsedMessage(messageAsStr, null, null, null, null);
         }
         logger.debug("Parsing message of size {} ({} including stray whitespace)", messageAsStr.length(), origSize);
         Hl7Message message = new Hl7Message(messageAsStr);
         // Because each OBR could have its own timestamp, to obtain a timestamp for the whole message,
         // use MSH-7
-        Instant messageHeaderTimestamp = interpretWaveformTimestamp(message.getField("MSH", 7));
+        Instant messageHeaderTimestamp = null;
+        try {
+            messageHeaderTimestamp = interpretWaveformTimestamp(message.getField("MSH", 7));
+        } catch (DateTimeException e) {
+            throw (Hl7ParseException) new Hl7ParseException(messageAsStr, "Datetime parsing failed").initCause(e);
+        }
         String pv1LocationId = message.getField("PV1", 3);
         String messageType = message.getField("MSH", 9);
         if (!messageType.equals("ORU^R01")) {
-            throw new Hl7ParseException("Was expecting ORU^R01, got " + messageType);
+            throw new Hl7ParseException(messageAsStr, "Was expecting ORU^R01, got " + messageType);
         }
-        return new PartiallyParsedMessagesWithMetadata(messageAsStr, message, pv1LocationId, messageHeaderTimestamp);
+        return new PartiallyParsedMessage(messageAsStr,
+                message,
+                pv1LocationId,
+                messageHeaderTimestamp,
+                hl7MessageTimeSlotCalculator.truncateTime(messageHeaderTimestamp));
     }
 
-    FullyParsedMessagesWithMetadata parseHl7Fully(PartiallyParsedMessagesWithMetadata partiallyParsedMessage) throws Hl7ParseException {
+    FullyParsedMessage parseHl7Fully(PartiallyParsedMessage partiallyParsedMessage) throws Hl7ParseException {
         Hl7Message message = partiallyParsedMessage.hl7MessageParser();
-        String pv1LocationId = partiallyParsedMessage.bedLocation();
         List<WaveformMessage> allWaveformMessages = new ArrayList<>();
+        if (message == null) {
+            return new FullyParsedMessage(
+                    partiallyParsedMessage.rawHl7Trimmed,
+                    allWaveformMessages,
+                    null,
+                    null,
+                    null);
+        }
+        String pv1LocationId = partiallyParsedMessage.bedLocation();
         List<Hl7Segment> allObr = message.getSegments("OBR");
         String messageIdBase = message.getField("MSH", 10);
         int obrI = 0;
@@ -100,10 +131,15 @@ public class Hl7ParseAndQueue {
                 String obsDatetimeStr = obx.getField(14);
 
                 if (!pv1LocationId.equals(locationId)) {
-                    throw new Hl7ParseException("Unexpected location " + locationId + "|" + pv1LocationId);
+                    throw new Hl7ParseException(partiallyParsedMessage.rawHl7Trimmed, "Unexpected location " + locationId + "|" + pv1LocationId);
                 }
 
-                Instant obsDatetime = interpretWaveformTimestamp(obsDatetimeStr);
+                Instant obsDatetime;
+                try {
+                    obsDatetime = interpretWaveformTimestamp(obsDatetimeStr);
+                } catch (DateTimeException e) {
+                    throw (Hl7ParseException) new Hl7ParseException(partiallyParsedMessage.rawHl7Trimmed, "Datetime parsing failed").initCause(e);
+                }
 
                 String streamId = obx.getField(3);
 
@@ -132,7 +168,7 @@ public class Hl7ParseAndQueue {
                 }
                 String allPointsStr = obx.getField(5);
                 if (allPointsStr.contains("~")) {
-                    throw new Hl7ParseException("must only be 1 repeat in OBX-5");
+                    throw new Hl7ParseException(partiallyParsedMessage.rawHl7Trimmed, "must only be 1 repeat in OBX-5");
                 }
 
                 List<Double> points = Arrays.stream(allPointsStr.split("\\^")).map(Double::parseDouble).toList();
@@ -148,11 +184,12 @@ public class Hl7ParseAndQueue {
             }
         }
 
-        return new FullyParsedMessagesWithMetadata(
+        return new FullyParsedMessage(
                 partiallyParsedMessage.rawHl7Trimmed,
                 allWaveformMessages,
                 pv1LocationId,
-                partiallyParsedMessage.messageTimestamp);
+                partiallyParsedMessage.messageTimestamp,
+                partiallyParsedMessage.messageTimeslot);
     }
 
     /**
@@ -160,18 +197,14 @@ public class Hl7ParseAndQueue {
      * "Basic" ISO8601 format, missing the "T", with a zone offset.
      * @param datetimeStr timestamp as string
      * @return the Instant it represents
-     * @throws Hl7ParseException if it didn't match the expected format
+     * @throws DateTimeException if it didn't match the expected format
      */
-    private static Instant interpretWaveformTimestamp(String datetimeStr) throws Hl7ParseException {
+    private static Instant interpretWaveformTimestamp(String datetimeStr) throws DateTimeException {
         logger.trace("Parsing datetime {}", datetimeStr);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss.SSSZZ");
         Instant obsDatetime;
-        try {
-            TemporalAccessor ta = formatter.parse(datetimeStr);
-            obsDatetime = Instant.from(ta);
-        } catch (DateTimeException e) {
-            throw (Hl7ParseException) new Hl7ParseException("Datetime parsing failed").initCause(e);
-        }
+        TemporalAccessor ta = formatter.parse(datetimeStr);
+        obsDatetime = Instant.from(ta);
         return obsDatetime;
     }
 
@@ -193,61 +226,75 @@ public class Hl7ParseAndQueue {
         return waveformMessage;
     }
 
-
     /**
-     * Perform metadata + data parsing for an HL7 message.
+     * Parse an HL7 message starting from text and store the resulting WaveformMessage in the queue awaiting collation.
+     * If HL7 is invalid or in a form that the ad hoc parser can't handle, log error and skip.
+     * Main use case for doSave = false is when you're feeding it messages that were read from your
+     * saved messages in the first place.
      * @param messageAsStr One HL7 message as a string
-     * @return parsed out data
-     * @throws Hl7ParseException if parsing error
+     * @param doSave to save message or not
+     * @throws Hl7ParseException if data cannot be parsed
+     * @throws WaveformCollator.CollationException if the data has a logical error that prevents collation
      */
-    public FullyParsedMessagesWithMetadata parseHl7(String messageAsStr) throws Hl7ParseException {
-        PartiallyParsedMessagesWithMetadata parsedMessagesWithMetadata = parseHl7Headers(messageAsStr);
-        FullyParsedMessagesWithMetadata fullyParsedMessagesWithMetadata = parseHl7Fully(parsedMessagesWithMetadata);
-        return fullyParsedMessagesWithMetadata;
+    public void saveParseQueue(String messageAsStr, boolean doSave) throws Hl7ParseException, WaveformCollator.CollationException {
+        PartiallyParsedMessage partiallyParsedMessage = parseHl7Headers(messageAsStr);
+        saveParseQueue(partiallyParsedMessage, doSave);
     }
 
     /**
-     * Parse an HL7 message and store the resulting WaveformMessage in the queue awaiting collation.
+     * Fully parse an HL7 message that has been partially parsed and store the resulting WaveformMessage in the queue awaiting collation.
      * If HL7 is invalid or in a form that the ad hoc parser can't handle, log error and skip.
-     * @param messageAsStr One HL7 message as a string
-     * @throws WaveformCollator.CollationException if the data has a logical error that prevents collation
+     * Main use case for doSave = false is when you're feeding it messages that were read from your
+     * saved messages in the first place.
+     * @param partiallyParsedMessage One HL7 message that has been partially processed
+     * @param doSave to save message or not
+     *
      */
-    public void parseAndQueue(String messageAsStr) throws WaveformCollator.CollationException {
-        FullyParsedMessagesWithMetadata fullyParsedMessagesWithMetadata;
+    public void saveParseQueue(PartiallyParsedMessage partiallyParsedMessage, boolean doSave) {
+        if (doSave) {
+            try {
+                saveMessage(partiallyParsedMessage);
+            } catch (IOException e) {
+                // swallow the exception so that processing will still continue even if disk writing fails
+                logger.error("HL7 saving failed", e);
+            }
+        }
+        FullyParsedMessage fullyParsed = null;
         try {
-            fullyParsedMessagesWithMetadata = parseHl7(messageAsStr);
+            fullyParsed = parseHl7Fully(partiallyParsedMessage);
+            queueForCollation(fullyParsed);
         } catch (Hl7ParseException e) {
             logger.error("HL7 parsing failed, first 100 chars: {}\nstacktrace {}",
-                    messageAsStr.substring(0, Math.min(100, messageAsStr.length())),
+                    e.getHl7Message().substring(0, Math.min(100, e.getHl7Message().length())),
                     e.getStackTrace());
-            return;
+        } catch (WaveformCollator.CollationException e) {
+            logger.error("HL7 collator collation failed", e);
         }
+    }
 
-        List<WaveformMessage> msgs = fullyParsedMessagesWithMetadata.waveformMessages();
+    void saveMessage(PartiallyParsedMessage partiallyParsed) throws IOException {
         /*
          * Since we're saving as individual files, save the trimmed version
          * with no separating whitespace.
          */
-        String messageToSave = fullyParsedMessagesWithMetadata.rawHl7Trimmed();
-        Instant messageTimestamp = fullyParsedMessagesWithMetadata.messageTimestamp();
-        String bedId = fullyParsedMessagesWithMetadata.bedLocation();
+        String messageToSave = partiallyParsed.rawHl7Trimmed();
+        Instant messageTimestamp = partiallyParsed.messageTimestamp();
+        String bedId = partiallyParsed.bedLocation();
         // We can't save unless we known the time and bed ID, but also the message is so malformed that processing
         // in general is likely pointless.
         if (messageTimestamp == null || bedId == null) {
             logger.error("HL7 parsing could not find timestamp or bed ID, will not process further. First 100 chars: {}",
-                    messageAsStr.substring(0, Math.min(100, messageAsStr.length())));
+                    messageToSave.substring(0, Math.min(100, messageToSave.length())));
             return;
         }
-        try {
-            hl7MessageSaver.saveMessage(
-                    messageToSave,
-                    messageTimestamp,
-                    bedId);
-        } catch (IOException e) {
-            // swallow the exception so that processing will still continue even if disk writing fails
-            logger.error("HL7 saving failed", e);
-        }
+        hl7MessageSaver.saveMessage(
+                messageToSave,
+                messageTimestamp,
+                bedId);
+    }
 
+    void queueForCollation(FullyParsedMessage fullyParsed) throws WaveformCollator.CollationException {
+        List<WaveformMessage> msgs = fullyParsed.waveformMessages();
         logger.trace("HL7 message generated {} Waveform messages, sending for collation", msgs.size());
         waveformCollator.addMessages(msgs);
         numHl7++;

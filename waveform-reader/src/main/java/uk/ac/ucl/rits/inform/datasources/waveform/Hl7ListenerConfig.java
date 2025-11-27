@@ -2,14 +2,16 @@ package uk.ac.ucl.rits.inform.datasources.waveform;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.integration.channel.ExecutorChannel;
 import org.springframework.integration.channel.QueueChannel;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
+import org.springframework.integration.dsl.MessageChannels;
 import org.springframework.integration.dsl.Pollers;
 import org.springframework.integration.ip.tcp.TcpReceivingChannelAdapter;
 import org.springframework.integration.ip.tcp.connection.DefaultTcpNetConnectionSupport;
@@ -18,6 +20,7 @@ import org.springframework.integration.ip.tcp.connection.TcpNetServerConnectionF
 import org.springframework.integration.ip.tcp.serializer.ByteArraySingleTerminatorSerializer;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageHeaders;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7ParseException;
@@ -26,18 +29,32 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.stream.IntStream;
 
 /**
  * Listen on a TCP port for incoming HL7 messages.
  */
 @Configuration
 public class Hl7ListenerConfig {
+    // number of thread pools (of size 1) to perform file operations.
+    // Stickiness to a thread pool based on the file itself (bedid + timestamp)
+    private static final int HANDLER_PARTITIONS = 4;
+
     private final Logger logger = LoggerFactory.getLogger(Hl7ListenerConfig.class);
 
+    private final ConfigurableListableBeanFactory beanFactory;
     private final Hl7ParseAndQueue hl7ParseAndQueue;
+    private static final String PARTIAL_PARSED_HEADER_KEY = "partiallyParsed";
 
-    public Hl7ListenerConfig(Hl7ParseAndQueue hl7ParseAndQueue) {
+    /**
+     * Need to register some beans manually since their number is configurable.
+     * @param beanFactory for registering beans
+     * @param hl7ParseAndQueue parsing and queuing
+     */
+    public Hl7ListenerConfig(ConfigurableListableBeanFactory beanFactory, Hl7ParseAndQueue hl7ParseAndQueue) {
+        this.beanFactory = beanFactory;
         this.hl7ParseAndQueue = hl7ParseAndQueue;
+        registerHl7HandlerExecutors();
     }
 
     @Bean
@@ -141,58 +158,96 @@ public class Hl7ListenerConfig {
         return queueChannel;
     }
 
+    /*
+     * Quite a lot going on here!
+     */
     @Bean
     IntegrationFlow hl7HandlerIntegrationFlow(MessageChannel hl7MessageChannel,
-                                              MessageChannel hl7HandlerChannel,
-                                              ThreadPoolTaskScheduler pollerTaskScheduler) {
+                                              ThreadPoolTaskScheduler pollerTaskScheduler,
+                                              // Spring needs to be explicitly told name when Bean is a List
+                                              @Qualifier("hl7HandlerTaskExecutors") List<ThreadPoolTaskExecutor> hl7HandlerTaskExecutors) {
         return IntegrationFlows.from(hl7MessageChannel)
                 .bridge(e -> e.poller(Pollers.fixedDelay(10).taskExecutor(pollerTaskScheduler)))
-                .channel(hl7HandlerChannel)
-                .handle(msg -> {
-                    try {
-                        handler((Message<byte[]>) msg);
-                    } catch (Hl7ParseException e) {
-                        throw new RuntimeException(e);
-                    } catch (WaveformCollator.CollationException e) {
-                        throw new RuntimeException(e);
-                    }
-                })
+                .enrichHeaders(h -> h.headerFunction(
+                        PARTIAL_PARSED_HEADER_KEY,
+                        message -> {
+                            byte[] asBytes = ((Message<byte[]>) (Message<?>) message).getPayload();
+                            String asStr = new String(asBytes, StandardCharsets.UTF_8);
+                            try {
+                                return hl7ParseAndQueue.parseHl7Headers(asStr);
+                            } catch (Hl7ParseException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }))
+                .route(Message.class,
+                        this::getRoutingKey,
+                        mapping -> {
+                            for (int i = 0; i < HANDLER_PARTITIONS; i++) {
+                                String key = getRoutingKeyFromIndex(i);
+                                int finalI = i;
+                                mapping.subFlowMapping(key, flow ->
+                                        flow.channel(MessageChannels.executor(hl7HandlerTaskExecutors.get(finalI)))
+                                                .handle(
+                                                        message -> {
+                                                            hl7ParseAndQueue.saveParseQueue(getPartialParsing(message), true);
+                                                        }
+                                                ));
+                            }
+                        })
                 .get();
     }
 
-    @Bean
-    ThreadPoolTaskExecutor hl7HandlerTaskExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(4);
-        executor.setMaxPoolSize(4);
-        executor.setThreadNamePrefix("HL7Handler-");
-        executor.setQueueCapacity(200);
-        executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.setAwaitTerminationSeconds(600);
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
-        executor.initialize();
-        return executor;
+    private String getRoutingKey(Message<?> message) {
+        Hl7ParseAndQueue.PartiallyParsedMessage partialParsing = getPartialParsing(message);
+        String keyStr = partialParsing.bedLocation() + partialParsing.messageTimeslot();
+        // hashes can be negative!!
+        int key = Math.floorMod(keyStr.hashCode(), HANDLER_PARTITIONS);
+        return getRoutingKeyFromIndex(key);
     }
 
-    @Bean
-    MessageChannel hl7HandlerChannel(ThreadPoolTaskExecutor hl7HandlerTaskExecutor) {
-        ExecutorChannel executorChannel = new ExecutorChannel(hl7HandlerTaskExecutor);
-        return executorChannel;
+    private static String getRoutingKeyFromIndex(int key) {
+        // be 1-indexed like all the thread pools
+        return String.format("bucket%02d", key + 1);
+    }
+
+
+    private Hl7ParseAndQueue.PartiallyParsedMessage getPartialParsing(Message<?> message) {
+        MessageHeaders headers = message.getHeaders();
+        return (Hl7ParseAndQueue.PartiallyParsedMessage) headers.get(PARTIAL_PARSED_HEADER_KEY);
+    }
+
+    private void registerHl7HandlerExecutors() {
+        for (int i = 0; i < HANDLER_PARTITIONS; i++) {
+            ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+            executor.setCorePoolSize(1);
+            executor.setMaxPoolSize(1);
+            executor.setThreadNamePrefix(String.format("HL7HandlerPart%02d-", i + 1));
+            executor.setQueueCapacity(200);
+            executor.setWaitForTasksToCompleteOnShutdown(true);
+            executor.setAwaitTerminationSeconds(600);
+            executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+            executor.initialize();
+            beanFactory.registerSingleton(executorBeanName(i), executor);
+        }
+    }
+
+    private static String executorBeanName(int i) {
+        return String.format("hl7HandlerTaskExecutor%02d", i + 1);
     }
 
     /**
-     * Message handler. Source IP check has passed if we get here. No reply is expected.
-     * @param msg the incoming message
-     * @throws Hl7ParseException if HL7 is invalid or in a form that the ad hoc parser can't handle
-     * @throws WaveformCollator.CollationException if the data has a logical error that prevents collation
+     * Allow List of executors to be auto-wired. We can't generate the executors here because they need
+     * to be registered individually so that they'll be shut down correctly. (Generate them in
+     * registerHl7HandlerExecutors instead).
+     *
+     * @return list of all HL7 handler task executor beans
      */
-    public void handler(Message<byte[]> msg) throws Hl7ParseException, WaveformCollator.CollationException {
-        byte[] asBytes = msg.getPayload();
-        String asStr = new String(asBytes, StandardCharsets.UTF_8);
-        // XXX: on second thoughts I think we need to separate out the parsing and queueing,
-        // so that we can save here as well, or something...
-        // parse message from HL7 to interchange message, send to internal queue
-        hl7ParseAndQueue.parseAndQueue(asStr);
+    @Bean
+    public List<ThreadPoolTaskExecutor> hl7HandlerTaskExecutors() {
+        return IntStream.range(0, HANDLER_PARTITIONS)
+                .mapToObj(i -> beanFactory.getBean(executorBeanName(i), ThreadPoolTaskExecutor.class))
+                .toList();
     }
+
 
 }

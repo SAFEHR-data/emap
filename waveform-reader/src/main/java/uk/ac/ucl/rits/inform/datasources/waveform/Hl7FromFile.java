@@ -132,7 +132,8 @@ public class Hl7FromFile {
 
         logger.info("Read {} HL7 messages, beginning to queue", messages.size());
         for (int mi = 0; mi < messages.size(); mi++) {
-            hl7ParseAndQueue.parseAndQueue(messages.get(mi));
+            // do not re-save since we already took this from a file!
+            hl7ParseAndQueue.saveParseQueue(messages.get(mi), false);
             if (mi % 100 == 0) {
                 logger.info("handled {} messages out of {}", mi + 1, messages.size());
             }
