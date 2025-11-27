@@ -38,6 +38,20 @@ public class Hl7ListenerConfig {
         this.hl7ParseAndQueue = hl7ParseAndQueue;
     }
 
+    @Bean
+    ThreadPoolTaskExecutor hl7TcpListenTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(8);
+        executor.setThreadNamePrefix("TcpListen-");
+        executor.setQueueCapacity(200);
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(600);
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.initialize();
+        return executor;
+    }
+
     /**
      * Specify the server config.
      * @param listenPort port to listen on (inside container)
@@ -90,63 +104,6 @@ public class Hl7ListenerConfig {
         return connFactory;
     }
 
-    @Bean
-    ThreadPoolTaskExecutor hl7HandlerTaskExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(4);
-        executor.setMaxPoolSize(4);
-        executor.setThreadNamePrefix("HL7Handler-");
-        executor.setQueueCapacity(200);
-        executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.setAwaitTerminationSeconds(600);
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
-        executor.initialize();
-        return executor;
-    }
-
-    @Bean
-    ThreadPoolTaskExecutor hl7TcpListenTaskExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(4);
-        executor.setMaxPoolSize(8);
-        executor.setThreadNamePrefix("TcpListen-");
-        executor.setQueueCapacity(200);
-        executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.setAwaitTerminationSeconds(600);
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
-        executor.initialize();
-        return executor;
-    }
-
-    @Bean
-    MessageChannel hl7HandlerChannel(ThreadPoolTaskExecutor hl7HandlerTaskExecutor) {
-        ExecutorChannel executorChannel = new ExecutorChannel(hl7HandlerTaskExecutor);
-        return executorChannel;
-    }
-
-    @Bean
-    QueueChannel hl7MessageChannel() {
-        QueueChannel queueChannel = new QueueChannel(200);
-        return queueChannel;
-    }
-
-    @Bean
-    IntegrationFlow hl7HandlerIntegrationFlow(MessageChannel hl7HandlerChannel, MessageChannel hl7MessageChannel) {
-        return IntegrationFlows.from(hl7MessageChannel)
-                .channel(hl7HandlerChannel)
-                .handle(msg -> {
-                    try {
-                        handler((Message<byte[]>) msg);
-                    } catch (Hl7ParseException e) {
-                        throw new RuntimeException(e);
-                    } catch (WaveformCollator.CollationException e) {
-                        throw new RuntimeException(e);
-                    }
-                })
-                .get();
-    }
-
-
     /**
      * Routes the TCP connection to the message handling.
      * @param connectionFactory connection factory
@@ -165,6 +122,48 @@ public class Hl7ListenerConfig {
         // to be sure.
         adapter.setPhase(Integer.MAX_VALUE);
         return adapter;
+    }
+
+    @Bean
+    QueueChannel hl7MessageChannel() {
+        QueueChannel queueChannel = new QueueChannel(200);
+        return queueChannel;
+    }
+
+    @Bean
+    IntegrationFlow hl7HandlerIntegrationFlow(MessageChannel hl7MessageChannel, MessageChannel hl7HandlerChannel) {
+        return IntegrationFlows.from(hl7MessageChannel)
+                .channel(hl7HandlerChannel)
+                .handle(msg -> {
+                    try {
+                        handler((Message<byte[]>) msg);
+                    } catch (Hl7ParseException e) {
+                        throw new RuntimeException(e);
+                    } catch (WaveformCollator.CollationException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .get();
+    }
+
+    @Bean
+    ThreadPoolTaskExecutor hl7HandlerTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(4);
+        executor.setThreadNamePrefix("HL7Handler-");
+        executor.setQueueCapacity(200);
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(600);
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean
+    MessageChannel hl7HandlerChannel(ThreadPoolTaskExecutor hl7HandlerTaskExecutor) {
+        ExecutorChannel executorChannel = new ExecutorChannel(hl7HandlerTaskExecutor);
+        return executorChannel;
     }
 
     /**
