@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.SmartLifecycle;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
@@ -25,13 +26,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Handle the per-bed, per-time period, bz2 archives.
  */
 @Component
-public class Hl7MessageCompressor {
+public class Hl7MessageCompressor implements SmartLifecycle {
     private static final Logger logger = LoggerFactory.getLogger(Hl7MessageCompressor.class);
     static final DateTimeFormatter HOURLY_DIR_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd'T'HH");
 
@@ -50,6 +52,8 @@ public class Hl7MessageCompressor {
     private final ThreadPoolTaskExecutor closeFileExecutor;
     private final Hl7MessageTimeSlotCalculator timeSlotCalculator;
     private volatile boolean isShuttingDown = false;
+    private final AtomicBoolean lifecycleRunning = new AtomicBoolean(false);
+    private final AtomicBoolean closeInvoked = new AtomicBoolean(false);
 
     /**
      * Constructor for the HL7 message compressor.
@@ -260,7 +264,15 @@ public class Hl7MessageCompressor {
      */
     @PreDestroy
     public void closeAllBz2Files() {
-        logger.info("PreDestroy: closing HL7 archives in an orderly fashion...");
+        closeAllBz2Files("PreDestroy");
+    }
+
+    private void closeAllBz2Files(String trigger) {
+        if (!closeInvoked.compareAndSet(false, true)) {
+            logger.debug("closeAllBz2Files({}): already invoked, skipping duplicate", trigger);
+            return;
+        }
+        logger.info("closeAllBz2Files({}): closing HL7 archives in an orderly fashion...", trigger);
         int archivesClosed = 0;
         synchronized (openArchives) {
             isShuttingDown = true;
@@ -275,15 +287,15 @@ public class Hl7MessageCompressor {
                     Instant preCloseTime = Instant.now();
                     openStream.close();
                     long closeMillis = Duration.between(preCloseTime, Instant.now()).toMillis();
-                    logger.info("PreDestroy: Closed archive stream for {} in {} ms", entry.getKey(), closeMillis);
+                    logger.info("closeAllBz2Files({}): Closed archive stream for {} in {} ms", trigger, entry.getKey(), closeMillis);
                 } catch (IOException e) {
-                    logger.error("PreDestroy: Could not gracefully close stream for {}",
-                            entry.getKey(), e);
+                    logger.error("closeAllBz2Files({}): Could not gracefully close stream for {}",
+                            trigger, entry.getKey(), e);
                 }
                 archivesClosed++;
             }
         }
-        logger.info("PreDestroy: Closed {} HL7 archives", archivesClosed);
+        logger.info("{}: Closed {} HL7 archives", trigger, archivesClosed);
     }
 
     /**
@@ -302,6 +314,33 @@ public class Hl7MessageCompressor {
      */
     public long getTotalArchivesCreated() {
         return totalArchivesCreated.get();
+    }
+
+    @Override
+    public void start() {
+        lifecycleRunning.set(true);
+    }
+
+    @Override
+    public void stop() {
+        closeAllBz2Files("SmartLifecycle.stop");
+        lifecycleRunning.set(false);
+    }
+
+    @Override
+    public boolean isRunning() {
+        return lifecycleRunning.get();
+    }
+
+    @Override
+    public void stop(Runnable callback) {
+        stop();
+        callback.run();
+    }
+
+    @Override
+    public int getPhase() {
+        return Integer.MIN_VALUE;
     }
 }
 

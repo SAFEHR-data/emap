@@ -66,9 +66,8 @@ public class Hl7ListenerConfig {
         delegateErrorHandler.setBeanFactory(beanFactory);
         this.hl7ExecutorErrorHandler = error -> {
             if (contextShuttingDown.get()) {
-                logger.warn("JES: Suppressing handler error during shutdown", error);
+                logger.warn("Suppressed error during shutdown", error);
             } else {
-                logger.warn("JES: NOT suppressing handler error during shutdown", error);
                 delegateErrorHandler.handleError(error);
             }
         };
@@ -248,6 +247,11 @@ public class Hl7ListenerConfig {
         return ((Message<byte[]>) message).getPayload();
     }
 
+    /**
+     * Executors are created and registered as individual beans here.
+     * A List bean for auto-wiring purposes in also created in {@link #hl7HandlerTaskExecutors()},
+     * but this is not sufficient to register the executors.
+     */
     private void registerHl7HandlerExecutors() {
         for (int i = 0; i < HANDLER_PARTITIONS; i++) {
             ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -268,10 +272,9 @@ public class Hl7ListenerConfig {
     }
 
     /**
-     * Allow List of executors to be auto-wired. We can't generate the executors here because they need
-     * to be registered individually so that they'll be shut down correctly. (Generate them in
-     * registerHl7HandlerExecutors instead).
-     *
+     * Allow List of executors to be auto-wired. We can't create the executors here
+     * because they need to be registered individually so that they'll be shut down correctly.
+     * See {@link #registerHl7HandlerExecutors} for where that happens.
      * @return list of all HL7 handler task executor beans
      */
     @Bean
