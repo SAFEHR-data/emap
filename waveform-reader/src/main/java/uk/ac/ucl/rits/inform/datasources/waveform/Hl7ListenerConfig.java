@@ -81,7 +81,7 @@ public class Hl7ListenerConfig {
         executor.setCorePoolSize(4);
         executor.setMaxPoolSize(8);
         executor.setThreadNamePrefix("TcpListen-");
-        executor.setQueueCapacity(200);
+        executor.setQueueCapacity(20);
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(600);
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
@@ -103,8 +103,8 @@ public class Hl7ListenerConfig {
             ThreadPoolTaskExecutor hl7TcpListenTaskExecutor
     ) {
         TcpNetServerConnectionFactory connFactory = new TcpNetServerConnectionFactory(listenPort);
-        connFactory.setSoSendBufferSize(10 * 1024 * 1024);
-        connFactory.setSoReceiveBufferSize(10 * 1024 * 1024);
+        connFactory.setSoSendBufferSize(1 * 1024 * 1024);
+        connFactory.setSoReceiveBufferSize(1 * 1024 * 1024);
         connFactory.setTaskExecutor(hl7TcpListenTaskExecutor);
         connFactory.setSoTimeout(10_000);
         connFactory.setSoTcpNoDelay(false);
@@ -172,7 +172,7 @@ public class Hl7ListenerConfig {
 
     @Bean
     QueueChannel hl7MessageChannel() {
-        QueueChannel queueChannel = new QueueChannel(200);
+        QueueChannel queueChannel = new QueueChannel(20);
         return queueChannel;
     }
 
@@ -254,7 +254,7 @@ public class Hl7ListenerConfig {
             executor.setCorePoolSize(1);
             executor.setMaxPoolSize(1);
             executor.setThreadNamePrefix(String.format("HL7HandlerPart%02d-", i + 1));
-            executor.setQueueCapacity(200);
+            executor.setQueueCapacity(20);
             executor.setWaitForTasksToCompleteOnShutdown(true);
             executor.setAwaitTerminationSeconds(600);
             executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
