@@ -3,7 +3,6 @@ package uk.ac.ucl.rits.inform.datasources.waveform;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.List;
@@ -14,7 +13,6 @@ import java.util.regex.Pattern;
 /**
  * Map Capsule location strings to the strings we get on the main HL7 ADT feed.
  */
-@Component
 public class LocationMapping {
     private final Logger logger = LoggerFactory.getLogger(LocationMapping.class);
     private final Map<Integer, List<Integer>> bayToBeds = Map.of(
