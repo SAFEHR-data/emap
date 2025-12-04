@@ -15,6 +15,8 @@ COPY $SERVICE_SRC_DIR/glowroot.properties glowroot/glowroot.properties
 COPY $SERVICE_SRC_DIR/config.json glowroot/config.json
 # Copy pom and checkstyle, then all generate resources
 COPY emap-checker.xml /app/
+COPY emap-utils/pom.xml /app/emap-utils/
+RUN source /app/set_mvn_proxy.sh; mvn dependency:go-offline -f /app/emap-utils/pom.xml
 COPY emap-interchange/pom.xml /app/emap-interchange/
 RUN source /app/set_mvn_proxy.sh; mvn dependency:go-offline -f /app/emap-interchange/pom.xml
 COPY $SERVICE_SRC_DIR/pom.xml /app/$SERVICE_SRC_DIR/
@@ -22,6 +24,9 @@ RUN source /app/set_mvn_proxy.sh; mvn de.qaware.maven:go-offline-maven-plugin:re
 # Install emap-interchange
 COPY emap-interchange/src/ /app/emap-interchange/src/
 RUN source /app/set_mvn_proxy.sh; mvn install -f /app/emap-interchange/pom.xml
+# Install emap-utils
+COPY emap-utils/src/ /app/emap-utils/src/
+RUN source /app/set_mvn_proxy.sh; mvn install -f /app/emap-utils/pom.xml
 # Install waveform-reader
 WORKDIR /app/$SERVICE_SRC_DIR
 COPY $SERVICE_SRC_DIR/src/ /app/$SERVICE_SRC_DIR/src/

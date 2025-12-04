@@ -43,15 +43,14 @@ public class Hl7ParseAndQueue {
     Hl7ParseAndQueue(WaveformOperations waveformOperations,
                      WaveformCollator waveformCollator,
                      SourceMetadata sourceMetadata,
-                     LocationMapping locationMapping,
                      Hl7MessageTimeSlotCalculator hl7MessageTimeSlotCalculator,
                      Hl7MessageSaver hl7MessageSaver) {
         this.waveformOperations = waveformOperations;
         this.waveformCollator = waveformCollator;
         this.sourceMetadata = sourceMetadata;
-        this.locationMapping = locationMapping;
         this.hl7MessageTimeSlotCalculator = hl7MessageTimeSlotCalculator;
         this.hl7MessageSaver = hl7MessageSaver;
+        this.locationMapping = new LocationMapping();
     }
 
     public record PartiallyParsedMessage(
