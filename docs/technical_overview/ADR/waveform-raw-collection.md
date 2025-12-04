@@ -36,6 +36,23 @@ Use bzip2 compression. Group files in a `tar` archive to maintain good compressi
 
 The `.tar.bz2` files are named by the bed, stream id, and earliest and latest fact timestamp.
 
+## As of 2025-12-04
+
+Writing loads of small files was too slow and took up a lot of filesystem space in the directory
+structure itself, so it was changed to write directly to bz2 files. One file per bed location, changing
+every N minutes to a new archive. (N is configurable, suggest 5–15 minutes).
+
+The tradeoff here is that more data is in memory that is at risk of loss in an outage.
+In particular with the large block size of bz2, you can't start compressing until you
+have quite a lot of data.
+
+We perform a clean shutdown that flushes out everything in memory to disk, but this only helps
+in the case of a planned shutdown. A sudden host reboot or power outage would lose a few minutes
+of data, but luckily these are rare.
+
+I also switched from using tar archives to concatenated plain data with a single ASCII FS character appended,
+because tar has a per-file overhead comparable in size to the files we are trying to store.
+
 # Details
 Since there is a large amount of data coming in and not much space to store it, we will need
 to use compression.
@@ -88,28 +105,57 @@ has a disastrous effect on bzip2's compression ratio.
 | 2                     | 9574110                  |
 | 1                     | 13611362                 |
 
-I am assuming that compressing a tar archive will behave very similarly to the above, which
-was tested using simple text concatenation.
+These figures come from combining the messages with simple concatenation.
+
+Using a tar archive hugely increases the uncompressed size of the data (~2x). Other archiving
+formats are available but the overhead is still large (eg. 80 bytes) when each file is only ~300 bytes
+to start with.
 
 ## Message naming etc
 
 Given the large quantity of messages we will have, they need to be findable.
 A likely operation would be to reprocess messages between two dates (or from a date up to the present day).
 
-Finding files by bed number and stream id may also be required, so those will be part of the filename too.
+Finding files by bed number may also be required, so that will be part of the filename too.
+
+While finding by channel/variable id would be useful, most messages have multiple channels so this can't be used.
 
 We may be subsequently told that some data is not needed (eg. they only want patients
-with certain conditions). Grouping data by patient (bed) and stream allows for selective deletion.
+with certain conditions). Grouping data by time and patient (bed) allows for selective deletion.
 
-## Compression scheduling
+## Archive management
+
 Having established that messages must be grouped before compression in batches of ~1000,
 observe that ~1000 messages from the same stream equates to about ~10–100 seconds of data,
 assuming 5 samples per message, and 50–300Hz frequency.
 
-If we store that much in memory, we risk losing it in the event of a sudden outage (system crash,
-power outage, etc). It is safer to write each message to disk as a separate file, and then come back later
-to archive it. This increases the amount of disk churn, but I believe that it's worth this trade-off.
-This means that the replay function must be able to recognise both the plain and .tar.bz2 "schemas".
+That data is at risk while it is still in memory, so we should try to close off old bz2 archives
+in a timely fashion so in the event of a sudden outage (system crash, power outage, etc) the loss
+is minimised.
+
+So we need to close off files that haven't been written to in a certain amount of time.
+
+Which archive a message goes into is based on the message header timestamp, NOT when we receive the message.
+This is to make the behaviour more deterministic, and to make messages easier to locate
+should that be needed. However, it does mean that if we receive messages out of order, we might want to
+write to a file for a timeslot that we have already closed. To avoid overwriting existing archives, a random
+string is used to make each file name unique, and it is possible (and harmless) to have two archives covering
+the same time slot.
+
+We are not making any guarantees to our users about collecting all the data (nobody is getting paged
+when this goes down...) so it's very much on a best effort basis.
+
+## Replaying messages
+
+Saved messages should be replayable.
+
+To avoid reconfiguring the already running waveform-reader on the fly,
+when we want to replay data it would be simpler
+to start another instance of it that has been set to read from the save directory between dates X and Y.
+
+It would add the messages to the same queue as the "live" waveform-reader and then exit cleanly.
+
+Care must be taken not to re-save the messages that are being read from disk!
 
 # Consequences/limitations
 Storing raw messages has the extra advantage of allowing us to reprocess old data
@@ -121,21 +167,34 @@ There is a limited amount of space on the GAE local storage. `/gae` is currently
 storage will be added, but it can't be guaranteed.
 
 The total amount of data we plan to collect is in the order of 15TB. So clearly this raw HL7 buffer
-can only buy us a certain amount of time. There is also the possibility of uploading raw HL7 messages
-to a share on the DSH, although a plan for getting them back out again would be required.
+can only buy us a certain amount of time. We considered uploading raw HL7 messages
+to a share on the DSH, although a plan for getting them back out again would have been required.
+However, we concluded that bed numbers + timestamps might be sufficiently identifying that this data
+in fact *can't* go on the DSH.
+
+## Dealing with multiple Emap instances 
+
+Note that although we have multiple instances of Emap writing into different database schemas, there
+will only be one that is running the waveform listener. To avoid having multiple instances
+trying to save HL7 messages into the same directory, we will run this as a special standalone instance
+of waveform for the time being (currently `emap-dev`).
+
+This strategy should hold until we want to have Waveform data in production emap-star.
+
+When we want to bring down that instance of Emap and replace it with another (eg. a code change in the
+waveform-reader), there will be a brief
+period when Smartlinx won't be able to connect. As it's currently configured, Smartlinx
+does not do any buffering, so data loss will occur as soon as we stop listening.
+
+We are hoping to get buffering turned on so that it will retry when we come back.
+
+In addition to buffering, you can turn on the requirement for HL7 ACKs. We are not doing this yet,
+so Smartlinx will take the success of each TCP connection as a sign that the data has been delivered.
 
 ## Relationship to Emap-star
 
-Note that although we have multiple instances of Emap writing into different database schemas, there
-will only be one that is running the waveform listener, and that will always be writing to the
-same location on disk regardless of whether it's `star-a` or `star-dev`, etc.
-
-When we want to bring down that instance of Emap and replace it with another, there will be a brief
-period when Smartlinx won't be able to connect. We currently don't know if Smartlinx
-will attempt to retry with data it has buffered, or if you're in danger of losing some
-data every time you bring the Waveform listener down.
-
-The scheduled compression of raw HL7 storage will operate on a different schedule
-to the Waveform collation, and does a somewhat analogous task. The former is described in this
-document, the latter gathers up data points before writing them out as SQL arrays.
+The archival + compression of raw HL7 files is not the same as "Waveform collation",
+although it does a somewhat analogous task. The former is described in this
+document, the latter gathers up data points before writing them out as large rabbitmq messages (and then SQL arrays).
 This is liable to cause some developer (and user) confusion, but they do serve different purposes!
+
