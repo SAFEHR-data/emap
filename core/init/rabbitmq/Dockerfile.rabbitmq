@@ -1,7 +1,2 @@
 FROM rabbitmq:4.2.0-management
-# COPY ./init/rabbitmq/config/20-emap.conf /etc/rabbitmq/conf.d/20-emap.conf
-# COPY ./init/rabbitmq/definitions/definitions.json /etc/rabbitmq/definitions/definitions.json
-# COPY ./init/rabbitmq/entrypoint/emap-docker-entrypoint.sh /usr/local/bin/emap-docker-entrypoint.sh
 COPY ./init/rabbitmq/definitions/definitions-init.sh /definitions-init.sh
-# ENTRYPOINT ["emap-docker-entrypoint.sh"]
-# CMD ["rabbitmq-server"]
