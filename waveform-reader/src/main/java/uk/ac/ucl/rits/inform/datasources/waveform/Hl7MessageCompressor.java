@@ -267,7 +267,7 @@ public class Hl7MessageCompressor implements SmartLifecycle {
         closeAllBz2Files("PreDestroy");
     }
 
-    private void closeAllBz2Files(String trigger) {
+    void closeAllBz2Files(String trigger) {
         if (!closeInvoked.compareAndSet(false, true)) {
             logger.debug("closeAllBz2Files({}): already invoked, skipping duplicate", trigger);
             return;

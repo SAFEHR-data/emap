@@ -1,11 +1,11 @@
 package uk.ac.ucl.rits.inform.datasources.waveform;
 
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -13,11 +13,15 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7ParseException;
 
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -26,7 +30,6 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Test the Hl7MessageSaver component.
@@ -54,6 +57,7 @@ class TestHl7MessageSaver {
 
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
+        registry.add("waveform.hl7.save.enabled", () -> true);
         registry.add("waveform.hl7.save.directory", () -> tempDir.toString());
         registry.add("waveform.hl7.save.archive_time_slot_minutes", () -> 4);
     }
@@ -111,29 +115,60 @@ class TestHl7MessageSaver {
                 String expectedUtcTimeStamp,
                 String expectedUtcRoundedTimeStamp,
                 String expectedUtcDate
-                ) { }
-        // While we're at it, let's choose the most awkward timestamps ;)
+                ) {
+            String expectedFilePathRegex() {
+                // File name has a random string to make it unique, so need a regex to match its expected value.
+                String timeBucket = this.expectedUtcTimeStamp.substring(0, 2); // just the hours
+                return String.format("%sT%s/%s/%s_%sT%s_\\w{16}.hl7archive.bz2",
+                        this.expectedUtcDate, timeBucket,
+                        this.bedId,
+                        this.bedId, this.expectedUtcDate, this.expectedUtcRoundedTimeStamp);
+            }
+        }
+        /**
+         * Here we are testing:
+         *   - two messages in the same archive
+         *   - conversion to UTC during GMT and BST
+         *   - rounding to 4 minute time slot
+         *   - different day/room/hour directories
+         */
         List<ExpectedFile> expectedFiles = List.of(
-                new ExpectedFile("UCHT03ICURM08", "000045.123+0100", "20251026", "230045.123Z", "2300", "20251025"),
-                new ExpectedFile("UCHT03ICURM09", "003025.125+0100", "20251026", "233025.125Z", "2328", "20251025"),
-                new ExpectedFile("UCHT03ICURM08", "004458.126+0100", "20251026", "234458.126Z", "2344", "20251025"),
-                new ExpectedFile("UCHT03ICURM08", "010211.127+0100", "20251026", "000211.127Z", "0000", "20251026"),
-                new ExpectedFile("UCHT03ICURM08", "014511.127+0100", "20251026", "004511.127Z", "0044", "20251026"),
-                new ExpectedFile("UCHT03ICURM08", "013511.127+0000", "20251026", "013511.127Z", "0132", "20251026")
+                new ExpectedFile("UCHT03ICURM08", "000045.123+0100", "20251026", "230045.123Z", "2300Z", "20251025"),
+                new ExpectedFile("UCHT03ICURM09", "003025.125+0100", "20251026", "233025.125Z", "2328Z", "20251025"),
+                new ExpectedFile("UCHT03ICURM08", "004458.126+0100", "20251026", "234458.126Z", "2344Z", "20251025"),
+                new ExpectedFile("UCHT03ICURM08", "004658.126+0100", "20251026", "234658.126Z", "2344Z", "20251025"),
+                new ExpectedFile("UCHT03ICURM08", "010211.127+0100", "20251026", "000211.127Z", "0000Z", "20251026"),
+                new ExpectedFile("UCHT03ICURM08", "014511.127+0100", "20251026", "004511.127Z", "0044Z", "20251026"),
+                new ExpectedFile("UCHT03ICURM08", "013511.127+0000", "20251026", "013511.127Z", "0132Z", "20251026")
         );
 
+        // what each file should contain (to be built up as we send the messages)
+        Map<String, StringBuilder> expectedFileToContents = expectedFiles.stream()
+                .collect(Collectors.toMap(
+                        ExpectedFile::expectedFilePathRegex,
+                        ef -> new StringBuilder(),
+                        (v1, v2) -> v1
+                ));
         for (int i = 0; i < expectedFiles.size(); i++) {
+            final ExpectedFile expectedFile = expectedFiles.get(i);
+            // We should have a final \r here, but it gets stripped off in the message save and makes the test fail
             String message = String.format(
                     "MSH|^~\\&|DATACAPTOR||||%s%s||ORU^R01|message%s|P|2.5\r"
                             + "PID|\r"
-                            + "PV1||I|%s|\r",
-                    expectedFiles.get(i).messageDate, expectedFiles.get(i).messageTimeStamp, i,
-                    expectedFiles.get(i).bedId);
-            // writes to filesystem too
+                            + "PV1||I|%s|",
+                    expectedFile.messageDate, expectedFile.messageTimeStamp, i,
+                    expectedFile.bedId);
+            StringBuilder expectedContents = expectedFileToContents.get(expectedFile.expectedFilePathRegex());
+            expectedContents.append(message);
+            expectedContents.append("\u001c");
+            // writes to filesystem
             hl7ParseAndQueue.saveParseQueue(message, true);
         }
+        // Normally the scheduled method would close off inactive bz2 files for us, but
+        // scheduler is disabled during unit tests, and in any case we want it to happen NOW, so do this manually.
+        hl7MessageCompressor.closeAllBz2Files("unit test");
 
-        // Verify all files were saved
+        // Verify all files were saved and contain the right thing
         try (Stream<Path> paths = Files.walk(tempDir)) {
             Set<Path> actualHl7Files = paths
                     .filter(Files::isRegularFile)
@@ -142,28 +177,24 @@ class TestHl7MessageSaver {
 
             // all files are bz2 archives but may contain more than one of the original HL7 files
             for (ExpectedFile expectedFile : expectedFiles) {
-                // get just the hours
-                String timeBucket = expectedFile.expectedUtcTimeStamp.substring(0, 2);
-                // use regex to match the file name regardless of unique-ifying string
-                String expectedFilePathRegex = String.format("%sT%s/%s/%s_%sT%s_\\w{16}.hl7archive.bz2",
-                        expectedFile.expectedUtcDate, timeBucket,
-                        expectedFile.bedId,
-                        expectedFile.bedId, expectedFile.expectedUtcDate, expectedFile.expectedUtcRoundedTimeStamp);
+                String expectedFilePathRegex = expectedFile.expectedFilePathRegex();
                 Pattern pattern = Pattern.compile(expectedFilePathRegex);
-                assertTrue(actualHl7Files.stream().anyMatch(p -> pattern.matcher(p.toString()).matches()),
+                List<Path> matchingFiles = actualHl7Files.stream().filter(p -> pattern.matcher(p.toString()).matches()).toList();
+                // exactly one matching file
+                assertEquals(1, matchingFiles.size(),
                         "exp regex: " + expectedFilePathRegex.toString() + ", not found in: " + actualHl7Files.toString());
+                // open the bz2 file and check the contents
+                Path bz2Path = tempDir.resolve(matchingFiles.get(0));
+                try (InputStream is = new BufferedInputStream(new BZip2CompressorInputStream(new FileInputStream(bz2Path.toFile())))) {
+                    String actualContents = new String(is.readAllBytes());
+                    String expectedContents = expectedFileToContents.get(expectedFile.expectedFilePathRegex()).toString();
+                    assertEquals(expectedContents, actualContents);
+                }
             }
 
             // all files got created, and nothing more
             assertEquals(6, actualHl7Files.size());
         }
-    }
-
-    @Test
-    void testSaveMultipleMessagesWithCompression() throws IOException, WaveformCollator.CollationException, Hl7ParseException {
-        testSaveMultipleMessages();
-//        Instant compressTime = Instant.parse("2025-10-26T00:01:00.000Z");
-        checkExpectedArchives();
     }
 
     private void checkExpectedArchives() {
@@ -192,26 +223,6 @@ class TestHl7MessageSaver {
         );
     }
 
-    @Test
-    void testFilenamesAreUnique() throws IOException {
-        // Save messages, some of which have the same timestamps
-        Instant now = Instant.now();
-        for (int i = 0; i < 10; i++) {
-            messageSaver.saveMessage("message " + i, now.plusMillis(i / 3), "foo");
-        }
-
-        try (Stream<Path> paths = Files.walk(tempDir)) {
-            List<String> filenames = paths
-                    .filter(Files::isRegularFile)
-                    .filter(p -> p.toString().endsWith(".hl7archive.bz2"))
-                    .map(p -> p.getFileName().toString())
-                    .toList();
-
-            // All filenames should be unique
-            assertEquals(10, filenames.size());
-            assertEquals(10, filenames.stream().distinct().count());
-        }
-    }
 
 }
 
