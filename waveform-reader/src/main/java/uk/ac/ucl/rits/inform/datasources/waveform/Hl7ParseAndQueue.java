@@ -39,11 +39,11 @@ public class Hl7ParseAndQueue {
 
     Hl7ParseAndQueue(WaveformOperations waveformOperations,
                      WaveformCollator waveformCollator,
-                     SourceMetadata sourceMetadata, LocationMapping locationMapping) {
+                     SourceMetadata sourceMetadata) {
         this.waveformOperations = waveformOperations;
         this.waveformCollator = waveformCollator;
         this.sourceMetadata = sourceMetadata;
-        this.locationMapping = locationMapping;
+        this.locationMapping = new LocationMapping();
     }
 
     List<WaveformMessage> parseHl7(String messageAsStr) throws Hl7ParseException {
