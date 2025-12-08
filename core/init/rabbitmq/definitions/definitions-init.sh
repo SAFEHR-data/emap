@@ -7,6 +7,6 @@ mq_wrapper () {
 
 mq_wrapper declare exchange name=waveform type=fanout durable=true
 mq_wrapper declare queue name=waveform_emap durable=true
-mq_wrapper declare queue name=waveform_atriumdb durable=true
+mq_wrapper declare queue name=waveform_export durable=true
 mq_wrapper declare binding source=waveform destination=waveform_emap
-mq_wrapper declare binding source=waveform destination=waveform_atriumdb
+mq_wrapper declare binding source=waveform destination=waveform_export
