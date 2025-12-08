@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  */
 @SpringBootApplication(scanBasePackages = {
         "uk.ac.ucl.rits.inform.datasources.waveform_generator",
+        "uk.ac.ucl.rits.inform.interchange"
         })
 @EnableScheduling
 public class Application {

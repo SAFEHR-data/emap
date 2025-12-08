@@ -24,7 +24,7 @@ public class LocationMapping {
             5, List.of(33, 34, 35, 36));
     private final Map<Integer, Integer> bayFromBed = new HashMap<>();
 
-    LocationMapping() {
+    public LocationMapping() {
         for (var bayToBeds: bayToBeds.entrySet()) {
             Integer bay = bayToBeds.getKey();
             List<Integer> beds = bayToBeds.getValue();
@@ -40,7 +40,7 @@ public class LocationMapping {
         }
     }
 
-    String hl7AdtLocationFromCapsuleLocation(String capsuleLocation) {
+    public String hl7AdtLocationFromCapsuleLocation(String capsuleLocation) {
         final Pattern sideroomPattern = Pattern.compile("UCHT03ICURM(\\d+)");
         Matcher sideroomMatcher = sideroomPattern.matcher(capsuleLocation);
         if (sideroomMatcher.find()) {
