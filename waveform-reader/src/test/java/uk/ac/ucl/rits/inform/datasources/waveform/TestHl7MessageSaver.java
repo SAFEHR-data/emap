@@ -197,10 +197,6 @@ class TestHl7MessageSaver {
         }
     }
 
-    private void checkExpectedArchives() {
-
-    }
-
     @Test
     void testNullParam1() {
         assertThrows(NullPointerException.class, () -> {
