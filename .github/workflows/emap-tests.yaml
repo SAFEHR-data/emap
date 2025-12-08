@@ -177,3 +177,4 @@ jobs:
         needs.filter.outputs.waveform-reader == 'false'
     steps:
       - name: Publish Empty Test Report
+        uses: mikepenz/action-junit-report@v2
