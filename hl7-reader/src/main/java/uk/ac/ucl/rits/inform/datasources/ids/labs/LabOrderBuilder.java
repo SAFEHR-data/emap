@@ -11,9 +11,9 @@ import ca.uhn.hl7v2.model.v26.datatype.TX;
 import ca.uhn.hl7v2.model.v26.segment.NTE;
 import ca.uhn.hl7v2.model.v26.segment.OBR;
 import ca.uhn.hl7v2.model.v26.segment.ORC;
+import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.ac.ucl.rits.inform.datasources.ids.HL7Utils;
 import uk.ac.ucl.rits.inform.datasources.ids.exceptions.Hl7InconsistencyException;
 import uk.ac.ucl.rits.inform.datasources.ids.hl7.parser.NotesParser;
 import uk.ac.ucl.rits.inform.datasources.ids.hl7.parser.PatientInfoHl7;
@@ -23,11 +23,11 @@ import uk.ac.ucl.rits.inform.interchange.lab.LabOrderMsg;
 
 import java.time.Instant;
 import java.util.Collection;
-import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static uk.ac.ucl.rits.inform.datasources.ids.HL7Utils.interpretLocalTime;
 
@@ -39,6 +39,7 @@ abstract class LabOrderBuilder {
     private String epicCareOrderNumberObr;
     private final OrderCodingSystem codingSystem;
 
+    @Getter
     private final LabOrderMsg msg = new LabOrderMsg();
 
     /**
@@ -48,13 +49,6 @@ abstract class LabOrderBuilder {
     LabOrderBuilder(String[] allowedOcIds, OrderCodingSystem codingSystem) {
         this.allowedOcIds = Set.of(allowedOcIds);
         this.codingSystem = codingSystem;
-    }
-
-    /**
-     * @return Lab Order Msg.
-     */
-    public LabOrderMsg getMsg() {
-        return msg;
     }
 
     /**
@@ -87,6 +81,9 @@ abstract class LabOrderBuilder {
      */
     void populateOrderInformation(ORC orc, OBR obr) throws DataTypeException, Hl7InconsistencyException {
         // NA/NW/CA/CR/OC/XO
+        if (orc.getOrc1_OrderControl().getValue() == null) {
+            throw new Hl7InconsistencyException("ORC 1 Order Control value is null");
+        }
         msg.setOrderControlId(orc.getOrc1_OrderControl().getValue());
         epicCareOrderNumberOrc = orc.getOrc2_PlacerOrderNumber().getEi1_EntityIdentifier().getValueOrEmpty();
         setLabSpecimenNumber(orc);
@@ -216,9 +213,9 @@ abstract class LabOrderBuilder {
 
         epicCareOrderNumberObr = obr.getObr2_PlacerOrderNumber().getEi1_EntityIdentifier().getValueOrEmpty();
 
-        msg.setStatusChangeTime(HL7Utils.interpretLocalTime(obr.getObr22_ResultsRptStatusChngDateTime()));
+        msg.setStatusChangeTime(interpretLocalTime(obr.getObr22_ResultsRptStatusChngDateTime()));
 
-        String reasonForStudy = List.of(obr.getObr31_ReasonForStudy()).stream()
+        String reasonForStudy = Stream.of(obr.getObr31_ReasonForStudy())
                 .map(CWE::getCwe2_Text)
                 .map(ST::getValueOrEmpty)
                 .collect(Collectors.joining("\n"))
@@ -241,7 +238,7 @@ abstract class LabOrderBuilder {
     }
 
 
-    protected void addMsgIfAllowedOcId(String idsUnid, List<LabOrderMsg> orders) {
+    void addMsgIfAllowedOcId(String idsUnid, Collection<LabOrderMsg> orders) {
         if (msg.getOrderControlId() != null && allowedOcIds.contains(msg.getOrderControlId())) {
             orders.add(msg);
         } else {

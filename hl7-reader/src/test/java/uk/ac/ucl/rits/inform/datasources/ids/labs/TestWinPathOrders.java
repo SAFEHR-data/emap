@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import uk.ac.ucl.rits.inform.datasources.ids.exceptions.Hl7InconsistencyException;
 import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
 import uk.ac.ucl.rits.inform.interchange.OrderCodingSystem;
 import uk.ac.ucl.rits.inform.interchange.lab.LabOrderMsg;
@@ -12,6 +13,7 @@ import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -207,5 +209,13 @@ class TestWinPathOrders {
         assertEquals("Surveillance", order.getQuestions().get("Why is this test being performed"));
         // separated by :-
         assertEquals("?stroke", order.getQuestions().get("Clinical Details"));
+    }
+
+    /**
+     * Null OrderControlId should throw an HL7InconsistencyException
+     */
+    @Test
+    void testNullOrderControlId() {
+        assertThrows(Hl7InconsistencyException.class, () -> labReader.getFirstOrder(FILE_TEMPLATE, "null_order_control_id"));
     }
 }
