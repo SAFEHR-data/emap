@@ -18,6 +18,10 @@ fullLocationString:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
   value: "T42E^T42E BY02^BY02-17"
   status: "SAVE"
+admissionType:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  value: "Matern Ante"
+  status: "SAVE"
 patientBirthDate:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
   status: "SAVE"

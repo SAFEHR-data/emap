@@ -1,26 +1,19 @@
-"@class": "uk.ac.ucl.rits.inform.interchange.adt.DischargePatient"
-recordedDateTime: "2013-02-11T16:00:52Z"
-eventOccurredDateTime: "2013-02-11T15:00:52Z"
+"@class": "uk.ac.ucl.rits.inform.interchange.adt.UpdateSubSpeciality"
+recordedDateTime: "2013-02-11T18:00:52Z"
+eventOccurredDateTime: "2022-04-22T00:00:00Z"
 eventReasonCode: "ADT_EVENT"
 visitNumber: "123412341234"
 nhsNumber: "9999999999"
 sourceSystem: "EPIC"
 mrn: "40800000"
-dischargeDateTime: "2013-02-11T15:00:52Z"
-dischargeDisposition: "Feeling great"
-dischargeLocation: "Home"
-admissionDateTime:
+hospitalService:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
   status: "SAVE"
-  value: "2013-02-11T13:00:52Z"
-admissionType:
-  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
-  status: "SAVE"
-  value: "Matern Ante"
+  value: "Anaes"
 fullLocationString:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
   status: "SAVE"
-  value: "ED^NON COVID MAJORS 05^05-NON COVID MAJORS"
+  value: "1020100166^SDEC BY02^11 SDEC"
 patientClass:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
   status: "SAVE"

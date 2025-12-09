@@ -39,6 +39,27 @@ public interface PlannedMovementRepository extends CrudRepository<PlannedMovemen
             String eventType, HospitalVisit hospitalVisitId, Location plannedLocation, Instant eventDatetime
     );
 
+     /**
+     * Try and find a matching planned movement from a Z99 edit sub speciality message.
+     * <p>
+     * Always find planned location and hospital visit Id, then:
+     * - Messages before the the same event date time
+     * @param hospitalVisitId hospital visit associated with the movement
+     * @param plannedLocation planned location for the movement
+     * @param eventDatetime   the datetime that event was created
+     * @return planned movement entities
+     */
+    @Query("from PlannedMovement "
+            + "where hospitalVisitId = :hospitalVisitId "
+            + "and (locationId = :plannedLocation or (:plannedLocation is null and locationId is null)) "
+            + "and (eventDatetime <= :eventDatetime) "
+            + "order by eventDatetime "
+    )
+    List<PlannedMovement> findMatchingMovementsFromZ99(
+            HospitalVisit hospitalVisitId, Location plannedLocation, Instant eventDatetime
+    );
+
+
     /**
      * Try and find a matching planned movement from a pending adt cancellation message.
      * <p>
