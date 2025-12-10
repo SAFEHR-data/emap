@@ -13,9 +13,6 @@ import uk.ac.ucl.rits.inform.interchange.adt.TransferPatient;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.Random;
 
 public class PatientDetails {
@@ -87,12 +84,6 @@ public class PatientDetails {
     public void clearLastEvent() {
         this.eventDatetime = null;
         this.location = null;
-    }
-
-    private String hl7Datetime(Instant instant) {
-        LocalDateTime localDateTime = instant.atZone(ZoneId.systemDefault()).toLocalDateTime();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
-        return localDateTime.format(formatter);
     }
 
     private void setGenericAdtFields(AdtMessage adtMessage) {
