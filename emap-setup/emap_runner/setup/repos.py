@@ -1,4 +1,5 @@
 import git
+import os
 import shutil
 
 from pathlib import Path
@@ -118,6 +119,9 @@ class Repository:
     @property
     def https_git_url(self) -> str:
         """Generate a https URL. e.g. https://github.com/../emap-setup.git"""
+        gh_token = os.environ.get('GITHUB_TOKEN', False)
+        if gh_token:
+            return f"https://{gh_token}@{self._base_git_url}/{self.name}"
         return f"https://{self._base_git_url}/{self.name}"
 
     @property

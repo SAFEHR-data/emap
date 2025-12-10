@@ -24,6 +24,9 @@ config_path_only_docs = Path(
 config_path_all = Path(
     dirname(abspath(__file__)), "data", "test-global-configuration.yaml"
 )
+config_path_config_dir = Path(
+    dirname(abspath(__file__)), "data", "config"
+)
 
 
 @work_in_tmp_directory(to_copy=None)
@@ -36,14 +39,14 @@ def test_clone_then_clean_repos():
     runner.run()
 
     # Ensure that the cloned directory exists
-    assert exists("emap_documentation")
+    assert exists("internal_emap_documentation")
     assert exists("config")
 
     # and can be cleaned
     runner = EMAPRunner(args=parser.parse_args(["setup", "-c"]), config=config)
     runner.run()
 
-    assert not exists("emap_documentation")
+    assert not exists("internal_emap_documentation")
 
 
 @work_in_tmp_directory(to_copy=None)
@@ -58,7 +61,7 @@ def test_double_clone():
     runner = EMAPRunner(args=parser.parse_args(args), config=config)
     runner.run()
     # Make some un-pushed changes to newly cloned repo
-    file_to_keep = Path('emap_documentation/my_favourite_file.txt')
+    file_to_keep = Path('internal_emap_documentation/my_favourite_file.txt')
     with open(file_to_keep, 'w') as fh:
         fh.write("cheese")
 
@@ -148,6 +151,7 @@ def test_validation_source_arguments_set_correct_runner_attributes(args_list,
         (1, 1, False),
         (2, 1, True),
     ])
+@work_in_tmp_directory(to_copy=[config_path_config_dir])
 def test_validation_timeout(num_trues, timeout_seconds, expect_raises):
     parser = create_parser()
     args = parser.parse_args(["validation", "--use-waveform", "--timeout", str(timeout_seconds / 3600)])

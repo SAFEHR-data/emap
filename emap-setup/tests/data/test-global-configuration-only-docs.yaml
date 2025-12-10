@@ -6,7 +6,7 @@ EMAP_PROJECT_NAME:
   only_emap_setup
 
 repositories:
-  emap_documentation:
+  internal_emap_documentation:
     branch:  main
 # For testing outside the GAE, you can enable a fake UDS
 fake_uds:

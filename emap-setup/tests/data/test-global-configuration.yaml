@@ -7,12 +7,11 @@ EMAP_PROJECT_NAME:
   my_project_name
 
 repositories:
-  InformDB:
-    branch:  develop
-  hl7-vitals:
-    branch:  main
-    repo_name: core
+  emap:
+    branch: develop
+
   hoover:
+    branch: main
 
 # Configuration data for the rabbitmq instance used by Spring in the pipeline
 
@@ -42,23 +41,11 @@ dates:
   start: 2020-06-04T00:00:00.00Z
   end:
 
-informdb:
-  common:
-    UDS_JDBC_URL: jdbc:postgresql://host.docker.internal:5432/ids
-  core:
-    UDS_SCHEMA: inform_schema
-    UDS_USERNAME: someuser
-    UDS_PASSWORD: redacted
-  OMOP-ETL:
-    UDS_SCHEMA: inform_schema
-    UDS_USERNAME: someuser_omop
-    UDS_PASSWORD: redacted_omop
-    UDS_DDL_AUTO: update
-    INFORM_INIT_MODE: always
-  hl7-vitals:
-    UDS_SCHEMA: inform_schema_for_branch
-    UDS_USERNAME: someuseraaa
-    UDS_PASSWORD: redactedaaa
+common:
+  UDS_JDBC_URL: jdbc:postgresql://host.docker.internal:5432/ids
+  UDS_SCHEMA: inform_schema
+  UDS_USERNAME: someuser
+  UDS_PASSWORD: redacted
 
 # For testing outside the GAE, you can enable a fake UDS
 fake_uds:

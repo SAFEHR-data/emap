@@ -8,16 +8,16 @@ import uk.ac.ucl.rits.inform.interchange.EmapOperationMessageProcessor;
 import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
 
 /**
- * Pending transfer event.
- * Implemented: ADT A15 (Pending transfer)
- * Not implemented: ADT A14 (Pending admit), ADT A16 (Pending discharge)
- * @author Stef Piatek
+ * Pending Dishcharge event.
+ * Implemented: ADT A16 (Pending Discharge)
+ * Not implemented: ADT A14 (Pending admit)
+ * @author Steve Thompson
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
-public class PendingTransfer extends AdtMessage implements PendingEvent {
-    private PendingType pendingEventType = PendingType.TRANSFER;
+public class PendingDischarge extends AdtMessage implements PendingEvent {
+    private PendingType pendingEventType = PendingType.DISCHARGE;
     private InterchangeValue<String> pendingDestination = InterchangeValue.unknown();
     private InterchangeValue<String> hospitalService = InterchangeValue.unknown();
 

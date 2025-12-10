@@ -136,6 +136,12 @@
           <artifactId>jackson-dataformat-csv</artifactId>
       </dependency>
 
+    <dependency>
+      <groupId>uk.ac.ucl.rits.inform</groupId>
+      <artifactId>emap-utils</artifactId>
+      <version>2.7</version>
+      <scope>compile</scope>
+    </dependency>
 
   </dependencies>
   <build>

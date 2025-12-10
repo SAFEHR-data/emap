@@ -1,7 +1,7 @@
-"@class": "uk.ac.ucl.rits.inform.interchange.adt.PendingTransfer"
+"@class": "uk.ac.ucl.rits.inform.interchange.adt.PendingDischarge"
 recordedDateTime: "2022-04-21T23:23:00Z"
 eventOccurredDateTime: "2022-04-21T23:22:58Z"
-eventReasonCode: "PNDTRANSFER"
+eventReasonCode: "PNDDISCHARGE"
 visitNumber: "123412341234"
 nhsNumber: "9999999999"
 sourceSystem: "EPIC"
@@ -12,8 +12,9 @@ fullLocationString:
   value: "ED^COVID MAJORS 16^16-COVID MAJORS"
 pendingDestination:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
-  status: "SAVE"
-  value: "1020100166^SDEC BY02^11 SDEC"
+  status: "IGNORE"
+  value: null
+
 patientBirthDate:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
   status: "SAVE"
@@ -54,7 +55,3 @@ modeOfArrival:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
   status: "SAVE"
   value: "Walk-in"
-hospitalService:
-  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
-  status: "SAVE"
-  value: "Head and Neck - OMFS"

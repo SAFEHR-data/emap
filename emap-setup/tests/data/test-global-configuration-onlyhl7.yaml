@@ -6,8 +6,8 @@ EMAP_PROJECT_NAME:
   my_project_name
 
 repositories:
-  core:
-    branch:  main
+  emap:
+    branch:  develop
 
 rabbitmq:
   SPRING_RABBITMQ_HOST: rabbitmq
@@ -34,7 +34,7 @@ dates:
 common:
   UDS_JDBC_URL: jdbc:postgresql://host.docker.internal:5432/ids
 
-core:
+uds:
   UDS_SCHEMA: inform_schema
   UDS_USERNAME: someuser
   UDS_PASSWORD: redacted

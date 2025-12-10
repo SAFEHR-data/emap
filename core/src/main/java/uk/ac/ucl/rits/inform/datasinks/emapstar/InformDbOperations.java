@@ -26,11 +26,13 @@ import uk.ac.ucl.rits.inform.interchange.PatientInfection;
 import uk.ac.ucl.rits.inform.interchange.PatientProblem;
 import uk.ac.ucl.rits.inform.interchange.ResearchOptOut;
 import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
+import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingDischarge;
 import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.ChangePatientIdentifiers;
 import uk.ac.ucl.rits.inform.interchange.adt.DeletePersonInformation;
 import uk.ac.ucl.rits.inform.interchange.adt.MergePatient;
 import uk.ac.ucl.rits.inform.interchange.adt.MoveVisitInformation;
+import uk.ac.ucl.rits.inform.interchange.adt.PendingDischarge;
 import uk.ac.ucl.rits.inform.interchange.adt.PendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.SwapLocations;
 import uk.ac.ucl.rits.inform.interchange.form.FormMetadataMsg;
@@ -176,6 +178,27 @@ public class InformDbOperations implements EmapOperationMessageProcessor {
         Instant storedFrom = Instant.now();
         adtProcessor.swapLocations(msg, storedFrom);
     }
+
+    /**
+     * @param msg the PendingDischarge message to process
+     */
+    @Override
+    @Transactional
+    public void processMessage(PendingDischarge msg) throws EmapOperationMessageProcessingException {
+        Instant storedFrom = Instant.now();
+        adtProcessor.processPendingAdt(msg, storedFrom);
+    }
+
+    /**
+     * @param msg the CancelPendingDischarge message to process
+     */
+    @Override
+    @Transactional
+    public void processMessage(CancelPendingDischarge msg) throws EmapOperationMessageProcessingException {
+        Instant storedFrom = Instant.now();
+        adtProcessor.processPendingAdt(msg, storedFrom);
+    }
+
 
     /**
      * @param msg the PendingTransfer message to process

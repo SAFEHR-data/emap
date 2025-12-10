@@ -29,6 +29,7 @@ import uk.ac.ucl.rits.inform.interchange.adt.AdtCancellation;
 import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
 import uk.ac.ucl.rits.inform.interchange.adt.CancelAdmitPatient;
 import uk.ac.ucl.rits.inform.interchange.adt.CancelDischargePatient;
+import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingDischarge;
 import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.CancelTransferPatient;
 import uk.ac.ucl.rits.inform.interchange.adt.ChangePatientIdentifiers;
@@ -39,6 +40,7 @@ import uk.ac.ucl.rits.inform.interchange.adt.MergePatient;
 import uk.ac.ucl.rits.inform.interchange.adt.MoveVisitInformation;
 import uk.ac.ucl.rits.inform.interchange.adt.PatientClass;
 import uk.ac.ucl.rits.inform.interchange.adt.PendingEvent;
+import uk.ac.ucl.rits.inform.interchange.adt.PendingDischarge;
 import uk.ac.ucl.rits.inform.interchange.adt.PendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.PreviousIdentifiers;
 import uk.ac.ucl.rits.inform.interchange.adt.RegisterPatient;
@@ -251,10 +253,20 @@ public class AdtMessageFactory {
             case "A15":
                 PendingTransfer pendingTransfer = new PendingTransfer();
                 setPendingDestination(pv1Wrap, pendingTransfer);
+                setHospitalService(pv1Wrap, pendingTransfer);
                 msg = pendingTransfer;
+                break;
+            case "A16":
+                PendingDischarge pendingDischargeMsg = new PendingDischarge();
+                msg = pendingDischargeMsg;
                 break;
             case "A17":
                 msg = buildSwapLocations(hl7Msg, pv1Wrap);
+                break;
+            case "A25":
+                CancelPendingDischarge cancelPendingDischargeMsg = new CancelPendingDischarge();
+                setCancellationDatetime(evn, cancelPendingDischargeMsg);
+                msg = cancelPendingDischargeMsg;
                 break;
             case "A26":
                 CancelPendingTransfer cancelPendingTransfer = new CancelPendingTransfer();
@@ -447,5 +459,10 @@ public class AdtMessageFactory {
     private void setPendingDestination(PV1Wrap pv1Wrap, PendingEvent pendingEvent) {
         String pendingLocation = pv1Wrap.getPendingLocation();
         pendingEvent.setPendingDestination(InterchangeValue.buildFromHl7(pendingLocation));
+    }
+
+    private void setHospitalService(PV1Wrap pv1Wrap, PendingEvent pendingEvent) throws HL7Exception {
+        String hospitalService = pv1Wrap.getHospitalService();
+        pendingEvent.setHospitalService(InterchangeValue.buildFromHl7(hospitalService));
     }
 }
