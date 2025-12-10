@@ -16,7 +16,7 @@ import java.util.Random;
 public class PatientLocationModel {
     private final Logger logger = LoggerFactory.getLogger(PatientLocationModel.class.getName());
     private final List<String> allPossibleLocations;
-    private final Random random = new Random(234);
+    private final Random random;
     private final LocationMapping locationMapping = new LocationMapping();
 
     // patients who we have transferred out but we might want to transfer back in again
@@ -32,7 +32,9 @@ public class PatientLocationModel {
      */
     public PatientLocationModel(final List<String> allPossibleLocations, Instant nowTime) {
         this.allPossibleLocations = new ArrayList<>(allPossibleLocations);
-        allPossibleLocations.forEach(location -> locationToPatient.put(location, new PatientDetails(nowTime)));
+        this.random = new Random(nowTime.hashCode());
+        allPossibleLocations.forEach(location -> locationToPatient.put(location, new PatientDetails(nowTime, random)));
+        // same time generates same data (ish)
     }
 
     /**
@@ -116,7 +118,7 @@ public class PatientLocationModel {
                         logger.info("ADT: Move patient into location {} from other hospital location", thisLocation);
                     }
                 } else if (random.nextFloat() < probOfTransferIn) {
-                    PatientDetails newPatient = new PatientDetails(nowTime);
+                    PatientDetails newPatient = new PatientDetails(nowTime, random);
                     newPatient.setEventDatetime(nowTime);
                     newPatient.setLocation(thisLocation);
                     locationToPatient.put(thisLocation, newPatient);

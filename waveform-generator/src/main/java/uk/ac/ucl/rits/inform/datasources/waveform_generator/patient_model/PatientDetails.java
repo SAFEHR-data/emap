@@ -21,7 +21,7 @@ import java.util.Random;
 public class PatientDetails {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     // try to get the same numbers each time
-    private final Random random = new Random(123);
+    private final Random random;
 
     // some values are just opaque strings because we don't need to do any processing on them
     @Getter
@@ -59,10 +59,13 @@ public class PatientDetails {
 
     /**
      * Create new synthetic patient.
+     *
      * @param admitDatetime admit time to use for patient
+     * @param random random object to use
      */
-    public PatientDetails(Instant admitDatetime) {
+    public PatientDetails(Instant admitDatetime, Random random) {
         this.admitDatetime = admitDatetime;
+        this.random = random;
         this.dob = LocalDate.parse("1980-01-01");
         this.mrn = makeFakeMrn();
         this.csn = makeFakeCsn();
