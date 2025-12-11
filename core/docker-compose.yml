@@ -45,7 +45,7 @@ services:
       depends_on:
         rabbitmq:
           condition: service_healthy
-      restart: "no"
+      restart: on-failure:3
       entrypoint: /bin/bash
       command: /definitions-init.sh
   cassandra:
