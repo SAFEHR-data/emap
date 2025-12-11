@@ -12,7 +12,7 @@ services:
       - ../../config/core-config-envs
     logging:
       driver: "json-file"
-    restart: on-failure
+    restart: unless-stopped
     depends_on:
       glowroot-central:
         condition: service_started
@@ -25,7 +25,7 @@ services:
     ports:
       - "${RABBITMQ_PORT}:5672"
       - "${RABBITMQ_ADMIN_PORT}:15672"
-    restart: on-failure
+    restart: unless-stopped
     healthcheck:
       # rabbitmq server crashes if any rabbitmq-diagnostics cmd is run very soon
       # after starting, so can't check too aggressively here
@@ -67,6 +67,7 @@ services:
         - portal-build-secrets
     env_file:
       - ../../config/portal-config-envs
+    restart: unless-stopped
     ports:
       - "${PORTAL_PORT}:80"
 

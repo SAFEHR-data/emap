@@ -16,7 +16,7 @@ services:
       - "7777:7777"
     logging:
       driver: "json-file"
-    restart: "no"
+    restart: on-failure
     volumes:
       - ../../waveform-test-data:/waveform-test-data:ro
     depends_on:

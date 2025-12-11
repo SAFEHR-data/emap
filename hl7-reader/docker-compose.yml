@@ -12,7 +12,9 @@ services:
       - ../../config/hl7-reader-config-envs
     logging:
       driver: "json-file"
-    restart: "no"
+    # This service can legitimately exit 0 when it reaches
+    # the end of its configured run, so shouldn't restart in that case.
+    restart: on-failure
     depends_on:
       # Uses services from core, orchestrate using the EMAP setup package
       - glowroot-central

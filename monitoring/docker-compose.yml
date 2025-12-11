@@ -12,4 +12,4 @@ services:
       - ../../config/streamlit-config-envs
     logging:
       driver: "json-file"
-    restart: "no"
+    restart: unless-stopped
