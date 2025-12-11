@@ -167,3 +167,14 @@ jobs:
         if: success() || failure()
         with:
           report_paths: '**/target/surefire-reports/TEST-*.xml'
+  no-code-change-test-report:
+    needs: [filter]
+    runs-on: ubuntu-latest
+    if: needs.filter.outputs.emap-star == 'false' &&
+        needs.filter.outputs.emap-interchange == 'false' &&
+        needs.filter.outputs.core == 'false' &&
+        needs.filter.outputs.hl7-reader == 'false' &&
+        needs.filter.outputs.waveform-reader == 'false'
+    steps:
+      - name: Publish Empty Test Report
+        uses: mikepenz/action-junit-report@v2

@@ -127,7 +127,7 @@ normal flow of messages will happen by about 9am.
  
 Data being added to the database must be checked to ensure that references to the same patient or the same hospital 
 visit are correctly recorded. Patients arriving at the hospital are allocated an MRN (medical record number) and in 
-some cases a CSN (contact serial number, or visit number, denoted Hospital Visit in Figure 3). Much of the information 
+some cases a CSN (contact serial number, or visit number, stored as encounter in the Hospital Visit table, see Figure 3). Much of the information 
 within the database is linked to these two numbers, or an NHS number on the occasion where there is no MRN or CSN 
 available. Some things, such as Lab reports, have their own identifiers and our processing enables these to be related 
 to the appropriate patient. 
