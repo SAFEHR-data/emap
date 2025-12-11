@@ -5,6 +5,7 @@ package uk.ac.ucl.rits.inform.interchange.springconfig;
  *
  * @author Jeremy Stein
  */
+@Deprecated(since = "2025-11", forRemoval = true)
 public enum EmapDataSource {
     /**
      * The message queue from the HL7 (IDS) feed.

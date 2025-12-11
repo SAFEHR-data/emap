@@ -18,15 +18,14 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 public class SchedulingConfig {
     private final Logger logger = LoggerFactory.getLogger(SchedulingConfig.class);
 
-    @Value("${test.reader.scheduler_pool_size:2}")
+    @Value("${test.reader.scheduler_pool_size:4}")
     private int schedulerTaskPoolSize;
 
     /**
      * By default, Spring Integration shares the same task scheduler with any methods you have marked
      * with @Scheduled. And it seems to tie up its thread for a long time, resulting in your scheduled
      * tasks being starved of places to run.
-     * I have wasted enough time trying to get them to use two
-     * separate schedulers, so let's just use one sufficiently large scheduler. Ie. *at least* two threads.
+     * To get them to use separate schedulers, see what I've done in {@link Hl7ListenerConfig}.
      * @return custom task scheduler
      */
     @Bean
@@ -36,7 +35,7 @@ public class SchedulingConfig {
         threadPoolTaskScheduler.setErrorHandler(e -> {
             logger.error("Exception in waveform-reader scheduled task. ", e);
         });
-        threadPoolTaskScheduler.setThreadNamePrefix("Scheduler");
+        threadPoolTaskScheduler.setThreadNamePrefix("DefaultScheduler-");
         threadPoolTaskScheduler.initialize();
         return threadPoolTaskScheduler;
     }

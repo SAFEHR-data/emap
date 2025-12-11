@@ -17,8 +17,11 @@ services:
     logging:
       driver: "json-file"
     restart: "no"
+    # we hold a lot in memory that needs to be gracefully flushed
+    stop_grace_period: 5m
     volumes:
       - ../../waveform-test-data:/waveform-test-data:ro
+      - ../../waveform-saved-messages:/waveform-saved-messages
     depends_on:
       # Uses services from core, orchestrate using the EMAP setup package
       glowroot-central:

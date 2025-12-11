@@ -136,6 +136,13 @@
           <artifactId>jackson-dataformat-csv</artifactId>
       </dependency>
 
+    <!-- Apache Commons Compress for tar.bz2 creation -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-compress</artifactId>
+      <version>1.24.0</version>
+    </dependency>
+
     <dependency>
       <groupId>uk.ac.ucl.rits.inform</groupId>
       <artifactId>emap-utils</artifactId>

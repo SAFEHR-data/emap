@@ -1,6 +1,7 @@
 package uk.ac.ucl.rits.inform.datasources.waveform;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -15,6 +16,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,6 +25,7 @@ import java.util.Random;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.ac.ucl.rits.inform.datasources.waveform.Utils.readHl7FromResource;
 
 @SpringJUnitConfig
@@ -87,5 +90,4 @@ class TestHl7FromFile {
         }
         ostr.close();
     }
-
 }

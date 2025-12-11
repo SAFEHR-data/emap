@@ -1,5 +1,6 @@
 package uk.ac.ucl.rits.inform.datasources.waveform.hl7parse;
 
+import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +28,12 @@ public class Hl7Message {
     private final List<Hl7Segment> segments = new ArrayList<>();
 
     /**
+     * The original HL7 message.
+     */
+    @Getter
+    private final String messageAsStr;
+
+    /**
      * All segments, nested according to certain rules (not all HL7 formats are implemented).
      * Insert order is preserved.
      */
@@ -50,9 +57,10 @@ public class Hl7Message {
      * @throws Hl7ParseException if it can't be parsed
      */
     public Hl7Message(String messageAsStr) throws Hl7ParseException {
+        this.messageAsStr = messageAsStr;
         String[] segmentsAsStr = messageAsStr.split("\r");
         for (String seg: segmentsAsStr) {
-            this.segments.add(new Hl7Segment(seg));
+            this.segments.add(new Hl7Segment(this, seg));
         }
         Map<String, Hl7Segment> mostRecentSegmentOfType = new HashMap<>();
         for (Hl7Segment seg : this.segments) {
@@ -64,7 +72,7 @@ public class Hl7Message {
             if (parentSegmentName != null) {
                 Hl7Segment parentSegment = mostRecentSegmentOfType.get(parentSegmentName);
                 if (parentSegment == null) {
-                    throw new Hl7ParseException(String.format(
+                    throw new Hl7ParseException(messageAsStr, String.format(
                             "Required parent %s for segment %s not found",
                             parentSegmentName, seg.getSegmentName()));
                 }
@@ -97,7 +105,7 @@ public class Hl7Message {
     private Hl7Segment getSingleHl7Segment(String segmentName, int field1Index) throws Hl7ParseException {
         List<Hl7Segment> seg = getSegments(segmentName);
         if (seg.size() != 1) {
-            throw new Hl7ParseException(
+            throw new Hl7ParseException(messageAsStr,
                     String.format("getField(%s, %d) can only be called on single segments seg, got size %d",
                             segmentName, field1Index, seg.size()));
         }
