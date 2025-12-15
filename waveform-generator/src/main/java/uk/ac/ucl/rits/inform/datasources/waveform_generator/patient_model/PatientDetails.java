@@ -27,6 +27,8 @@ public class PatientDetails {
     private final String mrn;
     @Getter
     private final String csn;
+    @Getter
+    private final String nhsNumber;
     // need to track admit time as non-admit HL7 ADT messages require it
     @Getter
     private final Instant admitDatetime;
@@ -66,6 +68,12 @@ public class PatientDetails {
         this.dob = LocalDate.parse("1980-01-01");
         this.mrn = makeFakeMrn();
         this.csn = makeFakeCsn();
+        this.nhsNumber = makeFakeNhsNumber();
+    }
+
+    private String makeFakeNhsNumber() {
+        // Synthetic ones start with 999. Don't bother getting the checksum right
+        return String.format("FAKE999%07d", random.nextInt(10_000_000));
     }
 
     private String makeFakeMrn() {
@@ -95,7 +103,7 @@ public class PatientDetails {
         adtMessage.setPatientBirthDate(new InterchangeValue<>(getDob()));
         adtMessage.setVisitNumber(getCsn());
         adtMessage.setRecordedDateTime(getEventDatetime());
-        adtMessage.setNhsNumber("111111111");
+        adtMessage.setNhsNumber(getNhsNumber());
 
         logger.info("Generic ADT Fields: {}", adtMessage);
     }
