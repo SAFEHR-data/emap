@@ -223,6 +223,18 @@ vim global-configuration.yaml
 emap setup -g
 ```
 
+If you enabled any services which mount a host directory, then it's easier
+to create that directory *before* you bring any services up.
+
+Eg. for the waveform-reader:
+```bash
+mkdir /gae/emap-instance-name/waveform-saved-messages
+```
+Although docker compose will create any missing host directories, it
+will use the wrong permissions and subsequently written files will need
+fixing up before they can be read by normal users.
+See Slab for the required chmod/chown/setfacl trick if you did this.
+
 ### Bringing up an instance
 ```bash
 emap docker up -d
