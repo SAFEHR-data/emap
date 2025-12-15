@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import uk.ac.ucl.rits.inform.datasources.waveform.LocationMapping;
 import uk.ac.ucl.rits.inform.datasources.waveform_generator.patient_model.PatientLocationModel;
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessage;
+import uk.ac.ucl.rits.inform.interchange.adt.AdmitPatient;
 import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
 import uk.ac.ucl.rits.inform.interchange.messaging.Publisher;
 
@@ -61,6 +62,9 @@ public class Hl7Generator {
      * Where we are up to in generating data (observation time).
      */
     private Instant progressDatetime;
+
+    private boolean haveInitialised = false;
+
     /**
      * @return Where we want to be up to in generating data (observation time).
      * This value is used to generate data at the correct rate.
@@ -122,6 +126,13 @@ public class Hl7Generator {
      */
     @Scheduled(fixedDelay = 1000)
     public void generateMessages() throws IOException {
+        if (!haveInitialised) {
+            haveInitialised = true;
+            List<AdmitPatient> initialAdmits = patientLocationModel.getInitialLocations();
+            logger.info("First scheduled run, perform initial admits: {} messages", initialAdmits.size());
+            submitBatch(initialAdmits);
+        }
+
         var start = Instant.now();
         // The warp factor is the main mechanism used to control how much data to put in now.
         // Although the scheduling interval and chunk size/count will affect what warp factor is achievable.
@@ -346,7 +357,7 @@ public class Hl7Generator {
         return waveformMsgs;
     }
 
-    private void submitBatch(List<AdtMessage> adtMsgs) {
+    private void submitBatch(List<? extends AdtMessage> adtMsgs) {
         List<ImmutablePair<EmapOperationMessage, String>> batch = new ArrayList<>();
         int i = 0;
         for (var adt: adtMsgs) {

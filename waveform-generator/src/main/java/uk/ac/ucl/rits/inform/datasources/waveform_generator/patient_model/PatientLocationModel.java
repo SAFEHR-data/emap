@@ -3,6 +3,7 @@ package uk.ac.ucl.rits.inform.datasources.waveform_generator.patient_model;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.ac.ucl.rits.inform.datasources.waveform.LocationMapping;
+import uk.ac.ucl.rits.inform.interchange.adt.AdmitPatient;
 import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
 
 import java.time.Instant;
@@ -35,6 +36,23 @@ public class PatientLocationModel {
         this.random = new Random(nowTime.hashCode());
         allPossibleLocations.forEach(location -> locationToPatient.put(location, new PatientDetails(nowTime, random)));
         // same time generates same data (ish)
+    }
+
+    /**
+     * Make initial set of admit messages, as if all the patients in locationToPatient have just been admitted.
+     * @return one admit message per existing patient
+     */
+    public List<AdmitPatient> getInitialLocations() {
+        List<AdmitPatient> admitMsgs = new ArrayList<>();
+        locationToPatient.entrySet().stream().forEach(entry -> {
+            PatientDetails initialPatient = entry.getValue();
+            String location = entry.getKey();
+            initialPatient.setEventDatetime(initialPatient.getAdmitDatetime());
+            logger.info("Initial stats: {}, {}, {}", location, initialPatient.getAdmitDatetime(), initialPatient.getEventDatetime());
+            initialPatient.setLocation(location);
+            admitMsgs.add(initialPatient.makeAdmitMessage());
+        });
+        return admitMsgs;
     }
 
     /**
