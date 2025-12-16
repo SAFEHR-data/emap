@@ -124,7 +124,6 @@ Config tips:
 - All config must stay local and not be committed to git.
 
 ### Clone the other repositories
-
 > [!NOTE]
 > Since moving to the monorepo, the importance of the `emap` script in managing repos
 > has decreased. Especially during development, you may just want to manually manipulate your git repos.
