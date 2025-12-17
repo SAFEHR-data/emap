@@ -124,7 +124,6 @@ Config tips:
 - All config must stay local and not be committed to git.
 
 ### Clone the other repositories
-
 > [!NOTE]
 > Since moving to the monorepo, the importance of the `emap` script in managing repos
 > has decreased. Especially during development, you may just want to manually manipulate your git repos.
@@ -222,6 +221,25 @@ vim global-configuration.yaml
 # updates the files in config/ from the global config file
 emap setup -g
 ```
+
+### Create host mounted directories
+
+> [!NOTE]
+> GAE only.
+
+If you enabled any services which mount a host directory, then it's easier
+to create that directory *before* you bring any services up.
+
+Eg. for the waveform-reader:
+```bash
+mkdir /gae/emap-instance-name/waveform-saved-messages
+```
+Although docker compose will create any missing host directories, it
+will use the wrong permissions and subsequently written files will need
+fixing up before they can be read by normal users.
+See Slab for the
+[required chmod/chown/setfacl trick](https://uclh.slab.com/posts/shared-virtual-python-environments-with-uv-u7pa2fv4#hpkxd-per-gae-setup-tasks)
+if you did this.
 
 ### Bringing up an instance
 ```bash
