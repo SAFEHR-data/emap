@@ -89,7 +89,7 @@ public class PatientLocationModel {
                 logger.info("ADT: Discharge from location {} to external", thisLocation);
             } else if (random.nextFloat() < probOfTransferOut) {
                 // discharge from ICU, with possibility of coming back
-                thisPatient.setLocation("SomewhereNotIcu");
+                thisPatient.setLocation(PatientDetails.SOMEWHERE_NOT_ICU);
                 thisPatient.setEventDatetime(nowTime);
                 transferList.add(thisPatient);
                 locationToPatient.put(thisLocation, null);

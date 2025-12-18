@@ -17,6 +17,11 @@ import java.util.Random;
 
 public class PatientDetails {
     private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    // some special values that we allow to be unmappable without it being an error
+    static final String UNKNOWN_ADT_LOCATION = "UNKNOWN_ADT_LOCATION";
+    static final String SOMEWHERE_NOT_ICU = "SOMEWHERE_NOT_ICU";
+
     // try to get the same numbers each time
     private final Random random;
 
@@ -50,10 +55,22 @@ public class PatientDetails {
      */
     public String getAdtLocation() {
         if (location == null) {
+            logger.error("Null location for patient with CSN {}", csn);
             // just use something, it doesn't really matter
-            return "UNKNOWN_ADT_LOCATION";
+            return UNKNOWN_ADT_LOCATION;
         }
-        return locationMapping.hl7AdtLocationFromCapsuleLocation(location);
+        String hl7AdtLocation =  locationMapping.hl7AdtLocationFromCapsuleLocation(location);
+        if (hl7AdtLocation != null) {
+            // successful map
+            return hl7AdtLocation;
+        } else {
+            // pass it through unmapped in certain special cases, not an error
+            if (location.equals(SOMEWHERE_NOT_ICU)) {
+                return location;
+            }
+        }
+        logger.error("Unmappable location {} for CSN {}", location, csn);
+        return null;
     }
 
     /**
