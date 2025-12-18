@@ -139,6 +139,7 @@ public class PatientDetails {
 
     /**
      * Interpret this set of patient details as if a discharge had just happened.
+     * By discharge, here we mean a discharge outside the hospital, not to return.
      * @return a discharge interchange message representing the discharge
      */
     public DischargePatient makeDischargeMessage() {
@@ -146,7 +147,11 @@ public class PatientDetails {
         setGenericAdtFields(disch);
 
         disch.setAdmissionDateTime(new InterchangeValue<>(getAdmitDatetime()));
-        disch.setDischargeLocation(getLocation());
+        logger.info("Discharge location for {}: {} ({})", getCsn(), getAdtLocation(), getLocation());
+        disch.setPreviousLocationString(new InterchangeValue<>(getAdtLocation()));
+        disch.setFullLocationString(new InterchangeValue<>(getAdtLocation()));
+        // they're not coming back, so location doesn't matter
+        disch.setDischargeLocation("home");
         disch.setDischargeDateTime(getEventDatetime());
         return disch;
     }
