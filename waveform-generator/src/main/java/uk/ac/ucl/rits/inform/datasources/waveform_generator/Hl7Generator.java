@@ -10,6 +10,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import uk.ac.ucl.rits.inform.datasources.waveform.LocationMapping;
+import uk.ac.ucl.rits.inform.datasources.waveform_generator.patient_model.PatientLocationModel;
+import uk.ac.ucl.rits.inform.interchange.EmapOperationMessage;
+import uk.ac.ucl.rits.inform.interchange.adt.AdmitPatient;
+import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
+import uk.ac.ucl.rits.inform.interchange.messaging.Publisher;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
@@ -29,6 +35,8 @@ import java.util.stream.Collectors;
 @Component
 public class Hl7Generator {
     private final Logger logger = LoggerFactory.getLogger(Hl7Generator.class);
+
+    private final Publisher publisher;
 
     @Value("${waveform.synthetic.num_patients:30}")
     private int numPatients;
@@ -54,6 +62,9 @@ public class Hl7Generator {
      * Where we are up to in generating data (observation time).
      */
     private Instant progressDatetime;
+
+    private boolean haveInitialised = false;
+
     /**
      * @return Where we want to be up to in generating data (observation time).
      * This value is used to generate data at the correct rate.
@@ -65,6 +76,8 @@ public class Hl7Generator {
                 (monotonicNowNanos - monotonicStartTimeNanos) * warpFactor,
                 ChronoUnit.NANOS);
     }
+
+    private final LocationMapping locationMapping = new LocationMapping();
 
     // system time (not observation time) when we started running
     private Long monotonicStartTimeNanos = null;
@@ -90,15 +103,19 @@ public class Hl7Generator {
         } else {
             progressDatetime = startDatetime;
         }
+        // need to initialise with the fact time so ADT correlates with waveform times
+        patientLocationModel = new PatientLocationModel(possibleLocations, progressDatetime);
     }
 
     private final Hl7TcpClientFactory hl7TcpClientFactory;
 
     /**
      * @param hl7TcpClientFactory for sending generated messages
+     * @param publisher for sending synthetic ADT messages
      */
-    public Hl7Generator(Hl7TcpClientFactory hl7TcpClientFactory) {
+    public Hl7Generator(Hl7TcpClientFactory hl7TcpClientFactory, Publisher publisher) {
         this.hl7TcpClientFactory = hl7TcpClientFactory;
+        this.publisher = publisher;
     }
 
 
@@ -109,6 +126,13 @@ public class Hl7Generator {
      */
     @Scheduled(fixedDelay = 1000)
     public void generateMessages() throws IOException {
+        if (!haveInitialised) {
+            haveInitialised = true;
+            List<AdmitPatient> initialAdmits = patientLocationModel.getInitialLocations();
+            logger.info("First scheduled run, perform initial admits: {} messages", initialAdmits.size());
+            submitBatch(initialAdmits);
+        }
+
         var start = Instant.now();
         // The warp factor is the main mechanism used to control how much data to put in now.
         // Although the scheduling interval and chunk size/count will affect what warp factor is achievable.
@@ -196,7 +220,6 @@ public class Hl7Generator {
         parameters.put("obsDatetime", obsDatetime);
         parameters.put("messageDatetime", messageDatetimeStr);
         parameters.put("messageId", messageId);
-
         StringSubstitutor stringSubstitutor = new StringSubstitutor(parameters);
         StringBuilder obrMsg = new StringBuilder(stringSubstitutor.replace(templateStr));
         for (int obxI = 0; obxI < valuesByStreamId.size(); obxI++) {
@@ -278,10 +301,12 @@ public class Hl7Generator {
             "UCHT03ICURM01", "UCHT03ICURM02", "UCHT03ICURM03", "UCHT03ICURM04", "UCHT03ICURM05", "UCHT03ICURM06",
             "UCHT03ICURM07", "UCHT03ICURM08", "UCHT03ICURM09", "UCHT03ICURM10", "UCHT03ICURM32",
             "UCHT03ICUBED11", "UCHT03ICUBED12", "UCHT03ICUBED14", "UCHT03ICUBED15", "UCHT03ICUBED16", "UCHT03ICUBED17",
-            "UCHT03ICUBED18", "UCHT03ICUBED19", "UCHT03ICUBED20", "UCHT03ICUBED21", "UCHT03ICUBED23", "UCHT03ICUBED24",
-            "UCHT03ICUBED25", "UCHT03ICUBED26", "UCHT03ICUBED27", "UCHT03ICUBED28", "UCHT03ICUBED29", "UCHT03ICUBED30",
-            "UCHT03ICUBED31", "UCHT03ICUBED32", "UCHT03ICUBED33", "UCHT03ICUBED34", "UCHT03ICUBED35", "UCHT03ICUBED36"
+            "UCHT03ICUBED18", "UCHT03ICUBED19", "UCHT03ICUBED20", "UCHT03ICUBED21", "UCHT03ICUBED22", "UCHT03ICUBED23",
+            "UCHT03ICUBED24", "UCHT03ICUBED25", "UCHT03ICUBED26", "UCHT03ICUBED27", "UCHT03ICUBED28", "UCHT03ICUBED29",
+            "UCHT03ICUBED30", "UCHT03ICUBED31", "UCHT03ICUBED33", "UCHT03ICUBED34", "UCHT03ICUBED35", "UCHT03ICUBED36"
             );
+
+    private PatientLocationModel patientLocationModel = null;
 
     /**
      * Generate synthetic waveform data for numPatients patients to cover a period of
@@ -299,8 +324,16 @@ public class Hl7Generator {
                 new SyntheticStream("52912", 50, 0.3, 5), // airway volume
                 new SyntheticStream("27", 300, 1.2, 10) // ECG
         );
+        List<AdtMessage> locationChangeMessages = patientLocationModel.makeModifications(startTime);
+        submitBatch(locationChangeMessages);
+
+        List<String> empties = new ArrayList<>();
         for (int p = 0; p < numPatients; p++) {
-            var location = possibleLocations.get(p);
+            String location = possibleLocations.get(p);
+            if (patientLocationModel.getPatientForLocation(location) == null) {
+                empties.add(location);
+                continue;
+            }
             int sizeBefore = waveformMsgs.size();
             // each bed has a slightly different frequency
             double frequencyFactor =  0.95 + 0.1 * p / possibleLocations.size();
@@ -317,10 +350,32 @@ public class Hl7Generator {
                         stream.baselineSignalFrequency * frequencyFactor, numMillis, startTime, stream.maxSamplesPerMessage));
             }
             int sizeAfter = waveformMsgs.size();
-            logger.debug("Patient {} (location {}), generated {} messages", p, location, sizeAfter - sizeBefore);
+            logger.debug("Patient {} (location {}), generated {} messages (incl ADT)", p, location, sizeAfter - sizeBefore);
         }
+        logger.info("Not generating data for empty locations: {}", empties);
 
         return waveformMsgs;
+    }
+
+    private void submitBatch(List<? extends AdtMessage> adtMsgs) {
+        List<ImmutablePair<EmapOperationMessage, String>> batch = new ArrayList<>();
+        int i = 0;
+        for (var adt: adtMsgs) {
+            i++;
+            batch.add(new ImmutablePair<>(adt, String.format("%s_message_%d",
+                    Instant.now().toEpochMilli(), i)));
+        }
+        if (batch.isEmpty()) {
+            return;
+        }
+        try {
+            String batchId = batch.get(0).getRight();
+            publisher.submit(batch, batchId, () -> {
+                logger.info("Successfully submitted batch {} (size {})", batchId, batch.size());
+            });
+        } catch (InterruptedException e) {
+            logger.error("submit interrupted", e);
+        }
     }
 
     record SyntheticStream(String streamId, int samplingRate, double baselineSignalFrequency, int maxSamplesPerMessage) {

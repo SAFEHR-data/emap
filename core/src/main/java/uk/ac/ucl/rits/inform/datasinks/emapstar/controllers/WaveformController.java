@@ -2,6 +2,7 @@ package uk.ac.ucl.rits.inform.datasinks.emapstar.controllers;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import uk.ac.ucl.rits.inform.datasinks.emapstar.exceptions.MessageIgnoredException;
@@ -57,8 +58,15 @@ public class WaveformController {
         List<Double> numericValues = interchangeValue.get();
         Instant observationTime = msg.getObservationTime();
         // Try to find the visit. We don't have enough information to create the visit if it doesn't already exist.
-        Optional<LocationVisit> inferredLocationVisit =
-                locationVisitRepository.findLocationVisitByLocationAndTime(observationTime, msg.getMappedLocationString());
+        Optional<LocationVisit> inferredLocationVisit;
+        try {
+            inferredLocationVisit = locationVisitRepository.findLocationVisitByLocationAndTime(
+                    observationTime, msg.getMappedLocationString());
+        } catch (IncorrectResultSizeDataAccessException e) {
+            logger.error("Multiple location visits found for {} at {}; waveform stored without location visit link. Message: {}",
+                    msg.getMappedLocationString(), observationTime, e.getMessage());
+            inferredLocationVisit = Optional.empty();
+        }
         // XXX: will have to do some sanity checks here to be sure that the HL7 feed hasn't gone down.
         // See issue #36, and here for discussion:
         // https://github.com/SAFEHR-data/emap/blob/develop/docs/dev/features/waveform_hf_data.md#core-processor-logic-orphan-data-problem

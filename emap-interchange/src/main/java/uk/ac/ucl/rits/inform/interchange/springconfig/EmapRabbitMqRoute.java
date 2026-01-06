@@ -10,7 +10,10 @@ package uk.ac.ucl.rits.inform.interchange.springconfig;
 public record EmapRabbitMqRoute(EmapDataSourceQueue queueName, EmapDataSourceExchange exchangeName) {
     public enum EmapDataSourceQueue {
         /**
-         * The message queue from the HL7 (IDS) feed.
+         * The message queue derived from the HL7 ADT (IDS) feed.
+         * Bit of a misnomer now that there are other HL7 inputs to
+         * Emap (Waveform HL7s), and of course this queue never
+         * contained HL7 messages anyway.
          */
         HL7_QUEUE("hl7Queue"),
         /**
