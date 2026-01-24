@@ -1,7 +1,7 @@
 package uk.ac.ucl.rits.inform.datasources.waveform;
 
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
+import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -26,10 +26,10 @@ import java.util.TreeMap;
  */
 public class WaveformCollator {
     private final Logger logger = LoggerFactory.getLogger(WaveformCollator.class);
-    protected final Map<Pair<String, String>, SortedMap<Instant, WaveformMessage>> pendingMessages = new HashMap<>();
+    protected final Map<Triple<String, String, String>, SortedMap<Instant, WaveformMessage>> pendingMessages = new HashMap<>();
 
-    Pair<String, String> makeKey(WaveformMessage msg) {
-        return new ImmutablePair<>(msg.getSourceLocationString(), msg.getSourceStreamId());
+    Triple<String, String, String> makeKey(WaveformMessage msg) {
+        return new ImmutableTriple<>(msg.getSourceLocationString(), msg.getSourceVariableId(), msg.getSourceChannelId());
     }
 
     /**
@@ -38,9 +38,9 @@ public class WaveformCollator {
      * @throws CollationException if a message duplicates another message
      */
     public void addMessages(List<WaveformMessage> messagesToAdd) throws CollationException {
-        Map<Pair<String, String>, List<WaveformMessage>> messagesToAddByKey = new HashMap<>();
+        Map<Triple<String, String, String>, List<WaveformMessage>> messagesToAddByKey = new HashMap<>();
         for (WaveformMessage toAdd: messagesToAdd) {
-            Pair<String, String> key = makeKey(toAdd);
+            Triple<String, String, String> key = makeKey(toAdd);
             messagesToAddByKey.computeIfAbsent(key, k -> new ArrayList<>()).add(toAdd);
         }
 
@@ -156,7 +156,7 @@ public class WaveformCollator {
             return null;
         }
         WaveformMessage firstMsg = perPatientMap.get(perPatientMap.firstKey());
-        Pair<String, String> firstKey = makeKey(firstMsg);
+        Triple<String, String, String> firstKey = makeKey(firstMsg);
 
         int sizeBefore = perPatientMap.size();
         long sampleCount = 0;
@@ -170,7 +170,7 @@ public class WaveformCollator {
         while (perPatientMapIter.hasNext()) {
             Map.Entry<Instant, WaveformMessage> entry = perPatientMapIter.next();
             WaveformMessage msg = entry.getValue();
-            Pair<String, String> thisKey = makeKey(msg);
+            Triple<String, String, String> thisKey = makeKey(msg);
             if (!thisKey.equals(firstKey)) {
                 throw new CollationException(String.format("Key Mismatch: %s vs %s", firstKey, thisKey));
             }

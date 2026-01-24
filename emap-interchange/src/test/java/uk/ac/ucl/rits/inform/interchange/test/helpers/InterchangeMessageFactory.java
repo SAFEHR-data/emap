@@ -283,8 +283,8 @@ public class InterchangeMessageFactory {
         while (samplesRemaining > 0) {
             int samplesThisMessage = Math.min(samplesRemaining, maxSamplesPerMessage);
             WaveformMessage waveformMessage = new WaveformMessage();
-            waveformMessage.setSourceStreamId(sourceStreamId);
-            waveformMessage.setMappedStreamDescription(mappedStreamName);
+            waveformMessage.setSourceVariableId(sourceStreamId);
+            waveformMessage.setMappedVariableDescription(mappedStreamName);
             waveformMessage.setSamplingRate(samplingRate);
             waveformMessage.setSourceLocationString(sourceLocation);
             waveformMessage.setMappedLocationString(mappedLocation);

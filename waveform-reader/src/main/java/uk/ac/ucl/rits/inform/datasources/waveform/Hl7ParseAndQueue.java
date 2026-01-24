@@ -140,16 +140,18 @@ public class Hl7ParseAndQueue {
                     throw (Hl7ParseException) new Hl7ParseException(partiallyParsedMessage.rawHl7Trimmed, "Datetime parsing failed").initCause(e);
                 }
 
-                String streamId = obx.getField(3);
+                // aka stream ID
+                String variableId = obx.getField(3);
+                String channelId = obr.getField(13);
 
-                Optional<SourceMetadataItem> metadataOpt = sourceMetadata.getStreamMetadata(streamId);
+                Optional<SourceMetadataItem> metadataOpt = sourceMetadata.getStreamMetadata(variableId);
                 if (metadataOpt.isEmpty()) {
-                    logger.warn("Skipping stream {}, unrecognised streamID", streamId);
+                    logger.warn("Skipping stream {}, unrecognised streamID", variableId);
                     continue;
                 }
                 SourceMetadataItem metadata = metadataOpt.get();
                 if (!metadata.isUsable()) {
-                    logger.warn("Skipping stream {}, insufficient metadata", streamId);
+                    logger.warn("Skipping stream {}, insufficient metadata", variableId);
                     continue;
                 }
                 // Sampling rate and stream description is not in the message, so use the metadata
@@ -162,7 +164,7 @@ public class Hl7ParseAndQueue {
                 // we might need them as a VisitObservation
                 String hl7Type = obx.getField(2);
                 if (!Set.of("NM", "NA").contains(hl7Type)) {
-                    logger.warn("Skipping stream {} with type {}, not numerical", streamId, hl7Type);
+                    logger.warn("Skipping stream {} with type {}, not numerical", variableId, hl7Type);
                     continue;
                 }
                 String allPointsStr = obx.getField(5);
@@ -177,7 +179,7 @@ public class Hl7ParseAndQueue {
                         locationId, obsDatetime, messageIdSpecific, points.size());
                 WaveformMessage waveformMessage = waveformMessageFromValues(
                         samplingRate, locationId, mappedLocation, obsDatetime, messageIdSpecific,
-                        streamId, mappedStreamDescription, unit, points);
+                        variableId, mappedStreamDescription, channelId, unit, points);
 
                 allWaveformMessages.add(waveformMessage);
             }
@@ -210,15 +212,19 @@ public class Hl7ParseAndQueue {
     @SuppressWarnings("checkstyle:ParameterNumber")
     private WaveformMessage waveformMessageFromValues(
             int samplingRate, String locationId, String mappedLocation, Instant messageStartTime, String messageId,
-            String sourceStreamId, String mappedStreamDescription, String unit, List<Double> arrayValues) {
+            String sourceVariableId, String mappedVariableDescription, String sourceChannelId, String unit, List<Double> arrayValues) {
         WaveformMessage waveformMessage = new WaveformMessage();
+        // XXX: get from the CSV device file thingy and prefix with "waveform-" But aren't they all just "Waveform"?
+        // We might need to ask how we know which is Carescape and which is etc.
+        waveformMessage.setSourceObservationType("waveform");
         waveformMessage.setSamplingRate(samplingRate);
         waveformMessage.setSourceLocationString(locationId);
         waveformMessage.setMappedLocationString(mappedLocation);
-        waveformMessage.setMappedStreamDescription(mappedStreamDescription);
+        waveformMessage.setMappedVariableDescription(mappedVariableDescription);
         waveformMessage.setObservationTime(messageStartTime);
         waveformMessage.setSourceMessageId(messageId);
-        waveformMessage.setSourceStreamId(sourceStreamId);
+        waveformMessage.setSourceVariableId(sourceVariableId);
+        waveformMessage.setSourceChannelId(sourceChannelId);
         waveformMessage.setUnit(unit);
         waveformMessage.setNumericValues(new InterchangeValue<>(arrayValues));
         logger.trace("output interchange waveform message = {}", waveformMessage);
