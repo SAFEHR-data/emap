@@ -142,7 +142,7 @@ public class Hl7ParseAndQueue {
 
                 // aka stream ID
                 String variableId = obx.getField(3);
-                String channelId = obr.getField(13);
+
 
                 Optional<SourceMetadataItem> metadataOpt = sourceMetadata.getStreamMetadata(variableId);
                 if (metadataOpt.isEmpty()) {
@@ -154,6 +154,11 @@ public class Hl7ParseAndQueue {
                     logger.warn("Skipping stream {}, insufficient metadata", variableId);
                     continue;
                 }
+
+                // If it's a no-channel flavour of HL7 message, OBR-13 is the location and we
+                // shouldn't treat it as the channel!
+                String channelId = metadata.hasChannels() ? obr.getField(13) : null;
+
                 // Sampling rate and stream description is not in the message, so use the metadata
                 int samplingRate = metadata.samplingRate();
                 String mappedLocation = locationMapping.hl7AdtLocationFromCapsuleLocation(locationId);
