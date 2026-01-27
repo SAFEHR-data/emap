@@ -4,10 +4,6 @@ left to right direction
 
 skinparam TitleFontSize 22
 skinparam TitleFontStyle bold
-skinparam rectangle<<muted>> {
-  FontColor #888888
-  BorderColor #BBBBBB
-}
 
 title "Waveform Data Sources Details"
 
@@ -39,7 +35,7 @@ phillips_carestation --> smartlinx_core
 smartlinx_core ---r--> epic : EPIC PRD Port
 
 
-rectangle "Data Outputs" as data_outputs <<muted>> #line.dashed {
+rectangle "Data Output to Emap" as data_outputs #line.dashed {
   rectangle "Waveform\nCarescape - ECG\nCarescape - Arterial\nCarescape - ETCO2" as waveforms_epic #D6EAF8
   rectangle "Waveform\nServo U - Flow\nServo U - Pressure\nServo U - Volume" as waveforms_ventilator #FAD7A0
   rectangle "Variables\nRR, P0.1" as variables_ventilator #FAD7A0
