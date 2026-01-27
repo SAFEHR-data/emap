@@ -4,9 +4,14 @@
 !include <office/Servers/database_server>
 !include <office/Devices/hard_disk>
 
-package "Smartlinx server" #F8F8F8 {
+title "Waveform Pipeline Overview"
+
+package "Smartlinx server" as smartlinx_server #F8F8F8 {
     component Smartlinx as smartlinx #DDDDDD
 }
+note right of smartlinx_server
+  detailed in "Data Sources" diagram
+end note
 
 ' seems like services must be defined in their package from the start
 package "GAE01" #F8F8F8 {
