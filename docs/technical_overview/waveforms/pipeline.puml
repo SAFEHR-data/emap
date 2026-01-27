@@ -51,8 +51,9 @@ wave_reader -> rabbitmq: Emap-Interchange
 rabbitmq ---> wave_ctrl: Emap-Interchange
 rabbitmq -> core_proc: Emap-Interchange
 wave_reader <-> gae_hdd: HL7 tar.bz2
-wave_ctrl -> sqlite3_hdd: Atrium DB (sqlite3)
-wave_export <- sqlite3_hdd: Atrium DB daily extract
+wave_ctrl -> sqlite3_hdd: CSV files
+sqlite3_hdd --> wave_export: CSV files
+wave_export --u--> sqlite3_hdd: "original parquet,\npseudonymised parquet"
 wave_ctrl <-- uds_db: EHR data
 
 wave_export --> dsh_hdd: FTPS
