@@ -296,7 +296,7 @@ public class Hl7Generator {
             long microsAfterStart = thisCallCounter * 1000_000L / samplingRate;
             Instant messageStartTime = startTime.plus(microsAfterStart, ChronoUnit.MICROS);
             String timeStr = DateTimeFormatter.ofPattern("HHmmss").format(startTime.atOffset(ZoneOffset.UTC));
-            String messageId = String.format("%s_s%s_t%s_msg%05d", locationId, streamId, timeStr, persistentSampleIdx);
+            String messageIdBase = String.format("%s_s%s_t%s_msg%05d", locationId, streamId, timeStr, persistentSampleIdx);
 
             var values = new ArrayList<Double>();
             for (long valueIdx = 0;
@@ -307,6 +307,13 @@ public class Hl7Generator {
 
             for (int i = 0; i < obr13Values.size(); i++) {
                 String obr13Value = obr13Values.get(i);
+                String messageId;
+                if (obr13Values.size() > 1) {
+                    // make sure different channels have unique message IDs
+                    messageId = String.format("%s_ch%s", messageIdBase, obr13Value);
+                } else {
+                    messageId = messageIdBase;
+                }
                 // Only one stream ID per HL7 message for the time being
                 List<ImmutablePair<String, List<Double>>> valuesByStreamId = new ArrayList<>();
                 List<Double> valuesForThisChannel = values;
