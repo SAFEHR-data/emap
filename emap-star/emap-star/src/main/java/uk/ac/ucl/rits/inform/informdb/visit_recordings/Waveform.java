@@ -53,7 +53,9 @@ public class Waveform extends TemporalCore<Waveform, WaveformAudit> {
     private long waveformId;
 
     /**
-     * \brief Identifier for the VisitObservationType associated with this record.
+     * \brief Identifier for the VisitObservationType associated with this record. Ie.
+     * what is the data being recorded? This is also known as the "variable" in Capsule.
+     * Eg. In capsule, "27" is ECG
      *
      * The Waveform table is sufficiently similar in meaning to VisitObservation that it makes sense
      * to reuse VisitObservationType rather than create a new waveform metadata table.
@@ -61,6 +63,15 @@ public class Waveform extends TemporalCore<Waveform, WaveformAudit> {
     @ManyToOne
     @JoinColumn(name = "visitObservationTypeId", nullable = false)
     private VisitObservationType visitObservationTypeId;
+
+    /**
+     * \brief The channel ID.
+     *
+     * Capsule defines "variables" (eg. ECG) and some variables also have
+     * "channels". Eg. for multi-channel ECG.
+     * Usually numerical but keep as a string for flexibility.
+     */
+    private String channelId;
 
     /**
      * \brief Identifier for the LocationVisit associated with this record.
@@ -140,6 +151,7 @@ public class Waveform extends TemporalCore<Waveform, WaveformAudit> {
         super(other);
         this.waveformId = other.waveformId;
         this.visitObservationTypeId = other.visitObservationTypeId;
+        this.channelId = other.channelId;
         this.locationVisitId = other.locationVisitId;
         this.unit = other.unit;
         this.valuesArray = other.valuesArray;

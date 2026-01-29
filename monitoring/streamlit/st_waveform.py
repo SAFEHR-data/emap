@@ -7,11 +7,11 @@ import altair as alt
 import database_utils
 
 
-def draw_graph(location, stream_id, min_time, max_time):
+def draw_graph(location, stream_id, channel_id, min_time, max_time):
     # (re-)initialise slider value if not known or if the bounds have changed so that it is now outside them
     if 'slider_value' not in st.session_state or not min_time <= st.session_state.slider_value <= max_time:
         st.session_state.slider_value = max(min_time, max_time - timedelta(seconds=15))
-    print(f"New bounds for stream {stream_id}, location {location}: min={min_time}, max={max_time}, value={st.session_state.slider_value}")
+    print(f"New bounds for stream {stream_id}, channel {channel_id}, location {location}: min={min_time}, max={max_time}, value={st.session_state.slider_value}")
     # BUG: error is given if there is exactly one point so min_time == max_time
     graph_start_time = bottom_cols[0].slider("Start time",
                                              min_value=min_time, max_value=max_time,
@@ -19,10 +19,10 @@ def draw_graph(location, stream_id, min_time, max_time):
                                              step=timedelta(seconds=10), format="")
     st.session_state.slider_value = graph_start_time
 
-    graph_width_seconds = top_cols[3].slider("Chart width (seconds)", min_value=1, max_value=30, value=30)
+    graph_width_seconds = top_cols[4].slider("Chart width (seconds)", min_value=1, max_value=30, value=30)
 
     graph_end_time = graph_start_time + timedelta(seconds=graph_width_seconds)
-    data = database_utils.get_data_single_stream_rounded(int(stream_id), location,
+    data = database_utils.get_data_single_stream_rounded(int(stream_id), channel_id, location,
                                                          graph_start_time=graph_start_time,
                                                          graph_end_time=graph_end_time,
                                                          max_time=max_time)
@@ -38,6 +38,8 @@ def draw_graph(location, stream_id, min_time, max_time):
         waveform_unit = waveform_units[0]
 
     stream_label = unique_streams[stream_id]
+    channel_string = f"channel {channel_id} " if channel_id is not None else ""
+    y_title=f"{stream_label} {channel_string}({waveform_unit})",
     chart = (
         alt.Chart(trimmed, width=1100, height=600)
         # unfortunately the line continues over gaps in the data, but points are too ugly so stick with this for now
@@ -54,7 +56,7 @@ def draw_graph(location, stream_id, min_time, max_time):
                                   ticks=True),
                     ),
             y=alt.Y("waveform_value",
-                    title=f"{stream_label} ({waveform_unit})",
+                    title=y_title,
                     stack=None,
                     axis=alt.Axis(
                         titleFontSize=24,
@@ -76,11 +78,21 @@ def waveform_data():
     st_graph_area = st.container()
     st_info_box = st.container()
     st_info_box.write(f"Schema: {database_utils.database_schema}")
-    top_cols = st_top_controls.columns(4)
+    top_cols = st_top_controls.columns(5)
     bottom_cols = st_bottom_controls.columns(1, gap='medium')
 
     all_params = database_utils.get_all_params()
-    print(f"all_params = ", all_params)
+    with pd.option_context(
+        "display.max_columns",
+        None,
+        "display.max_rows",
+        None,
+        "display.width",
+        None,
+        "display.max_colwidth",
+        None,
+    ):
+        print(f"all_params =\n{all_params}")
 
     unique_streams_list = all_params.apply(lambda r: (r['visit_observation_type_id'], r['name']), axis=1).drop_duplicates().tolist()
     unique_streams = dict(unique_streams_list)
@@ -90,16 +102,32 @@ def waveform_data():
 
     print(f"unique streams = ", unique_streams)
     location = top_cols[0].selectbox("Choose location", sorted(set(all_params['source_location'])))
-    streams_for_location = all_params[all_params['source_location'] == location]['visit_observation_type_id']
-    stream_id = top_cols[1].selectbox("Choose stream", streams_for_location, format_func=lambda i: unique_streams[i])
+    streams_for_location = all_params[all_params['source_location'] == location]['visit_observation_type_id'].drop_duplicates().tolist()
+    print(f"{streams_for_location=}")
+    stream_id = top_cols[1].selectbox("Choose variable", streams_for_location, format_func=lambda i: unique_streams[i])
 
-    print(f"location = {location}, stream_id = {stream_id}")
+    distinct_channels_for_variable = sorted(
+        all_params[all_params['visit_observation_type_id'] == stream_id]["channel_id"]
+        .drop_duplicates()
+        .dropna()
+        .tolist(),
+    key=int)
+
+    print(f"{distinct_channels_for_variable=}")
+    if not distinct_channels_for_variable:
+        top_cols[2].selectbox("Choose channel", ["no channels"], disabled=True)
+        channel_id = None
+    else:
+        channel_id = top_cols[2].selectbox("Choose channel", distinct_channels_for_variable)
+
+
+    print(f"location = {location}, stream_id = {stream_id}, channel_id = {channel_id}")
     if not location:
         st.error("Please select a location")
     elif not stream_id:
         st.error("Please select a stream")
     else:
-        if top_cols[2].button("Re-check DB"):
+        if top_cols[3].button("Re-check DB"):
             st.cache_data.clear()
 
         # st.download_button(label, data, file_name=None, mime=None, key=None, help=None, on_click=None, args=None, kwargs=None, *, type="secondary", icon=None, disabled=False, use_container_width=False)
@@ -111,7 +139,7 @@ def waveform_data():
         else:
             min_time = min_time.to_pydatetime()
             max_time = max_time.to_pydatetime()
-            draw_graph(location, stream_id, min_time, max_time)
+            draw_graph(location, stream_id, channel_id, min_time, max_time)
 
 
 

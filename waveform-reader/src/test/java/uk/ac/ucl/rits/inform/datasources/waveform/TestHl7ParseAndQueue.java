@@ -61,11 +61,11 @@ class TestHl7ParseAndQueue {
         assertEquals(expectedMappedLocation, actualMapped.get(0));
         assertEquals(
                 List.of("52912", "52913", "27", "51911", "52921"),
-                msgs.stream().map(WaveformMessage::getSourceStreamId).toList());
+                msgs.stream().map(WaveformMessage::getSourceVariableId).toList());
         assertEquals(
                 List.of("Airway Volume Waveform", "Airway Pressure Waveform", "Generic ECG Waveform",
                         "O2 Pleth Waveform", "ETCO2"),
-                msgs.stream().map(WaveformMessage::getMappedStreamDescription).toList());
+                msgs.stream().map(WaveformMessage::getMappedVariableDescription).toList());
         assertEquals(
                 List.of(50, 50, 300, 100, 25),
                 msgs.stream().map(WaveformMessage::getSamplingRate).toList());
