@@ -1,7 +1,7 @@
 package uk.ac.ucl.rits.inform.datasources.waveform;
 
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
+import org.apache.commons.lang3.tuple.Triple;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -118,7 +118,7 @@ public class TestWaveformCollation {
         ChronoUnit assumedRounding = ChronoUnit.MILLIS;
         // GIVEN some uncollated messages (straight from HL7)
         makeAndAddTestMessages();
-        Pair<String, String> keyOfInterest = new ImmutablePair<>("UCHT03TEST", "59912");
+        Triple<String, String, String> keyOfInterest = new ImmutableTriple<>("UCHT03TEST", "59912", null);
         assertEquals(2, waveformCollator.pendingMessages.size());
         assertEquals(600, waveformCollator.pendingMessages.get(keyOfInterest).size());
 
@@ -171,7 +171,7 @@ public class TestWaveformCollation {
         Instant now = messageStartDatetime.plus(millisAfter, ChronoUnit.MILLIS);
         List<WaveformMessage> allCollatedMsgs = waveformCollator.getReadyMessages(
                 now, targetCollatedMessageSamples, waitForDataLimitMillis, ChronoUnit.MILLIS);
-        Pair<String, String> keyOfInterest = new ImmutablePair<>("UCHT03TEST", "59912");
+        Triple<String, String, String> keyOfInterest = new ImmutableTriple<>("UCHT03TEST", "59912", null);
         // only test messages from one stream
         List<WaveformMessage> collatedMsgs =
                 allCollatedMsgs.stream().filter(msg -> waveformCollator.makeKey(msg).equals(keyOfInterest)).toList();
