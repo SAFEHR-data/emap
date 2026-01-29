@@ -58,7 +58,8 @@ public class SourceMetadata {
             String unit = row.get("value_unit_name");
             String description = row.get("value_name");
             // Look up channels, if any.
-            // Unsure if empty has a different meaning to missing.
+            // If channels column is empty this means there are no channels used,
+            // ie. treated same as if the row didn't exist in CHANNELS_CSV
             List<String> channels = variablesToChannels.getOrDefault(key, Collections.emptyList());
             SourceMetadataItem metadataItem = new SourceMetadataItem(key, description, unit, samplingRate, channels);
             logger.debug("Metadata item: {}", metadataItem);
