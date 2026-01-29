@@ -44,11 +44,11 @@ public class TestWaveformCollation {
         // Check that we can handle adding messages from different streams,
         // as would be found in a real HL7 message
         List<WaveformMessage> uncollatedMsgs = messageFactory.getWaveformMsgs(
-                "59912", "something1",
+                "59912", "something1", null,
                 300, 3000, 5, "UCHT03TEST",
                 "", messageStartDatetime, "unit1", ChronoUnit.MILLIS);
         List<WaveformMessage> uncollatedMsgs2 = messageFactory.getWaveformMsgs(
-                "59913", "something2",
+                "59913", "something2", null,
                 300, 3000, 5, "UCHT03TEST",
                 "",
                 messageStartDatetime, //.plus(5500, ChronoUnit.MILLIS),
