@@ -84,7 +84,6 @@ public class Form extends TemporalCore<Form, FormAudit> {
     /**
      * \brief datetime the form was first filed.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant firstFiledDatetime;
 
     @ToString.Exclude

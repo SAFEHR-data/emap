@@ -7,13 +7,13 @@ import uk.ac.ucl.rits.inform.informdb.TemporalCore;
 import uk.ac.ucl.rits.inform.informdb.annotation.AuditTable;
 import uk.ac.ucl.rits.inform.informdb.identity.HospitalVisit;
 
-import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Index;
 import javax.persistence.JoinColumn;
+import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import java.time.Instant;
@@ -77,19 +77,17 @@ public class LabOrder extends TemporalCore<LabOrder, LabOrderAudit> {
     /**
      * \brief Date and time at which this labOrder was actioned.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant orderDatetime;
 
     /**
      * \brief Date and time at which this labOrder was requested.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant requestDatetime;
 
     /**
      * \brief Additional information supplied.
      */
-    @Column(columnDefinition = "text")
+    @Lob
     private String clinicalInformation;
 
     /**

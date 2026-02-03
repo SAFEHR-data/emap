@@ -1,13 +1,11 @@
 package uk.ac.ucl.rits.inform.informdb;
 
-import java.time.Instant;
-
-import javax.persistence.Column;
-import javax.persistence.MappedSuperclass;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
+
+import javax.persistence.MappedSuperclass;
+import java.time.Instant;
 
 /**
  * This models the core temporal until values for an audit table.
@@ -29,9 +27,7 @@ import lombok.ToString;
 @MappedSuperclass
 public abstract class AuditCore<A extends AuditCore<A>> extends TemporalCore<A, A> {
 
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant validUntil;
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant storedUntil;
 
     /**

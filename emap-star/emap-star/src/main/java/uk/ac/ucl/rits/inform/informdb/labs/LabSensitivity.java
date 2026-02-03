@@ -6,7 +6,6 @@ import lombok.ToString;
 import uk.ac.ucl.rits.inform.informdb.TemporalCore;
 import uk.ac.ucl.rits.inform.informdb.annotation.AuditTable;
 
-import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -59,7 +58,6 @@ public class LabSensitivity extends TemporalCore<LabSensitivity, LabSensitivityA
     /**
      * \brief Date and time at which this labSensitivity was reported.
      */
-    @Column(columnDefinition = "timestamp with time zone")
     private Instant reportingDatetime;
 
     public LabSensitivity() {}

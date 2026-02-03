@@ -73,7 +73,8 @@ relational database. We have chosen a relational structure for ease of use and e
   ```
 - Timestamps (date and times) are timezone aware (and automated testing enforces this) and named in the form `<something>Datetime`
 - Dates should only have date information and be named in the form `<something>Date`
+- `timestamp with time zone` is Postgres-specific so should not be specified manually. Hibernate does the right thing in this case.
   ```java
-  @Column(columnDefinition = "timestamp with time zone")
-  private Instant admissionTime;
+  private Instant admissionDatetime;
+  private LocalDate addedDate;
   ```

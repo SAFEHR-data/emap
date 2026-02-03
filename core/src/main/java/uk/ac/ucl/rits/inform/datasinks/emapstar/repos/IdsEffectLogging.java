@@ -1,11 +1,11 @@
 package uk.ac.ucl.rits.inform.datasinks.emapstar.repos;
 
-import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Index;
+import javax.persistence.Lob;
 import javax.persistence.Table;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -35,9 +35,9 @@ public class IdsEffectLogging {
     private Long processMessageDuration;
     private Boolean error;
     private String messageType;
-    @Column(columnDefinition = "text")
+    @Lob
     private String message;
-    @Column(columnDefinition = "text")
+    @Lob
     private String stackTrace;
 
     /**
