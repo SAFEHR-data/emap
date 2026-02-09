@@ -353,8 +353,8 @@ public class Hl7Generator {
         List<String> waveformMsgs = new ArrayList<>();
         numPatients = Math.min(numPatients, possibleLocations.size());
         List<SyntheticStream> syntheticStreams = List.of(
-                new SyntheticStream("52912", 0, 50, 0.3, 5), // airway volume
-                new SyntheticStream("27", 3, 300, 1.2, 10) // ECG
+                new SyntheticStream("52912", 0, 50, 0.3, 50), // airway volume
+                new SyntheticStream("27", 3, 300, 1.2, 300) // ECG
         );
         List<EmapOperationMessage> locationChangeMessages = patientLocationModel.makeModifications(startTime);
         submitBatch(locationChangeMessages);
