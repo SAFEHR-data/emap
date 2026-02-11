@@ -3,8 +3,7 @@ package uk.ac.ucl.rits.inform.datasources.waveform_generator.patient_model;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.ac.ucl.rits.inform.datasources.waveform.LocationMapping;
-import uk.ac.ucl.rits.inform.interchange.adt.AdmitPatient;
-import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
+import uk.ac.ucl.rits.inform.interchange.EmapOperationMessage;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -42,15 +41,15 @@ public class PatientLocationModel {
      * Make initial set of admit messages, as if all the patients in locationToPatient have just been admitted.
      * @return one admit message per existing patient
      */
-    public List<AdmitPatient> getInitialLocations() {
-        List<AdmitPatient> admitMsgs = new ArrayList<>();
+    public List<EmapOperationMessage> getInitialLocations() {
+        List<EmapOperationMessage> admitMsgs = new ArrayList<>();
         locationToPatient.entrySet().stream().forEach(entry -> {
             PatientDetails initialPatient = entry.getValue();
             String location = entry.getKey();
             initialPatient.setEventDatetime(initialPatient.getAdmitDatetime());
             logger.info("Initial stats: {}, {}, {}", location, initialPatient.getAdmitDatetime(), initialPatient.getEventDatetime());
             initialPatient.setLocation(location);
-            admitMsgs.add(initialPatient.makeAdmitMessage());
+            admitMsgs.addAll(initialPatient.makeAdmitAndOptoutMessages());
         });
         return admitMsgs;
     }
@@ -61,7 +60,7 @@ public class PatientLocationModel {
      * @param nowTime time at which ADT changes will be simulated to happen
      * @return description of changes made
      */
-    public List<AdtMessage> makeModifications(Instant nowTime) {
+    public List<EmapOperationMessage> makeModifications(Instant nowTime) {
         List<PatientDetails> admitList = new ArrayList<>();
         List<PatientDetails> dischargeList = new ArrayList<>();
         List<PatientDetails> transferList = new ArrayList<>();
@@ -145,8 +144,8 @@ public class PatientLocationModel {
                 }
             }
         }
-        List<AdtMessage> mods = new ArrayList<>();
-        admitList.forEach(adm -> mods.add(adm.makeAdmitMessage()));
+        List<EmapOperationMessage> mods = new ArrayList<>();
+        admitList.forEach(adm -> mods.addAll(adm.makeAdmitAndOptoutMessages()));
         transferList.forEach(tr -> mods.add(tr.makeTransferMessage()));
         dischargeList.forEach(disch -> mods.add(disch.makeDischargeMessage()));
         return mods;
