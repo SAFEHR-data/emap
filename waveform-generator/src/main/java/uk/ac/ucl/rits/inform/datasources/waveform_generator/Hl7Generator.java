@@ -13,8 +13,6 @@ import org.springframework.stereotype.Component;
 import uk.ac.ucl.rits.inform.datasources.waveform.LocationMapping;
 import uk.ac.ucl.rits.inform.datasources.waveform_generator.patient_model.PatientLocationModel;
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessage;
-import uk.ac.ucl.rits.inform.interchange.adt.AdmitPatient;
-import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
 import uk.ac.ucl.rits.inform.interchange.messaging.Publisher;
 
 import javax.annotation.PostConstruct;
@@ -128,7 +126,7 @@ public class Hl7Generator {
     public void generateMessages() throws IOException {
         if (!haveInitialised) {
             haveInitialised = true;
-            List<AdmitPatient> initialAdmits = patientLocationModel.getInitialLocations();
+            List<EmapOperationMessage> initialAdmits = patientLocationModel.getInitialLocations();
             logger.info("First scheduled run, perform initial admits: {} messages", initialAdmits.size());
             submitBatch(initialAdmits);
         }
@@ -358,7 +356,7 @@ public class Hl7Generator {
                 new SyntheticStream("52912", 0, 50, 0.3, 5), // airway volume
                 new SyntheticStream("27", 3, 300, 1.2, 10) // ECG
         );
-        List<AdtMessage> locationChangeMessages = patientLocationModel.makeModifications(startTime);
+        List<EmapOperationMessage> locationChangeMessages = patientLocationModel.makeModifications(startTime);
         submitBatch(locationChangeMessages);
 
         List<String> empties = new ArrayList<>();
@@ -398,7 +396,7 @@ public class Hl7Generator {
         return waveformMsgs;
     }
 
-    private void submitBatch(List<? extends AdtMessage> adtMsgs) {
+    private void submitBatch(List<? extends EmapOperationMessage> adtMsgs) {
         List<ImmutablePair<EmapOperationMessage, String>> batch = new ArrayList<>();
         int i = 0;
         for (var adt: adtMsgs) {
