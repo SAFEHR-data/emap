@@ -66,10 +66,10 @@ public class PatientLocationModel {
         List<PatientDetails> transferList = new ArrayList<>();
 
         // probability of each patient being discharged/transferred at each time step
-        final float probOfDischarge = 0.01F;
-        final float probOfTransferOut = 0.01F;
-        final float probOfTransferWithin = 0.01F;
-        final float probOfTransferIn = 0.01F;
+        final float probOfDischarge = 0.0005F;
+        final float probOfTransferOut = 0.0005F;
+        final float probOfTransferWithin = 0.0005F;
+        final float probOfTransferIn = 0.0005F;
 
         // go through all locations and randomly move some patients out
         for (int i = 0; i < allPossibleLocations.size(); i++) {
