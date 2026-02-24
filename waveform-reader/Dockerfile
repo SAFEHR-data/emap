@@ -33,9 +33,9 @@ COPY $SERVICE_SRC_DIR/src/ /app/$SERVICE_SRC_DIR/src/
 
 FROM emap_java_base AS waveform_reader
 RUN source /app/set_mvn_proxy.sh; mvn install -Dmaven.test.skip=true -Dstart-class=uk.ac.ucl.rits.inform.datasources.waveform.Application
-CMD ["java",  "-javaagent:./glowroot/glowroot.jar", "-jar", "./target/waveform-reader.jar"]
+ENTRYPOINT ["java",  "-javaagent:./glowroot/glowroot.jar", "-jar", "./target/waveform-reader.jar"]
 
 FROM emap_java_base AS waveform_generator
 RUN source /app/set_mvn_proxy.sh; mvn install -Dmaven.test.skip=true -Dstart-class=uk.ac.ucl.rits.inform.datasources.waveform_generator.Application
-CMD ["java",  "-javaagent:./glowroot/glowroot.jar", "-jar", "./target/waveform-generator.jar"]
+ENTRYPOINT ["java",  "-javaagent:./glowroot/glowroot.jar", "-jar", "./target/waveform-generator.jar"]
 
