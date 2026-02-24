@@ -46,6 +46,10 @@ Waveform Reader:
       For testing only: if the list contains the value "ALL", then all source IP addresses are allowed. This is
       the only form of authentication so don't use this setting in production.
       Not currently supported: hostnames or IP ranges.
+
+
+XXX FIX THIS
+
   - `waveform.hl7.test_dump_file` If specified, read messages from this file and then exit - intended for validation
 
 ## Container housekeeping (setup script)

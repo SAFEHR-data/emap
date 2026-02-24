@@ -1,5 +1,5 @@
 services:
-  waveform-reader:
+  waveform-reader: &waveform-reader-normal
     build:
       context: ..
       dockerfile: waveform-reader/Dockerfile
@@ -16,11 +16,10 @@ services:
       - "7777:7777"
     logging:
       driver: "json-file"
-    restart: "no"
+    restart: on-failure
     # we hold a lot in memory that needs to be gracefully flushed
     stop_grace_period: 5m
     volumes:
-      - ../../waveform-test-data:/waveform-test-data:ro
       - ../../waveform-saved-messages:/waveform-saved-messages
     depends_on:
       # Uses services from core, orchestrate using the EMAP setup package
@@ -28,3 +27,16 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_healthy
+
+  # this service only to be run as an adhoc command to replay hl7 messages from files
+  waveform-reader-hl7-replay:
+    <<: *waveform-reader-normal
+    profiles: ["waveform-hl7-replay"]
+    # remove port binding
+    ports: []
+    environment:
+      SPRING_PROFILES_ACTIVE: hl7-replay
+    volumes:
+      # we are only replaying messages, no writing wanted
+      - ../../waveform-saved-messages:/waveform-saved-messages:ro
+    restart: no

@@ -1,14 +1,23 @@
 package uk.ac.ucl.rits.inform.datasources.waveform;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7ParseException;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -18,26 +27,74 @@ public class Hl7FromFile {
     private final Logger logger = LoggerFactory.getLogger(Hl7FromFile.class);
 
     private final Hl7ParseAndQueue hl7ParseAndQueue;
-    private final File hl7DumpFile;
     static final String MESSAGE_DELIMITER = "\u001c";
 
-    Hl7FromFile(Hl7ParseAndQueue hl7ParseAndQueue,
-                @Value("${waveform.hl7.test_dump_file:#{null}}") File hl7DumpFile
-    ) {
+    Hl7FromFile(Hl7ParseAndQueue hl7ParseAndQueue) {
         this.hl7ParseAndQueue = hl7ParseAndQueue;
-        this.hl7DumpFile = hl7DumpFile;
+    }
+
+
+    /**
+     * Entry point for ad-hoc replay from compressed HL7 files.
+     * @return CommandLineRunner
+     */
+    @Bean
+    @Profile("hl7-replay")
+    public CommandLineRunner replayHl7FromBz2Files() {
+        return (args) -> {
+            // Use Commons CLI (standard and robust) to parse command line arguments
+            Options options = new Options();
+            options.addRequiredOption(null, "start-datetime", true, "Start datetime in UTC (e.g., 2023-01-01T00:00:00Z)");
+            options.addRequiredOption(null, "end-datetime", true, "End datetime in UTC (e.g., 2023-01-01T23:59:59Z)");
+            options.addRequiredOption(null, "source-location", true, "Location as found in HL7 waveform messages");
+
+            CommandLineParser parser = new DefaultParser();
+            CommandLine cmd;
+            try {
+                cmd = parser.parse(options, args);
+            } catch (ParseException e) {
+                logger.error("Failed to parse command line arguments", e);
+                throw new IllegalArgumentException("Invalid command line arguments", e);
+            }
+
+            String startDatetime = cmd.getOptionValue("start-datetime");
+            String endDatetime = cmd.getOptionValue("end-datetime");
+            String sourceLocation = cmd.getOptionValue("source-location");
+
+            logger.info("Replaying with startDatetime={}, endDatetime={}, sourceLocation={}",
+                    startDatetime, endDatetime, sourceLocation);
+
+            List<File> filesToReplay = scanFiles(startDatetime, endDatetime, sourceLocation);
+
+            try {
+                for (File file : filesToReplay) {
+                    logger.info("Reading test HL7 file {}", file);
+                    readAndQueueAllMessagesFromBz2File(file);
+                }
+            } catch (WaveformCollator.CollationException e) {
+                throw new RuntimeException(e);
+            }
+
+
+            // XXX: need to check collator has stopped
+            System.exit(0);
+        };
+    }
+
+    private List<File> scanFiles(String startDatetime, String endDatetime, String sourceLocation) {
+        // XXX: stub implementation that only returns one file
+        return List.of(new File("20240825T23/UCHT03ICUBED12/UCHT03ICUBED12_20240825T2345Z_8aaad7c08f2e44f5.hl7archive.bz2"));
     }
 
     /**
      * Read messages from a single file with delimiter-separated messages.
      * This is the original format used for test dump files.
-     * @param hl7DumpFile File containing delimiter-separated messages
+     * @param hl7InputStream InputStream containing delimiter-separated messages
      * @return List of message strings
      * @throws IOException if file cannot be read
      */
-    List<String> readFromFile(File hl7DumpFile) throws IOException {
-        logger.info("Reading test HL7 file {}", hl7DumpFile);
-        Scanner scanner = new Scanner(hl7DumpFile);
+    List<String> readHl7MessagesFromInputStream(InputStream hl7InputStream) throws IOException {
+        Scanner scanner = new Scanner(hl7InputStream);
         scanner.useDelimiter(MESSAGE_DELIMITER);
         List<String> allMessages = new ArrayList<>();
         while (scanner.hasNext()) {
@@ -47,24 +104,25 @@ public class Hl7FromFile {
         return allMessages;
     }
 
-    @Scheduled(fixedRate = Long.MAX_VALUE) // do once only
-    void readOnceAndQueueScheduled() throws Hl7ParseException, WaveformCollator.CollationException, IOException {
-        if (hl7DumpFile == null) {
-            logger.info("No test HL7 file specified");
-            return;
-        }
-        readOnceAndQueue(hl7DumpFile);
-        // Not sure how to wait for Publisher to finish, so just sleep for a bit
+    InputStream inputStreamFromBz2File(File bz2File) throws IOException {
+        FileInputStream fis = null;
         try {
-            Thread.sleep(10_000);
-        } catch (InterruptedException e) {
-            logger.warn("Thread was interrupted", e);
+            fis = new FileInputStream(bz2File);
+            return new BZip2CompressorInputStream(fis);
+        } catch (IOException e) {
+            if (fis != null) {
+                fis.close();
+            }
+            throw e;
         }
-        System.exit(0);
     }
 
-    void readOnceAndQueue(File hl7DumpFile) throws Hl7ParseException, WaveformCollator.CollationException, IOException {
-        List<String> messages = readFromFile(hl7DumpFile);
+    void readAndQueueAllMessagesFromBz2File(File hl7Bz2File) throws Hl7ParseException, WaveformCollator.CollationException, IOException {
+        readAndQueueAllMessagesFromBz2File(inputStreamFromBz2File(hl7Bz2File));
+    }
+
+    void readAndQueueAllMessagesFromBz2File(InputStream hl7InputStream) throws Hl7ParseException, WaveformCollator.CollationException, IOException {
+        List<String> messages = readHl7MessagesFromInputStream(hl7InputStream);
         logger.info("Read {} HL7 messages from test dump file", messages.size());
         for (int mi = 0; mi < messages.size(); mi++) {
             // do not re-save since we already took this from a file!

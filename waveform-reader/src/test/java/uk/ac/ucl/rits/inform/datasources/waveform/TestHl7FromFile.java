@@ -1,7 +1,6 @@
 package uk.ac.ucl.rits.inform.datasources.waveform;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -12,11 +11,11 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7ParseException;
 
 import java.io.BufferedOutputStream;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,7 +24,6 @@ import java.util.Random;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.ac.ucl.rits.inform.datasources.waveform.Utils.readHl7FromResource;
 
 @SpringJUnitConfig
@@ -58,7 +56,7 @@ class TestHl7FromFile {
         Path tempHl7DumpFile = tempDir.resolve("test_hl7.txt");
         final int numHl7Messages = 10;
         makeTestFile(tempHl7DumpFile, numHl7Messages, new Random(seed));
-        hl7FromFile.readOnceAndQueue(tempHl7DumpFile.toFile());
+        hl7FromFile.readAndQueueAllMessagesFromBz2File(new FileInputStream(tempHl7DumpFile.toFile()));
         final int messagesPerHl7 = 5;
         assertEquals(numHl7Messages * messagesPerHl7, waveformCollator.getPendingMessageCount());
     }
