@@ -62,7 +62,7 @@ public class Hl7FromFile {
             Options options = new Options();
             options.addRequiredOption(null, "start-datetime", true, "Start datetime in UTC (e.g., 2023-01-01T00:00:00Z)");
             options.addRequiredOption(null, "end-datetime", true, "End datetime in UTC (e.g., 2023-01-01T23:59:59Z)");
-            options.addRequiredOption(null, "source-location", true, "Location as found in HL7 waveform messages");
+            options.addOption(null, "source-location", true, "Location as found in HL7 waveform messages. Omit means all locations.");
             options.addOption(null, "dry-run", false, "Only print which files would be processed, do not actually process.");
 
             CommandLineParser parser = new DefaultParser();
@@ -137,7 +137,7 @@ public class Hl7FromFile {
         // It would be better to limit our search to top-level dirs in between startDatetime and endDatetime.
         Path baseDir = Path.of(this.saveDirectory);
         // Don't check the directory names as all the info needed is in the file name
-        String fileNameRegex = sourceLocation + "_(\\d{8}T\\d{4}Z)_[0-9a-f]+\\.hl7archive.bz2";
+        String fileNameRegex = (sourceLocation != null ? sourceLocation : ".+") + "_(\\d{8}T\\d{4}Z)_[0-9a-f]+\\.hl7archive.bz2";
         Pattern fileNamePattern = Pattern.compile(fileNameRegex);
         List<File> files = new ArrayList<>();
         try (Stream<Path> paths = Files.walk(baseDir)) {
