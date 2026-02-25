@@ -1,5 +1,7 @@
 services:
   waveform-reader: &waveform-reader-normal
+    # use the same image for both waveform-reader services
+    image: ${EMAP_PROJECT_NAME}-waveform-reader
     build:
       context: ..
       dockerfile: waveform-reader/Dockerfile
