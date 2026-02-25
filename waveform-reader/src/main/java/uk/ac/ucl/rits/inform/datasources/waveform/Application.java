@@ -21,6 +21,8 @@ public class Application {
      */
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
+        // QueueFlushLifecycle stores the exit code in a static variable that survives Bean destruction.
+        System.exit(QueueFlushLifecycle.getExitCode().get());
     }
 
 

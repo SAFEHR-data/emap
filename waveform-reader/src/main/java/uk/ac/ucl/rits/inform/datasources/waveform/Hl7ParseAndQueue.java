@@ -329,6 +329,7 @@ public class Hl7ParseAndQueue {
 
     /**
      * Get collated messages, if any, and send them to the Publisher.
+     * All Scheduling is disabled for HL7 replay, so you need to call this manually.
      * @throws InterruptedException If the Publisher thread is interrupted
      * @throws WaveformCollator.CollationException if the data has a logical error that prevents collation
      */

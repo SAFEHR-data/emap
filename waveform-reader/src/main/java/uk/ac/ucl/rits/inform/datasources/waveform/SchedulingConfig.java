@@ -10,11 +10,13 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 /**
- * Scheduling only to be enabled when not running unit tests.
+ * Scheduling disabled when running unit tests or replaying messages.
+ * When replaying messages, all scheduled methods are unnecessary: collation is done manually,
+ * and message writing doesn't happen at all.
  */
 @Configuration
 @EnableScheduling
-@Profile("!test")
+@Profile("!test & !hl7-replay")
 public class SchedulingConfig {
     private final Logger logger = LoggerFactory.getLogger(SchedulingConfig.class);
 

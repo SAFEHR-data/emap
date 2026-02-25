@@ -97,6 +97,8 @@ public class Hl7MessageCompressor implements SmartLifecycle {
     /**
      * Close archives if we haven't written to them for a minute or so.
      * A new one can always be opened if more data comes in.
+     *
+     * All Scheduling is disabled for HL7 replay, but replay doesn't save messages anyway so that doesn't matter here.
      */
     @Scheduled(fixedDelay = 30000)
     public void closeStreamsNotRecentlyUsed() {

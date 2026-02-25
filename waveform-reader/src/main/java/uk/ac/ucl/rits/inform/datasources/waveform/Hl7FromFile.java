@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -29,13 +30,16 @@ public class Hl7FromFile {
     private final Logger logger = LoggerFactory.getLogger(Hl7FromFile.class);
 
     private final Hl7ParseAndQueue hl7ParseAndQueue;
+    private final ConfigurableApplicationContext applicationContext;
     private final String saveDirectory;
 
     static final String MESSAGE_DELIMITER = "\u001c";
 
     Hl7FromFile(Hl7ParseAndQueue hl7ParseAndQueue,
+                ConfigurableApplicationContext applicationContext,
                 @Value("${waveform.hl7.save.directory:#{null}}") String saveDirectory) {
         this.hl7ParseAndQueue = hl7ParseAndQueue;
+        this.applicationContext = applicationContext;
         this.saveDirectory = saveDirectory;
     }
 
@@ -76,14 +80,17 @@ public class Hl7FromFile {
                 for (File file : filesToReplay) {
                     logger.info("Reading test HL7 file {}", file);
                     readAndQueueAllMessagesFromFile(file);
+                    // Call collateAndSend at a predictable place (at the end of each file),
+                    // rather than on a timer as we normally do when listening live.
+                    hl7ParseAndQueue.collateAndSend();
                 }
             } catch (WaveformCollator.CollationException e) {
                 throw new RuntimeException(e);
             }
 
-
-            // XXX: need to check collator has stopped
-            System.exit(0);
+            // Trigger Spring shutdown; QueueFlushLifecycle blocks until collator and publisher are drained
+            logger.info("All files read, initiating shutdown (queues will be flushed)");
+            applicationContext.close();
         };
     }
 
