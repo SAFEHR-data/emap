@@ -25,7 +25,7 @@ public class Application {
      * @return CommandLineRunner
      */
     @Bean
-    @Profile("!hl7-replay")
+    @Profile("!hl7-replay & !test")
     CommandLineRunner keepAliveForLiveMode() {
         return args -> {
             logger.info("Waveform reader running in live mode (TCP listener + scheduled collation)");
