@@ -1,5 +1,6 @@
 package uk.ac.ucl.rits.inform.datasources.waveform;
 
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -11,7 +12,6 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7ParseException;
 
 import java.io.BufferedOutputStream;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static uk.ac.ucl.rits.inform.datasources.waveform.Utils.readHl7FromResource;
@@ -42,8 +41,17 @@ class TestHl7FromFile {
         waveformCollator.pendingMessages.clear();
     }
 
-    static IntStream ints() {
-        return IntStream.rangeClosed(1, 10);
+    /**
+     * Test combinations:
+     * Determine amounts of random whitespace. Do in uncompressed and compressed versions.
+     */
+    static List<Object[]> seedAndCompressProvider() {
+        List<Object[]> params = new ArrayList<>();
+        for (int seed = 1; seed <= 10; seed++) {
+            params.add(new Object[] {seed, true});
+            params.add(new Object[] {seed, false});
+        }
+        return params;
     }
 
     /**
@@ -51,12 +59,12 @@ class TestHl7FromFile {
      * Apply random whitespace as real messages seem to have this.
      */
     @ParameterizedTest
-    @MethodSource({"ints"})
-    void readAllFromFile(int seed, @TempDir Path tempDir) throws IOException, Hl7ParseException, WaveformCollator.CollationException, URISyntaxException {
-        Path tempHl7DumpFile = tempDir.resolve("test_hl7.txt");
+    @MethodSource("seedAndCompressProvider")
+    void readAllFromFile(int seed, boolean compress, @TempDir Path tempDir) throws IOException, Hl7ParseException, WaveformCollator.CollationException, URISyntaxException {
+        Path tempHl7DumpFile = tempDir.resolve("test_hl7.txt" + (compress ? ".bz2" : "" ));
         final int numHl7Messages = 10;
-        makeTestFile(tempHl7DumpFile, numHl7Messages, new Random(seed));
-        hl7FromFile.readAndQueueAllMessagesFromBz2File(new FileInputStream(tempHl7DumpFile.toFile()));
+        makeTestFile(tempHl7DumpFile, numHl7Messages, new Random(seed), compress);
+        hl7FromFile.readAndQueueAllMessagesFromFile(tempHl7DumpFile.toFile());
         final int messagesPerHl7 = 5;
         assertEquals(numHl7Messages * messagesPerHl7, waveformCollator.getPendingMessageCount());
     }
@@ -70,8 +78,14 @@ class TestHl7FromFile {
         return allBytes;
     }
 
-    private void makeTestFile(Path hl7File, int numMessages, Random random) throws IOException, URISyntaxException {
-        BufferedOutputStream ostr = new BufferedOutputStream(new FileOutputStream(hl7File.toFile()));
+    private void makeTestFile(Path hl7File, int numMessages, Random random, boolean compress) throws IOException, URISyntaxException {
+        BufferedOutputStream ostr = null;
+        if (compress) {
+            ostr = new BufferedOutputStream(new BZip2CompressorOutputStream(
+                    new FileOutputStream(hl7File.toFile())));
+        } else {
+            ostr = new BufferedOutputStream(new FileOutputStream(hl7File.toFile()));
+        }
         String hl7Source = readHl7FromResource("hl7/test1.hl7");
         // space timestamps one second apart (they can't be the same or the collator will complain)
         Long cludgyDate = 20240731142108L;

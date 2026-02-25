@@ -8,6 +8,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Profile;
@@ -18,6 +19,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -27,10 +29,14 @@ public class Hl7FromFile {
     private final Logger logger = LoggerFactory.getLogger(Hl7FromFile.class);
 
     private final Hl7ParseAndQueue hl7ParseAndQueue;
+    private final String saveDirectory;
+
     static final String MESSAGE_DELIMITER = "\u001c";
 
-    Hl7FromFile(Hl7ParseAndQueue hl7ParseAndQueue) {
+    Hl7FromFile(Hl7ParseAndQueue hl7ParseAndQueue,
+                @Value("${waveform.hl7.save.directory:#{null}}") String saveDirectory) {
         this.hl7ParseAndQueue = hl7ParseAndQueue;
+        this.saveDirectory = saveDirectory;
     }
 
 
@@ -69,7 +75,7 @@ public class Hl7FromFile {
             try {
                 for (File file : filesToReplay) {
                     logger.info("Reading test HL7 file {}", file);
-                    readAndQueueAllMessagesFromBz2File(file);
+                    readAndQueueAllMessagesFromFile(file);
                 }
             } catch (WaveformCollator.CollationException e) {
                 throw new RuntimeException(e);
@@ -83,7 +89,10 @@ public class Hl7FromFile {
 
     private List<File> scanFiles(String startDatetime, String endDatetime, String sourceLocation) {
         // XXX: stub implementation that only returns one file
-        return List.of(new File("20240825T23/UCHT03ICUBED12/UCHT03ICUBED12_20240825T2345Z_8aaad7c08f2e44f5.hl7archive.bz2"));
+        Path baseDir = Path.of(this.saveDirectory);
+        return List.of(
+                baseDir.resolve("20240829T00/UCHT03ICUBED26/UCHT03ICUBED26_20240829T0000Z_24aa4c1196f938e8.hl7archive.bz2").toFile()
+        );
     }
 
     /**
@@ -117,11 +126,20 @@ public class Hl7FromFile {
         }
     }
 
-    void readAndQueueAllMessagesFromBz2File(File hl7Bz2File) throws Hl7ParseException, WaveformCollator.CollationException, IOException {
-        readAndQueueAllMessagesFromBz2File(inputStreamFromBz2File(hl7Bz2File));
+    void readAndQueueAllMessagesFromFile(File hl7File) throws Hl7ParseException, WaveformCollator.CollationException, IOException {
+        InputStream hl7InputStream = null;
+        if (hl7File.toPath().toString().toLowerCase().endsWith(".bz2")) {
+            logger.info("Detected bz2, reading compressed HL7 file {}", hl7File);
+            hl7InputStream = inputStreamFromBz2File(hl7File);
+        } else {
+            logger.info("Detected uncompressed, reading uncompressed HL7 file {}", hl7File);
+            hl7InputStream = new FileInputStream(hl7File);
+        }
+        readAndQueueAllMessagesFromStream(hl7InputStream);
     }
 
-    void readAndQueueAllMessagesFromBz2File(InputStream hl7InputStream) throws Hl7ParseException, WaveformCollator.CollationException, IOException {
+    private void readAndQueueAllMessagesFromStream(InputStream hl7InputStream)
+            throws Hl7ParseException, WaveformCollator.CollationException, IOException {
         List<String> messages = readHl7MessagesFromInputStream(hl7InputStream);
         logger.info("Read {} HL7 messages from test dump file", messages.size());
         for (int mi = 0; mi < messages.size(); mi++) {

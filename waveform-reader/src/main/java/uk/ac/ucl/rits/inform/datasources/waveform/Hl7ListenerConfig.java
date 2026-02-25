@@ -97,7 +97,7 @@ public class Hl7ListenerConfig {
      * @return connection factory
      */
     @Bean
-    @Profile("default")
+    @Profile("!hl7-replay")
     public TcpNetServerConnectionFactory serverConnectionFactory(
             @Value("${waveform.hl7.listen_port}") int listenPort,
             @Value("${waveform.hl7.source_address_allow_list}") List<String> sourceAddressAllowList,
@@ -149,7 +149,7 @@ public class Hl7ListenerConfig {
      * @return adapter
      */
     @Bean
-    @Profile("default")
+    @Profile("!hl7-replay")
     TcpReceivingChannelAdapter hl7InboundTcpAdapter(TcpNetServerConnectionFactory connectionFactory, MessageChannel hl7MessageChannel) {
         TcpReceivingChannelAdapter adapter = new TcpReceivingChannelAdapter();
         adapter.setConnectionFactory(connectionFactory);

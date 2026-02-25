@@ -61,7 +61,7 @@ public class DataSourceConfiguration {
      * @return connectionFactory with publisherConfirms set to true
      */
     @Bean
-    @Profile("default")
+    @Profile("!test")
     public ConnectionFactory connectionFactory(@Autowired RabbitProperties props) {
         CachingConnectionFactory connectionFactory = new CachingConnectionFactory(props.getHost(), props.getPort());
         connectionFactory.setUsername(props.getUsername());
@@ -76,7 +76,7 @@ public class DataSourceConfiguration {
      * @return our rabbit template
      */
     @Bean
-    @Profile("default")
+    @Profile("!test")
     public RabbitTemplate rabbitTemp(@Autowired MessageConverter messageConverter, @Autowired ConnectionFactory connectionFactory) {
         RabbitAdmin rabbitAdmin = new RabbitAdmin(connectionFactory);
         String queueName = getEmapDataSource().queueName().getQueueName();
