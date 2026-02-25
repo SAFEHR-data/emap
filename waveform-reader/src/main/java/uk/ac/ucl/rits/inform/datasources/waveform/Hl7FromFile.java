@@ -20,10 +20,17 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 @Component
 public class Hl7FromFile {
@@ -52,11 +59,11 @@ public class Hl7FromFile {
     @Profile("hl7-replay")
     public CommandLineRunner replayHl7FromBz2Files() {
         return (args) -> {
-            // Use Commons CLI (standard and robust) to parse command line arguments
             Options options = new Options();
             options.addRequiredOption(null, "start-datetime", true, "Start datetime in UTC (e.g., 2023-01-01T00:00:00Z)");
             options.addRequiredOption(null, "end-datetime", true, "End datetime in UTC (e.g., 2023-01-01T23:59:59Z)");
             options.addRequiredOption(null, "source-location", true, "Location as found in HL7 waveform messages");
+            options.addOption(null, "dry-run", false, "Only print which files would be processed, do not actually process.");
 
             CommandLineParser parser = new DefaultParser();
             CommandLine cmd;
@@ -67,39 +74,84 @@ public class Hl7FromFile {
                 throw new IllegalArgumentException("Invalid command line arguments", e);
             }
 
-            String startDatetime = cmd.getOptionValue("start-datetime");
-            String endDatetime = cmd.getOptionValue("end-datetime");
+            Instant startDatetime = Instant.parse(cmd.getOptionValue("start-datetime"));
+            Instant endDatetime = Instant.parse(cmd.getOptionValue("end-datetime"));
             String sourceLocation = cmd.getOptionValue("source-location");
+            boolean dryRun = cmd.hasOption("dry-run");
 
-            logger.info("Replaying with startDatetime={}, endDatetime={}, sourceLocation={}",
-                    startDatetime, endDatetime, sourceLocation);
+            replaySpecifiedFiles(startDatetime, endDatetime, sourceLocation, dryRun);
+            // Trigger Spring shutdown; QueueFlushLifecycle blocks until collator and publisher are drained
+            applicationContext.close();
+        };
+    }
 
-            List<File> filesToReplay = scanFiles(startDatetime, endDatetime, sourceLocation);
+    private void replaySpecifiedFiles(Instant startDatetime, Instant endDatetime, String sourceLocation, boolean dryRun)
+            throws Hl7ParseException, IOException, InterruptedException {
+        logger.info("Replaying with startDatetime={}, endDatetime={}, sourceLocation={}",
+                startDatetime, endDatetime, sourceLocation);
 
-            try {
-                for (File file : filesToReplay) {
-                    logger.info("Reading test HL7 file {}", file);
+        List<File> filesToReplay = scanFiles(startDatetime, endDatetime, sourceLocation);
+
+        try {
+            for (File file : filesToReplay) {
+                logger.info("Reading test HL7 file {}{}", (dryRun ? "[DRY RUN] " : ""), file);
+                if (!dryRun) {
                     readAndQueueAllMessagesFromFile(file);
                     // Call collateAndSend at a predictable place (at the end of each file),
                     // rather than on a timer as we normally do when listening live.
                     hl7ParseAndQueue.collateAndSend();
                 }
-            } catch (WaveformCollator.CollationException e) {
-                throw new RuntimeException(e);
             }
+        } catch (WaveformCollator.CollationException e) {
+            throw new RuntimeException(e);
+        }
 
-            // Trigger Spring shutdown; QueueFlushLifecycle blocks until collator and publisher are drained
-            logger.info("All files read, initiating shutdown (queues will be flushed)");
-            applicationContext.close();
-        };
+        logger.info("All files read, finishing");
     }
 
-    private List<File> scanFiles(String startDatetime, String endDatetime, String sourceLocation) {
-        // XXX: stub implementation that only returns one file
+    private boolean isMatch(Pattern pattern, Instant startDatetime, Instant endDatetime, Path path) {
+        Matcher matcher = pattern.matcher(path.getFileName().toString());
+        if (!matcher.matches()) {
+            // would also happen if file name is otherwise malformed
+            logger.info("File name does not match expected pattern, likely location mismatch in path: {}", path);
+            return false;
+        }
+        Instant fileTime = LocalDateTime.parse(matcher.group(1), Hl7MessageCompressor.FILE_NAME_DATETIME_PATTERN)
+                .atOffset(ZoneOffset.UTC)
+                .toInstant();
+        // Half-open interval. Test purely on the time in the file name, which is the beginning of the period contained
+        // in the file
+        if (startDatetime.isAfter(fileTime)) {
+            logger.info("File datetime {} is earlier than start datetime {}, excluding", fileTime, startDatetime);
+            return false;
+        }
+        if (!endDatetime.isAfter(fileTime)) {
+            logger.info("File datetime {} is equal or later than end datetime {}, excluding", fileTime, endDatetime);
+            return false;
+        }
+        return true;
+    }
+
+    private List<File> scanFiles(Instant startDatetime, Instant endDatetime, String sourceLocation) throws IOException {
+        // This method is not ideal as it walks the entire directory tree and then discards files.
+        // It would be better to limit our search to top-level dirs in between startDatetime and endDatetime.
         Path baseDir = Path.of(this.saveDirectory);
-        return List.of(
-                baseDir.resolve("20240829T00/UCHT03ICUBED26/UCHT03ICUBED26_20240829T0000Z_24aa4c1196f938e8.hl7archive.bz2").toFile()
-        );
+        // Don't check the directory names as all the info needed is in the file name
+        String fileNameRegex = sourceLocation + "_(\\d{8}T\\d{4}Z)_[0-9a-f]+\\.hl7archive.bz2";
+        Pattern fileNamePattern = Pattern.compile(fileNameRegex);
+        List<File> files = new ArrayList<>();
+        try (Stream<Path> paths = Files.walk(baseDir)) {
+            paths
+                    .filter(Files::isRegularFile)
+                    .filter(p -> isMatch(fileNamePattern, startDatetime, endDatetime, p))
+                    .sorted()
+                    .map(Path::toFile)
+                    .forEach(files::add);
+        } catch (IOException e) {
+            logger.warn("Error scanning directory {}: {}", baseDir, e.getMessage());
+            throw e;
+        }
+        return files;
     }
 
     /**
