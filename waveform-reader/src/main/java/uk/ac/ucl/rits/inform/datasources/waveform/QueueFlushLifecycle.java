@@ -25,7 +25,6 @@ public class QueueFlushLifecycle implements SmartLifecycle {
     @Getter
     private static AtomicInteger exitCode = new AtomicInteger(0);
 
-    private final Hl7ParseAndQueue hl7ParseAndQueue;
     private final WaveformCollator waveformCollator;
     private final Publisher publisher;
 
@@ -33,14 +32,11 @@ public class QueueFlushLifecycle implements SmartLifecycle {
 
     /**
      * Bring together anything that might need flushing during shutdown.
-     * @param hl7ParseAndQueue
      * @param waveformCollator
      * @param publisher
      */
-    public QueueFlushLifecycle(Hl7ParseAndQueue hl7ParseAndQueue,
-                               WaveformCollator waveformCollator,
+    public QueueFlushLifecycle(WaveformCollator waveformCollator,
                                Publisher publisher) {
-        this.hl7ParseAndQueue = hl7ParseAndQueue;
         this.waveformCollator = waveformCollator;
         this.publisher = publisher;
     }
