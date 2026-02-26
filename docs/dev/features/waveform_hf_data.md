@@ -27,6 +27,8 @@ but in practice it's typically 20 seconds. We have aimed for similar.
 
 ## Config options added
 
+These should be controlled from the global config file.
+
 Core:
   - `core.waveform.retention_hours` periodically delete data that is more than this many hours older than
     the newest piece of waveform data.
@@ -46,11 +48,11 @@ Waveform Reader:
       For testing only: if the list contains the value "ALL", then all source IP addresses are allowed. This is
       the only form of authentication so don't use this setting in production.
       Not currently supported: hostnames or IP ranges.
-
-
-XXX FIX THIS
-
-  - `waveform.hl7.test_dump_file` If specified, read messages from this file and then exit - intended for validation
+  - `waveform.hl7.save.enabled` should the waveform-reader save incoming HL7 messages?
+  - `waveform.hl7.save.directory` Container path to save (compressed) HL7 messages to.
+      The `waveform-reader-hl7-replay` service reads from this directory.
+  - `waveform.hl7.save.archive_time_slot_minutes` A single compressed archive will cover data over this span of time
+      (according to observation time). Must be aligned to the hour, so only factors of 60 are valid.
 
 ## Container housekeeping (setup script)
 The waveform processing feature is enabled or disabled in the global configuration file. I've added
