@@ -92,9 +92,10 @@ public class Hl7FromFile {
 
         List<File> filesToReplay = scanFiles(startDatetime, endDatetime, sourceLocation);
 
+        logger.info("Found {} files to replay", filesToReplay.size());
         try {
             for (File file : filesToReplay) {
-                logger.info("Reading test HL7 file {}{}", (dryRun ? "[DRY RUN] " : ""), file);
+                logger.info("Reading HL7 file {}{}", (dryRun ? "[DRY RUN] " : ""), file);
                 if (!dryRun) {
                     readAndQueueAllMessagesFromFile(file);
                     // Call collateAndSend at a predictable place (at the end of each file),
