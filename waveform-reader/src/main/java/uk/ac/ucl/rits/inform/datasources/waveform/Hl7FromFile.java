@@ -206,14 +206,14 @@ public class Hl7FromFile {
     private void readAndQueueAllMessagesFromStream(InputStream hl7InputStream)
             throws Hl7ParseException, WaveformCollator.CollationException, IOException {
         List<String> messages = readHl7MessagesFromInputStream(hl7InputStream);
-        logger.info("Read {} HL7 messages from test dump file", messages.size());
+        logger.info("Read {} HL7 messages from file", messages.size());
         for (int mi = 0; mi < messages.size(); mi++) {
             // do not re-save since we already took this from a file!
             hl7ParseAndQueue.saveParseQueue(messages.get(mi), false);
             if (mi % 100 == 0) {
-                logger.info("handled {} messages out of {}", mi + 1, messages.size());
+                logger.info("queued {} HL7 messages out of {}", mi + 1, messages.size());
             }
         }
-        logger.info("Queued {} HL7 messages from test dump file", messages.size());
+        logger.info("Queued {} HL7 messages from file", messages.size());
     }
 }
