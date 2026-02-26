@@ -25,12 +25,13 @@ import java.util.Random;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static uk.ac.ucl.rits.inform.datasources.waveform.Utils.readHl7FromResource;
 
+/**
+ * Test the file parsing aspects of {@link Hl7FromFile}.
+ */
 @SpringJUnitConfig
 @SpringBootTest
 @ActiveProfiles("test")
-class TestHl7FromFile {
-    @Autowired
-    private Hl7ParseAndQueue hl7ParseAndQueue;
+class TestHl7FromFileParsing {
     @Autowired
     private WaveformCollator waveformCollator;
     @Autowired

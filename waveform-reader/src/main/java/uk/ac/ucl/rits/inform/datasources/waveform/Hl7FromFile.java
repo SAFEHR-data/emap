@@ -132,7 +132,7 @@ public class Hl7FromFile {
         return true;
     }
 
-    private List<File> scanFiles(Instant startDatetime, Instant endDatetime, String sourceLocation) throws IOException {
+    List<File> scanFiles(Instant startDatetime, Instant endDatetime, String sourceLocation) throws IOException {
         // This method is not ideal as it walks the entire directory tree and then discards files.
         // It would be better to limit our search to top-level dirs in between startDatetime and endDatetime.
         Path baseDir = Path.of(this.saveDirectory);
