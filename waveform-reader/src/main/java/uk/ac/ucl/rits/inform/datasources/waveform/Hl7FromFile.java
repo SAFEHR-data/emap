@@ -172,29 +172,35 @@ public class Hl7FromFile {
         }
     }
 
-    InputStream inputStreamFromBz2File(File bz2File) throws IOException {
-        FileInputStream fis = null;
-        try {
-            fis = new FileInputStream(bz2File);
-            return new BZip2CompressorInputStream(fis);
-        } catch (IOException e) {
-            if (fis != null) {
+    /**
+     * Auto-detect compression status of optionally bz2 compressed HL7 file.
+     *
+     * @param hl7File A file containing hl7 messages delimited by an FS character.
+     *                Must end in ".bz2" if and only if it is bz2 compressed,
+     *                otherwise will be assumed to be uncompressed.
+     * @return an InputStream from which uncompressed text can be read
+     * @throws IOException if a bz2 file is corrupted
+     */
+    InputStream inputStreamFromFile(File hl7File) throws IOException {
+        if (hl7File.toPath().toString().toLowerCase().endsWith(".bz2")) {
+            logger.info("Detected bz2, reading compressed HL7 file {}", hl7File);
+            InputStream fis = new FileInputStream(hl7File);
+            try {
+                return new BZip2CompressorInputStream(fis);
+            } catch (IOException e) {
                 fis.close();
+                throw e;
             }
-            throw e;
+        } else {
+            logger.info("Detected uncompressed, reading uncompressed HL7 file {}", hl7File);
+            return new FileInputStream(hl7File);
         }
     }
 
     void readAndQueueAllMessagesFromFile(File hl7File) throws Hl7ParseException, WaveformCollator.CollationException, IOException {
-        InputStream hl7InputStream = null;
-        if (hl7File.toPath().toString().toLowerCase().endsWith(".bz2")) {
-            logger.info("Detected bz2, reading compressed HL7 file {}", hl7File);
-            hl7InputStream = inputStreamFromBz2File(hl7File);
-        } else {
-            logger.info("Detected uncompressed, reading uncompressed HL7 file {}", hl7File);
-            hl7InputStream = new FileInputStream(hl7File);
+        try (InputStream hl7InputStream = inputStreamFromFile(hl7File)) {
+            readAndQueueAllMessagesFromStream(hl7InputStream);
         }
-        readAndQueueAllMessagesFromStream(hl7InputStream);
     }
 
     private void readAndQueueAllMessagesFromStream(InputStream hl7InputStream)
