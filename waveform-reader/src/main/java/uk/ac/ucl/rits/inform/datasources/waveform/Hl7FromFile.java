@@ -159,17 +159,17 @@ public class Hl7FromFile {
      * This is the original format used for test dump files.
      * @param hl7InputStream InputStream containing delimiter-separated messages
      * @return List of message strings
-     * @throws IOException if file cannot be read
      */
-    List<String> readHl7MessagesFromInputStream(InputStream hl7InputStream) throws IOException {
-        Scanner scanner = new Scanner(hl7InputStream);
-        scanner.useDelimiter(MESSAGE_DELIMITER);
-        List<String> allMessages = new ArrayList<>();
-        while (scanner.hasNext()) {
-            String nextMessageStr = scanner.next();
-            allMessages.add(nextMessageStr);
+    List<String> readHl7MessagesFromInputStream(InputStream hl7InputStream) {
+        try (Scanner scanner = new Scanner(hl7InputStream)) {
+            scanner.useDelimiter(MESSAGE_DELIMITER);
+            List<String> allMessages = new ArrayList<>();
+            while (scanner.hasNext()) {
+                String nextMessageStr = scanner.next();
+                allMessages.add(nextMessageStr);
+            }
+            return allMessages;
         }
-        return allMessages;
     }
 
     InputStream inputStreamFromBz2File(File bz2File) throws IOException {
