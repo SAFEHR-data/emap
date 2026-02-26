@@ -113,7 +113,7 @@ public class Hl7FromFile {
         Matcher matcher = pattern.matcher(path.getFileName().toString());
         if (!matcher.matches()) {
             // would also happen if file name is otherwise malformed
-            logger.info("File name does not match expected pattern, likely location mismatch in path: {}", path);
+            logger.debug("File name does not match expected pattern, likely location mismatch in path: {}", path);
             return false;
         }
         Instant fileTime = LocalDateTime.parse(matcher.group(1), Hl7MessageCompressor.FILE_NAME_DATETIME_PATTERN)
@@ -122,11 +122,11 @@ public class Hl7FromFile {
         // Half-open interval. Test purely on the time in the file name, which is the beginning of the period contained
         // in the file
         if (startDatetime.isAfter(fileTime)) {
-            logger.info("File datetime {} is earlier than start datetime {}, excluding", fileTime, startDatetime);
+            logger.debug("File datetime {} is earlier than start datetime {}, excluding", fileTime, startDatetime);
             return false;
         }
         if (!endDatetime.isAfter(fileTime)) {
-            logger.info("File datetime {} is equal or later than end datetime {}, excluding", fileTime, endDatetime);
+            logger.debug("File datetime {} is equal or later than end datetime {}, excluding", fileTime, endDatetime);
             return false;
         }
         return true;
