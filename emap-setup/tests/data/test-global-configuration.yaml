@@ -56,4 +56,3 @@ waveform:
   enable_waveform: false
   enable_waveform_generator: false
   WAVEFORM_HL7_SOURCE_ADDRESS_ALLOW_LIST: 127.0.0.1
-  WAVEFORM_HL7_TEST_DUMP_FILE: ""

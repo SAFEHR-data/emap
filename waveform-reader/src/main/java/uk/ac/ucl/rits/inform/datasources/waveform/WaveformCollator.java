@@ -97,7 +97,7 @@ public class WaveformCollator {
                                                   int waitForDataLimitMillis,
                                                   ChronoUnit assumedRounding) throws CollationException {
         List<WaveformMessage> newMessages = new ArrayList<>();
-        logger.info("Pending messages: {} - {} location+stream combos (of which {} non-empty)",
+        logger.info("Pending messages: {}.  {} location+variable+channel combos (of which {} non-empty)",
                 getPendingMessageCount(),
                 pendingMessages.size(),
                 pendingMessages.values().stream().filter(pm -> !pm.isEmpty()).count());
