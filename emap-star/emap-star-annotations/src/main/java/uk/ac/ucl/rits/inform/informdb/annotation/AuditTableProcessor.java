@@ -270,7 +270,10 @@ public class AuditTableProcessor extends AbstractProcessor {
         List<FieldStore> fieldShorts = new ArrayList<>();
 
         // Primary key
-        this.generateSingleField(out, "\t@Id\n\t@GeneratedValue(strategy = GenerationType.AUTO)", "Long", primaryKey);
+        this.generateSingleField(
+                out,
+                "\t@Id\n\t@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = \"emap_id_sequence\")",
+                "Long", primaryKey);
 
         // All other fields
         for (VariableElement field : fields) {

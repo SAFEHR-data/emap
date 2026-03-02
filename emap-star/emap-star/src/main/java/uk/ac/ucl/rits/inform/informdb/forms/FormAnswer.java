@@ -31,7 +31,7 @@ public class FormAnswer extends TemporalCore<FormAnswer, FormAnswerAudit> {
      * \brief Unique identifier in EMAP for this instance of a Form.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private Long formAnswerId;
 
     /**

@@ -43,7 +43,7 @@ public class PatientCondition extends TemporalCore<PatientCondition, PatientCond
      * This is the primary key for the patientCondition table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private long patientConditionId;
 
     /**

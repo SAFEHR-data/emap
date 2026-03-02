@@ -29,7 +29,7 @@ public class BedFacility implements Serializable {
      * This is the primary key for the bedFacility table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private Long bedFacilityId;
 
     /**

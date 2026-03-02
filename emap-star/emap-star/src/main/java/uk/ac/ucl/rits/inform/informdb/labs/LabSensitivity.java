@@ -34,7 +34,7 @@ public class LabSensitivity extends TemporalCore<LabSensitivity, LabSensitivityA
      * This is the primary key for the labSensitivity table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private long labSensitivityId;
 
     /**
