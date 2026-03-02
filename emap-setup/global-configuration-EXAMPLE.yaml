@@ -97,6 +97,9 @@ glowroot:
 # For testing outside the GAE, you can enable a fake UDS
 fake_uds:
   enable_fake_uds: false
+  POSTGRES_DB: fakeuds
+  POSTGRES_USER:
+  POSTGRES_PASSWORD:
 
 # config related to waveform data ingress
 waveform:
