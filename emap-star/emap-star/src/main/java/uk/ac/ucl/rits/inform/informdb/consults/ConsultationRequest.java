@@ -32,7 +32,7 @@ public class ConsultationRequest extends TemporalCore<ConsultationRequest, Consu
      * This is the primary key for the consultationRequest table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private long consultationRequestId;
 
     /**

@@ -37,7 +37,7 @@ public class ConditionVisits {
      * This is the primary key for the ConditionVisits table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private Long conditionVisitsId;
 
     /**

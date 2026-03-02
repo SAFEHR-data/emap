@@ -29,7 +29,7 @@ public class Bed implements Serializable {
      * This is the primary key for the bed table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private Long bedId;
 
     /**

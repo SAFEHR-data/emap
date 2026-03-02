@@ -28,7 +28,7 @@ public class FormQuestion extends TemporalCore<FormQuestion, FormQuestionAudit> 
      * \brief Unique identifier in EMAP.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private Long formQuestionId;
 
     /**

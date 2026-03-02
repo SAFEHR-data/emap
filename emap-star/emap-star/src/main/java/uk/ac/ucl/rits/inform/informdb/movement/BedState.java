@@ -33,7 +33,7 @@ public class BedState extends AuditCore<BedState> {
      * This is the primary key for the bedState table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private Long bedStateId;
 
     /**
