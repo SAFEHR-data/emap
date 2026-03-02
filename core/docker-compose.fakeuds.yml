@@ -5,7 +5,6 @@ services:
       - ../../config/fakeuds-postgres-config-envs
     volumes:
       - postgres-data-fakeuds:/var/lib/postgresql/data
-      - ./init/uds:/docker-entrypoint-initdb.d
     restart: unless-stopped
     ports:
       - "${FAKEUDS_PORT}:5432"
