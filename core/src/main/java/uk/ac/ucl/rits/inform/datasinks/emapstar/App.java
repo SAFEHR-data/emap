@@ -19,9 +19,13 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import uk.ac.ucl.rits.inform.datasinks.emapstar.exceptions.MessageIgnoredException;
 import uk.ac.ucl.rits.inform.datasinks.emapstar.repos.IdsEffectLogging;
 import uk.ac.ucl.rits.inform.datasinks.emapstar.repos.IdsEffectLoggingRepository;
+import uk.ac.ucl.rits.inform.interchange.AdvanceDecisionMessage;
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessage;
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessageProcessingException;
+import uk.ac.ucl.rits.inform.interchange.PatientConditionMessage;
 import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
+import uk.ac.ucl.rits.inform.interchange.lab.LabOrderMsg;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.ObservationType;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -80,9 +84,7 @@ public class App {
         Instant startTime = Instant.now();
         idsEffectLogging.setProcessingStartTime(startTime);
         idsEffectLogging.setMessageType(msg.getMessageType());
-        if (msg instanceof AdtMessage) {
-            idsEffectLogging.setMessageDatetime(((AdtMessage) msg).getRecordedDateTime());
-        }
+        idsEffectLogging.setMessageDatetime(inferEventDatetime(msg));
         idsEffectLogging.setSourceId(msg.getSourceMessageId());
         try {
             logger.info("Starting processing of interchange message {}", msg.getSourceMessageId());
@@ -115,6 +117,28 @@ public class App {
             idsEffectLogging.setProcessingEndTime(Instant.now());
             idsEffectLoggingRepository.save(idsEffectLogging);
         }
+    }
+
+    /**
+     * Get an approximate idea of the message timestamp. Ideally we'd just use the persist datetime
+     * on the IDS but we don't have that available to us here.
+     * @param msg an interchagne message
+     * @return when the event happened
+     */
+    private Instant inferEventDatetime(EmapOperationMessage msg) {
+        // perhaps EmapOperationMessage should have an abstract method for getting the event datetime...
+        if (msg instanceof AdtMessage) {
+            return ((AdtMessage) msg).getRecordedDateTime();
+        } else if (msg instanceof PatientConditionMessage) {
+            return ((PatientConditionMessage) msg).getUpdatedDateTime();
+        } else if (msg instanceof AdvanceDecisionMessage) {
+            return ((AdvanceDecisionMessage) msg).getStatusChangeDatetime();
+        } else if (msg instanceof ObservationType) {
+            return ((ObservationType) msg).getLastUpdatedInstant();
+        } else if (msg instanceof LabOrderMsg) {
+            return ((LabOrderMsg) msg).getStatusChangeTime();
+        }
+        return null;
     }
 
 }
