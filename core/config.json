@@ -1,7 +1,7 @@
 {
     "transactions": {
         "slowThresholdMillis": 300,
-        "profilingIntervalMillis": 1000,
+        "profilingIntervalMillis": 10,
         "captureThreadStats": true
       },
     "instrumentation": [
