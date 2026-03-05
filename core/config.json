@@ -25,25 +25,12 @@
             "methodParameterTypes": [
                 ".."
             ],
-            "captureKind": "trace-entry",
+            "captureKind": "transaction",
             "transactionType": "Web",
             "transactionNameTemplate": "fromMessage",
-            "transactionSlowThresholdMillis": 3,
+            "transactionSlowThresholdMillis": 20,
             "traceEntryMessageTemplate": "{{this}}.{{methodName}}({{0}}, {{1}}, {{2}})",
             "timerName": "fromMessage"
-        },
-        {
-            "className": "org.springframework.amqp.support.converter.MessageConverter",
-            "methodName": "toMessage",
-            "methodParameterTypes": [
-                ".."
-            ],
-            "captureKind": "trace-entry",
-            "transactionType": "Web",
-            "transactionNameTemplate": "toMessage",
-            "transactionSlowThresholdMillis": 3,
-            "traceEntryMessageTemplate": "{{this}}.{{methodName}}({{0}}, {{1}}, {{2}})",
-            "timerName": "toMessage"
         }
 
     ]
