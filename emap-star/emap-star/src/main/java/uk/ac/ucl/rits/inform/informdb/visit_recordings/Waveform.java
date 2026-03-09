@@ -49,7 +49,7 @@ public class Waveform extends TemporalCore<Waveform, WaveformAudit> {
      * This is the primary key.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "waveform_id_sequence")
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private long waveformId;
 
     /**

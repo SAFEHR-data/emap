@@ -48,7 +48,7 @@ public class VisitObservation extends TemporalCore<VisitObservation, VisitObserv
      * This is the primary key for the visitObservation table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private long visitObservationId;
 
     /**

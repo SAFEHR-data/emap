@@ -31,7 +31,7 @@ public class LabBattery extends TemporalCore<LabBattery, LabBatteryAudit> {
      * This is the primary key for the labBattery table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private long labBatteryId;
 
     /**

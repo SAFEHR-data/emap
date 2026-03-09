@@ -46,7 +46,7 @@ public class Mrn implements Serializable {
      * This is the primary key for the mrn table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private Long mrnId;
 
     //TODO Exclude from doxygen

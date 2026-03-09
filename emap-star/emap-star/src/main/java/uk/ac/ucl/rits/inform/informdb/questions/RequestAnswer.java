@@ -40,7 +40,7 @@ public class RequestAnswer extends TemporalCore<RequestAnswer, RequestAnswerAudi
      * This is the primary key for the requestAnswer table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private long requestAnswerId;
 
     /**
