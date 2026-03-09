@@ -29,7 +29,7 @@ public class Location implements  Serializable {
      * This is the primary key for the location table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private long locationId;
 
     /**

@@ -16,6 +16,10 @@ At this point we create a list in the planner with vital things to be completed 
    1. Delete all data in the instance to be repopulated using script 
       `\\sharefs6\UCLH6\EMAP\Shared\EmapSqlScripts\devops\drop.sql`
 
+   1. Create the sequence that hibernate uses for @Id fields, as it doesn't
+      get created automatically in some circumstances.
+      `CREATE SEQUENCE IF NOT EXISTS "your_schema".emap_id_sequence INCREMENT 50;`
+
    1. Taking note of which branches of each repository are being used.
 
    1. Start off a run into the empty db.

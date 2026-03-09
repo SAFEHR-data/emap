@@ -43,7 +43,7 @@ public class LabOrder extends TemporalCore<LabOrder, LabOrderAudit> {
      * This is the primary key for the labOrder table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private Long labOrderId;
 
     /**

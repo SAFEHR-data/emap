@@ -33,7 +33,7 @@ public class AdvanceDecision extends TemporalCore<AdvanceDecision, AdvanceDecisi
      * This is the primary key for the advanceDecision table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private long advanceDecisionId;
 
     /**
