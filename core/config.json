@@ -1,24 +1,38 @@
 {
     "transactions": {
         "slowThresholdMillis": 300,
-        "profilingIntervalMillis": 1000,
+        "profilingIntervalMillis": 100,
         "captureThreadStats": true
       },
-      "instrumentation": [
-              {
-                        "className": "uk.ac.ucl.rits.inform.datasinks.emapstar.App",
-                        "methodName": "receiveMessage",
-                        "methodParameterTypes": [
-                                    ".."
-                                  ],
-                        "captureKind": "transaction",
-                        "transactionType": "Web",
-                        "transactionNameTemplate": "receiveMessage",
-                        "transactionSlowThresholdMillis": 500,
-                        "alreadyInTransactionBehavior": "capture-new-transaction",
-                        "traceEntryMessageTemplate": "{{this}}.{{methodName}}({{0}}, {{1}}, {{2}})",
-                        "timerName": "receiveMessage"
-                      }
-            ]
+    "instrumentation": [
+        {
+            "className": "uk.ac.ucl.rits.inform.datasinks.emapstar.App",
+            "methodName": "receiveMessage",
+            "methodParameterTypes": [
+                ".."
+            ],
+            "captureKind": "transaction",
+            "transactionType": "Web",
+            "transactionNameTemplate": "receiveMessage",
+            "transactionSlowThresholdMillis": 20,
+            "alreadyInTransactionBehavior": "capture-new-transaction",
+            "traceEntryMessageTemplate": "{{this}}.{{methodName}}({{0}}, {{1}}, {{2}})",
+            "timerName": "receiveMessage"
+        },
+        {
+            "className": "org.springframework.amqp.support.converter.MessageConverter",
+            "methodName": "fromMessage",
+            "methodParameterTypes": [
+                ".."
+            ],
+            "captureKind": "transaction",
+            "transactionType": "Web",
+            "transactionNameTemplate": "fromMessage",
+            "transactionSlowThresholdMillis": 20,
+            "traceEntryMessageTemplate": "{{this}}.{{methodName}}({{0}}, {{1}}, {{2}})",
+            "timerName": "fromMessage"
+        }
+
+    ]
 }
 
