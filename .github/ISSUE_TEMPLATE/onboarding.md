@@ -19,6 +19,7 @@ assignees: ''
   - [ ] Access to UCLH shared directory \\sharefs6\UCLH6\EMAP\Shared. 
     - Required for SQL scripts referenced in [SOP PR Checklist](https://github.com/SAFEHR-data/internal_emap_documentation/blob/b60259c3a05a327da63442f8442f61cff949ae7d/SOP/pr_checklist.md?plain=1#L19)
     - and [SOP validation checklist](https://github.com/SAFEHR-data/internal_emap_documentation/blob/b60259c3a05a327da63442f8442f61cff949ae7d/SOP/validation_run.md?plain=1#L20)
+  - [ ] A login for UCLH RStudio Server. This provides a user friendly interface for running R within UCLH, which is required for running the validation scripts.
 - [ ] You should now be able to run [validation](https://github.com/SAFEHR-data/emap/blob/main/docs/dev/onboarding.md#validation-and-deployment) of an EMAP deployment.
 - Access to team communication and documentation channels.
   - [ ] Membership of Inform-Emap MS Teams
