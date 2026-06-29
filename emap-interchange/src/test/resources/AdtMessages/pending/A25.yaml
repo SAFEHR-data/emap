@@ -1,0 +1,53 @@
+"@class": "uk.ac.ucl.rits.inform.interchange.adt.CancelPendingDischarge"
+recordedDateTime: "2022-04-21T23:37:00Z"
+eventOccurredDateTime: "2022-04-21T23:37:58Z"
+eventReasonCode: "PNDDISCHARGEDELETE"
+visitNumber: "123412341234"
+nhsNumber: "9999999999"
+sourceSystem: "EPIC"
+mrn: "40800000"
+fullLocationString:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "ED^COVID MAJORS 16^16-COVID MAJORS"
+patientBirthDate:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "1980-06-01"
+patientBirthDateTime:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "1980-06-01T00:00:00Z"
+patientClass:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "EMERGENCY"
+patientIsAlive:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: true
+patientFamilyName:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "AGBTESTD"
+patientGivenName:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "Satesta"
+patientSex:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "F"
+patientTitle:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "MRS"
+patientZipOrPostalCode:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "T5 1TT"
+modeOfArrival:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  status: "SAVE"
+  value: "Walk-in"
+cancelledDateTime : "2022-04-21T23:37:58Z"

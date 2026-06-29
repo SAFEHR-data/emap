@@ -33,7 +33,7 @@ public class ConsultationType extends TemporalCore<ConsultationType, Consultatio
      * This is the primary key for the consultationType table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private long consultationTypeId;
     @Column(nullable = false, unique = true)
 

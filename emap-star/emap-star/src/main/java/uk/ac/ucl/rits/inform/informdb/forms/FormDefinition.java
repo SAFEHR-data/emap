@@ -28,7 +28,7 @@ public class FormDefinition extends TemporalCore<FormDefinition, FormDefinitionA
      * \brief Unique identifier in EMAP for this Form description record.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private Long formDefinitionId;
 
     /**

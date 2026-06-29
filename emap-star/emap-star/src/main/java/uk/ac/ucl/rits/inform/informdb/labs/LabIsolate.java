@@ -32,7 +32,7 @@ public class LabIsolate extends TemporalCore<LabIsolate, LabIsolateAudit> {
      * This is the primary key for the labIsolate table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private long labIsolateId;
 
     /**

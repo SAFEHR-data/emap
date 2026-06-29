@@ -19,7 +19,9 @@ import uk.ac.ucl.rits.inform.informdb.movement.PlannedMovement;
 import uk.ac.ucl.rits.inform.interchange.test.helpers.InterchangeMessageFactory;
 import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
 import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
+import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingDischarge;
 import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingTransfer;
+import uk.ac.ucl.rits.inform.interchange.adt.PendingDischarge;
 import uk.ac.ucl.rits.inform.interchange.adt.PendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.PendingType;
 
@@ -49,6 +51,8 @@ class TestPendingAdt extends MessageProcessingBase {
     // end to end messages
     private PendingTransfer pendingTransfer;
     private CancelPendingTransfer cancelPendingTransfer;
+    private PendingDischarge pendingDischarge;
+    private CancelPendingDischarge cancelPendingDischarge;
 
     private static final String VISIT_NUMBER = "123412341234";
     private static final String LOCATION_STRING = "1020100166^SDEC BY02^11 SDEC";
@@ -65,6 +69,8 @@ class TestPendingAdt extends MessageProcessingBase {
     void setup() throws IOException {
         pendingTransfer = messageFactory.getAdtMessage("pending/A15.yaml");
         cancelPendingTransfer = messageFactory.getAdtMessage("pending/A26.yaml");
+        pendingDischarge = messageFactory.getAdtMessage("pending/A16.yaml");
+        cancelPendingDischarge = messageFactory.getAdtMessage("pending/A25.yaml");
     }
 
     /**
@@ -76,6 +82,21 @@ class TestPendingAdt extends MessageProcessingBase {
     @Test
     void testPendingCreatesOtherEntities() throws Exception {
         dbOps.processMessage(pendingTransfer);
+
+        assertEquals(1, mrnRepository.count());
+        assertEquals(1, coreDemographicRepository.count());
+        assertEquals(1, hospitalVisitRepository.count());
+    }
+
+    /**
+     * Given that no entities exist in the database
+     * When a pending discharge message is processed
+     * Mrn, core demographics and hospital visit entities should be created
+     * @throws Exception shouldn't happen
+     */
+    @Test
+    void testPendingDischargeCreatesOtherEntities() throws Exception {
+        dbOps.processMessage(pendingDischarge);
 
         assertEquals(1, mrnRepository.count());
         assertEquals(1, coreDemographicRepository.count());
@@ -97,6 +118,22 @@ class TestPendingAdt extends MessageProcessingBase {
         assertEquals(PendingType.TRANSFER.toString(), plannedMovement.getEventType());
         assertNull(plannedMovement.getCancelledDatetime());
         assertEquals("Head and Neck - OMFS", plannedMovement.getHospitalService());
+    }
+
+    /**
+     * Given no planned movements in the database
+     * When a pending transfer is processed
+     * Then a new PlannedMovement should be created
+     * @throws Exception shouldn't happen
+     */
+    @Test
+    void testPendingDischargeCreatesPlannedMovement() throws Exception {
+        dbOps.processMessage(pendingDischarge);
+
+        PlannedMovement plannedMovement = getPlannedMovementOrThrow(VISIT_NUMBER, null);
+        assertEquals(EVENT_TIME, plannedMovement.getEventDatetime());
+        assertEquals(PendingType.DISCHARGE.toString(), plannedMovement.getEventType());
+        assertNull(plannedMovement.getCancelledDatetime());
     }
 
     /**

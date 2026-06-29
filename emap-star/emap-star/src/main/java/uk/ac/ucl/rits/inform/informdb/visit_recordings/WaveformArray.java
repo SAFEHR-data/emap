@@ -12,7 +12,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Arrays;
-import java.util.Objects;
 
 public class WaveformArray implements UserType {
     @Override
@@ -27,12 +26,21 @@ public class WaveformArray implements UserType {
 
     @Override
     public boolean equals(Object o, Object o1) throws HibernateException {
-        return Objects.equals(o, o1);
+        if (o == o1) {
+            return true;
+        }
+        if (o == null || o1 == null) {
+            return false;
+        }
+        // ensure that we check on the *values* and not just the references as Double[] .equals() would do
+        Double[] a = (Double[]) o;
+        Double[] b = (Double[]) o1;
+        return Arrays.equals(a, b);
     }
 
     @Override
     public int hashCode(Object o) throws HibernateException {
-        return Objects.hashCode(o);
+        return Arrays.hashCode((Double[]) o);
     }
 
     @Override

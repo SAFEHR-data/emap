@@ -1,0 +1,62 @@
+@startuml
+
+!include <tupadr3/common>
+!include <office/Servers/database_server>
+!include <office/Devices/hard_disk>
+
+package "Smartlinx server" #F8F8F8 {
+    component Smartlinx as smartlinx #DDDDDD
+}
+
+' seems like services must be defined in their package from the start
+package "GAE01" #F8F8F8 {
+    OFF_HARD_DISK(gae_hdd, local storage)  #DDDDDD
+    package "EMAP" #F8F8F8 {
+        component "waveform reader" as wave_reader #009E73
+        component "RabbitMQ" as rabbitmq #DDDDDD
+        component "core processor" as core_proc #DDDDDD
+    }
+    package "Waveform app" #F8F8F8 {
+        component "waveform controller" as wave_ctrl #E69F00
+        component "waveform exporter" as wave_export #E69F00
+    }
+    OFF_HARD_DISK(sqlite3_hdd, local storage)  #DDDDDD
+}
+'# Top colour blind safe colours
+'#0072B2   # Blue
+'#E69F00   # Orange
+'#009E73   # Green
+'#F0E442   # Yellow
+'#56B4E9   # Light Blue
+'#D55E00   # Vermillion (Red-Orange)
+'#CC79A7   # Reddish Purple
+'#000000   # Black
+
+package "Data Safe Haven" #F8F8F8 {
+    OFF_HARD_DISK(dsh_hdd, DSH file share)  #DDDDDD
+}
+
+
+OFF_DATABASE_SERVER(uds_db, User Data Store (UDS) — Postgres)  #DDDDDD
+
+' HL7 waveform ingress
+smartlinx --> wave_reader : HL7
+core_proc <--> uds_db
+wave_reader -> rabbitmq: Emap-Interchange
+rabbitmq ---> wave_ctrl: Emap-Interchange
+rabbitmq -> core_proc: Emap-Interchange
+wave_reader <-> gae_hdd: HL7 tar.bz2
+wave_ctrl -> sqlite3_hdd: Atrium DB (sqlite3)
+wave_export <- sqlite3_hdd: Atrium DB daily extract
+wave_ctrl <-- uds_db: EHR data
+
+wave_export --> dsh_hdd: FTPS
+
+legend left
+|= Color      |= Meaning                           |
+|<#DDDDDD>    | Pre-existing                           |
+|<#E69F00>    | New in this phase                  |
+|<#009E73>    | New in previous phase              |
+endlegend
+
+@enduml

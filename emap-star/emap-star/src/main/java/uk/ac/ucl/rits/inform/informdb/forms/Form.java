@@ -38,7 +38,7 @@ public class Form extends TemporalCore<Form, FormAudit> {
      * \brief Unique identifier in EMAP for this instance of a Form.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private Long formId;
 
     /* There is no concept of an instance ID here

@@ -1,0 +1,2 @@
+FROM rabbitmq:4.2.0-management
+COPY ./init/rabbitmq/definitions/definitions-init.sh /definitions-init.sh

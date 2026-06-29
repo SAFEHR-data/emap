@@ -1,0 +1,42 @@
+name: Render PlantUML diagrams
+
+# Needs to commit SVGs
+permissions:
+  contents: write
+
+on:
+  push:
+    paths:
+      - '**/*.puml'
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Render .puml files to SVG
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          echo "Rendering all .puml files"
+          docker run --rm -v "$PWD":/workspace plantuml/plantuml:1.2025.10@sha256:88e00271ee81ad30adef459fe640977f30a66d8049239465580c986247753ed5 --format svg '/workspace/**/*.puml'
+
+      - name: Commit generated SVGs
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          # user ID for the GHA bot
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          staged_count=$(git diff --staged --name-only | wc -l)
+          if [ "$staged_count" -eq 0 ]; then
+            echo "No changes to commit"
+          else
+            git commit -m "Auto-render PlantUML diagrams ($staged_count file(s))"
+            git push
+          fi

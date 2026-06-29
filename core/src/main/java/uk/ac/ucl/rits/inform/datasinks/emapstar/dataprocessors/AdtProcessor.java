@@ -14,11 +14,13 @@ import uk.ac.ucl.rits.inform.informdb.identity.HospitalVisit;
 import uk.ac.ucl.rits.inform.informdb.identity.Mrn;
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessageProcessingException;
 import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
+import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingDischarge;
 import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.ChangePatientIdentifiers;
 import uk.ac.ucl.rits.inform.interchange.adt.DeletePersonInformation;
 import uk.ac.ucl.rits.inform.interchange.adt.MergePatient;
 import uk.ac.ucl.rits.inform.interchange.adt.MoveVisitInformation;
+import uk.ac.ucl.rits.inform.interchange.adt.PendingDischarge;
 import uk.ac.ucl.rits.inform.interchange.adt.PendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.SwapLocations;
 
@@ -211,4 +213,35 @@ public class AdtProcessor {
         HospitalVisit visit = processPersonAndVisit(msg, storedFrom, validFrom);
         pendingAdtController.processMsg(visit, msg, validFrom, storedFrom);
     }
+
+    /**
+     * Process a pending ADT message.
+     * <p>
+     * Adds in all patient level information and a HospitalVisit so that a PlannedMovement can be created.
+     * @param msg        pending adt message
+     * @param storedFrom time that emap core started processing the message
+     * @throws RequiredDataMissingException if the visit number is missing
+     */
+    @Transactional
+    public void processPendingAdt(PendingDischarge msg, Instant storedFrom) throws RequiredDataMissingException {
+        Instant validFrom = msg.bestGuessAtValidFrom();
+        HospitalVisit visit = processPersonAndVisit(msg, storedFrom, validFrom);
+        pendingAdtController.processMsg(visit, msg, validFrom, storedFrom);
+    }
+
+    /**
+     * Process a cancellation of pending ADT message.
+     * <p>
+     * Adds in all patient level information and a HospitalVisit so that a PlannedMovement can be created.
+     * @param msg        pending adt message
+     * @param storedFrom time that emap core started processing the message
+     * @throws RequiredDataMissingException if the visit number is missing
+     */
+    @Transactional
+    public void processPendingAdt(CancelPendingDischarge msg, Instant storedFrom) throws RequiredDataMissingException {
+        Instant validFrom = msg.bestGuessAtValidFrom();
+        HospitalVisit visit = processPersonAndVisit(msg, storedFrom, validFrom);
+        pendingAdtController.processMsg(visit, msg, validFrom, storedFrom);
+    }
+
 }
