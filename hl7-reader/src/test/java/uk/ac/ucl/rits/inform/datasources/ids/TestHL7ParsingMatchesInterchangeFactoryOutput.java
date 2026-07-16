@@ -288,7 +288,7 @@ public class TestHL7ParsingMatchesInterchangeFactoryOutput extends TestHl7Messag
 
     @Test
     void testMissingNotesMetadata() throws Exception {
-        checkNotesMetadataMatchesInterchange("Missing");
+        checkNotesMetadataMatchesInterchange("missing_date");
     }
 
     void checkAdvanceDecisionMatchesInterchange(String fileName) throws Exception {

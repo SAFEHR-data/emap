@@ -3,6 +3,7 @@ sourceSystem: "EPIC"
 sourceMessageId: "11828212"
 mrn: "40800000"
 visitNumber: "123412341234"
-noteType: "PROGRESS"
-startedDatetime: "2013-02-14T09:00:00Z"
-notesMetadataId: 1234521112
+noteType: "ICU WR"
+startedDatetime: "2013-02-14T10:00:00Z"
+lastEditDatetime: "2013-02-14T10:00:00Z"
+notesMetadataId: 

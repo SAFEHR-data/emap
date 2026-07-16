@@ -3,13 +3,11 @@ package uk.ac.ucl.rits.inform.datasources.ids;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import uk.ac.ucl.rits.inform.datasources.ids.exceptions.Hl7InconsistencyException;
 import uk.ac.ucl.rits.inform.interchange.NotesMetadataMessage;
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessage;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
