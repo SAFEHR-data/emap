@@ -18,6 +18,7 @@ import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingDischarge;
 import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.ChangePatientIdentifiers;
 import uk.ac.ucl.rits.inform.interchange.adt.DeletePersonInformation;
+import uk.ac.ucl.rits.inform.interchange.adt.HospitalService;
 import uk.ac.ucl.rits.inform.interchange.adt.MergePatient;
 import uk.ac.ucl.rits.inform.interchange.adt.MoveVisitInformation;
 import uk.ac.ucl.rits.inform.interchange.adt.PendingDischarge;
@@ -71,6 +72,13 @@ public class AdtProcessor {
         Instant messageDateTime = msg.bestGuessAtValidFrom();
         HospitalVisit visit = processPersonAndVisit(msg, storedFrom, messageDateTime);
         patientLocationController.processVisitLocation(visit, msg, storedFrom);
+        if (msg instanceof HospitalService) {
+            // UpdatePatientInfo doesn't create a visit of its own, so look up an existing one for the fallback.
+            HospitalVisit visitForFallback = (visit != null) ? visit : visitController.getHospitalVisitIfExists(msg.getVisitNumber());
+            if (visitForFallback != null) {
+                pendingAdtController.processHospitalServiceFallback(visitForFallback, msg, (HospitalService) msg, messageDateTime, storedFrom);
+            }
+        }
     }
 
     private HospitalVisit processPersonAndVisit(AdtMessage msg, Instant storedFrom, Instant validFrom) throws RequiredDataMissingException {
@@ -259,7 +267,7 @@ public class AdtProcessor {
         Instant validFrom = msg.bestGuessAtValidFrom();
         HospitalVisit visit = processPersonAndVisit(msg, storedFrom, validFrom);
         // patientLocationController.processVisitLocation(visit, msg, storedFrom);
-        pendingAdtController.processMsg(visit, msg, validFrom, storedFrom);
+        pendingAdtController.processHospitalServiceFallback(visit, msg, msg, validFrom, storedFrom);
     }
 
 }

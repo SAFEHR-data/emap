@@ -5,8 +5,10 @@ import uk.ac.ucl.rits.inform.datasources.ids.TestHl7MessageStream;
 import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
 import uk.ac.ucl.rits.inform.interchange.adt.AdmitPatient;
 import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
+import uk.ac.ucl.rits.inform.interchange.adt.HospitalService;
 import uk.ac.ucl.rits.inform.interchange.adt.PatientClass;
 import uk.ac.ucl.rits.inform.interchange.adt.RegisterPatient;
+import uk.ac.ucl.rits.inform.interchange.adt.UpdatePatientInfo;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -53,6 +55,37 @@ public class TestMiscAdt extends TestHl7MessageStream {
         assertEquals(PatientClass.INPATIENT, msg.getPatientClass().get());
         assertTrue(msg instanceof AdmitPatient);
         assertEquals(AdmitPatient.class.getName(), msg.getMessageType());
+    }
+
+    /**
+     * A01 carries PV1-10, so should populate hospital service on the interchange message.
+     * @throws Exception shouldn't happen
+     */
+    @Test
+    void testAdmissionHospitalService() throws Exception {
+        AdmitPatient msg = (AdmitPatient) processSingleAdtMessage("Adt/generic/A01.txt");
+        assertEquals(InterchangeValue.buildFromHl7("Anaes"), msg.getHospitalService());
+    }
+
+    /**
+     * A08 carries PV1-10, so should populate hospital service on the interchange message.
+     * @throws Exception shouldn't happen
+     */
+    @Test
+    void testUpdateInfoHospitalService() throws Exception {
+        UpdatePatientInfo msg = (UpdatePatientInfo) processSingleAdtMessage("Adt/generic/A08_v1.txt");
+        assertEquals(InterchangeValue.buildFromHl7("Anaes"), msg.getHospitalService());
+    }
+
+    /**
+     * A08 can legitimately have no PV1 segment at all (a demographics-only update).
+     * Hospital service should resolve to unknown rather than the message failing to parse.
+     * @throws Exception shouldn't happen
+     */
+    @Test
+    void testUpdateInfoNoPv1HospitalServiceUnknown() throws Exception {
+        HospitalService msg = (HospitalService) processSingleAdtMessage("Adt/generic/A08_no_pv1.txt");
+        assertTrue(msg.getHospitalService().isUnknown());
     }
 
     /**

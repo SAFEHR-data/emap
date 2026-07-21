@@ -40,7 +40,8 @@ public interface PlannedMovementRepository extends CrudRepository<PlannedMovemen
     );
 
      /**
-     * Try and find a matching planned movement from a Z99 edit sub speciality message.
+     * Try and find a matching planned movement for the ADT-triggered hospital service fallback
+     * (e.g. Z99 edit sub speciality, or a real admission/update carrying a hospital service).
      * <p>
      * Always find planned location and hospital visit Id, then:
      * - Messages before the the same event date time
@@ -55,7 +56,7 @@ public interface PlannedMovementRepository extends CrudRepository<PlannedMovemen
             + "and (eventDatetime <= :eventDatetime) "
             + "order by eventDatetime "
     )
-    List<PlannedMovement> findMatchingMovementsFromZ99(
+    List<PlannedMovement> findMatchingMovementsForHospitalServiceFallback(
             HospitalVisit hospitalVisitId, Location plannedLocation, Instant eventDatetime
     );
 

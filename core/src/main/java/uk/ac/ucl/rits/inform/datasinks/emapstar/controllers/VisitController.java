@@ -70,6 +70,18 @@ public class VisitController {
     }
 
     /**
+     * Look up an existing hospital visit without creating one.
+     * @param encounter encounter number
+     * @return the existing visit, or null if none exists for this encounter
+     */
+    public HospitalVisit getHospitalVisitIfExists(final String encounter) {
+        if (encounter == null || encounter.isEmpty()) {
+            return null;
+        }
+        return hospitalVisitRepo.findByEncounter(encounter).orElse(null);
+    }
+
+    /**
      * Get or create minimal hospital visit, and update whether it was created.
      * @param encounter       encounter number
      * @param mrn             Mrn

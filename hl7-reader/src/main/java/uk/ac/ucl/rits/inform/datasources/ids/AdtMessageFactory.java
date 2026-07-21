@@ -35,6 +35,7 @@ import uk.ac.ucl.rits.inform.interchange.adt.CancelTransferPatient;
 import uk.ac.ucl.rits.inform.interchange.adt.ChangePatientIdentifiers;
 import uk.ac.ucl.rits.inform.interchange.adt.DeletePersonInformation;
 import uk.ac.ucl.rits.inform.interchange.adt.DischargePatient;
+import uk.ac.ucl.rits.inform.interchange.adt.HospitalService;
 import uk.ac.ucl.rits.inform.interchange.adt.ImpliedAdtMessage;
 import uk.ac.ucl.rits.inform.interchange.adt.MergePatient;
 import uk.ac.ucl.rits.inform.interchange.adt.MoveVisitInformation;
@@ -195,6 +196,7 @@ public class AdtMessageFactory {
                 AdmitPatient admitPatient = new AdmitPatient();
                 admitPatient.setAdmissionDateTime(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionDateTime()));
                 admitPatient.setAdmissionType(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionType()));
+                setHospitalService(pv1Wrap, admitPatient);
                 msg = admitPatient;
                 break;
             case "A02":
@@ -226,7 +228,9 @@ public class AdtMessageFactory {
             case "A08":
             case "A28":
             case "A31":
-                msg = new UpdatePatientInfo();
+                UpdatePatientInfo updatePatientInfo = new UpdatePatientInfo();
+                setHospitalService(pv1Wrap, updatePatientInfo);
+                msg = updatePatientInfo;
                 break;
             // We are receiving A05 and A14, A38 messages but are not implementing scheduling
             case "A14":
@@ -476,8 +480,8 @@ public class AdtMessageFactory {
         String hospitalService = pv1Wrap.getHospitalService();
         pendingEvent.setHospitalService(InterchangeValue.buildFromHl7(hospitalService));
     }
-    private void setHospitalService(PV1Wrap pv1Wrap, UpdateSubSpeciality updateSubSpeciality) throws HL7Exception {
+    private void setHospitalService(PV1Wrap pv1Wrap, HospitalService hospitalServiceMsg) throws HL7Exception {
         String hospitalService = pv1Wrap.getHospitalService();
-        updateSubSpeciality.setHospitalService(InterchangeValue.buildFromHl7(hospitalService));
+        hospitalServiceMsg.setHospitalService(InterchangeValue.buildFromHl7(hospitalService));
     }
 }
