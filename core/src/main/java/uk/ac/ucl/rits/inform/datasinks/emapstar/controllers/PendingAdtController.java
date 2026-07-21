@@ -10,6 +10,7 @@ import uk.ac.ucl.rits.inform.informdb.identity.HospitalVisit;
 import uk.ac.ucl.rits.inform.informdb.movement.Location;
 import uk.ac.ucl.rits.inform.informdb.movement.PlannedMovement;
 import uk.ac.ucl.rits.inform.informdb.movement.PlannedMovementAudit;
+import uk.ac.ucl.rits.inform.interchange.adt.AdtCancellation;
 import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
 import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.HospitalService;
@@ -256,6 +257,42 @@ public class PendingAdtController {
         plannedState.saveEntityOrAuditLogIfRequired(plannedMovementRepo, plannedMovementAuditRepo);
     }
 
+
+    /**
+     * Cancel the matching hospital-service-fallback edit for a cancelled admission.
+     * <p>
+     * Only rows created by {@link #processHospitalServiceFallback} (event type EDIT/HOSPITAL_SERVICE_CHANGE)
+     * are ever cancelled here. A row originating from a real pending transfer/discharge request is left alone,
+     * since it represents a separately-tracked plan that may still be valid regardless of this one ADT message.
+     * @param visit        associated visit
+     * @param msg          the ADT message, for the fields shared by all ADT messages
+     * @param cancellation the same message, as its AdtCancellation view
+     * @param validFrom    time in the hospital when the message was created
+     * @param storedFrom   time that emap core started processing the message
+     */
+    public void processAdmissionCancellation(HospitalVisit visit, AdtMessage msg, AdtCancellation cancellation,
+                                              Instant validFrom, Instant storedFrom) {
+        Location fullLocation = null;
+        if (msg.getFullLocationString().isSave()) {
+            fullLocation = locationController.getOrCreateLocation(msg.getFullLocationString().get());
+        }
+
+        List<PlannedMovement> movements = plannedMovementRepo.findMatchingMovementsForHospitalServiceFallback(
+                visit, fullLocation, cancellation.getCancelledDateTime());
+        if (movements.isEmpty()) {
+            return;
+        }
+
+        PlannedMovement movement = movements.get(movements.size() - 1);
+        if (!"EDIT/HOSPITAL_SERVICE_CHANGE".equals(movement.getEventType()) || movement.getCancelledDatetime() != null) {
+            return;
+        }
+
+        RowState<PlannedMovement, PlannedMovementAudit> plannedState = new RowState<>(movement, validFrom, storedFrom, false);
+        plannedState.assignIfDifferent(cancellation.getCancelledDateTime(), movement.getCancelledDatetime(), movement::setCancelledDatetime);
+        plannedState.assignIfDifferent(true, movement.getCancelled(), movement::setCancelled);
+        plannedState.saveEntityOrAuditLogIfRequired(plannedMovementRepo, plannedMovementAuditRepo);
+    }
 
     /**
      * Delete planned movements from a delete patient information message.

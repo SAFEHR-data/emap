@@ -14,6 +14,7 @@ import uk.ac.ucl.rits.inform.informdb.identity.HospitalVisit;
 import uk.ac.ucl.rits.inform.informdb.identity.Mrn;
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessageProcessingException;
 import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
+import uk.ac.ucl.rits.inform.interchange.adt.CancelAdmitPatient;
 import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingDischarge;
 import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingTransfer;
 import uk.ac.ucl.rits.inform.interchange.adt.ChangePatientIdentifiers;
@@ -78,6 +79,9 @@ public class AdtProcessor {
             if (visitForFallback != null) {
                 pendingAdtController.processHospitalServiceFallback(visitForFallback, msg, (HospitalService) msg, messageDateTime, storedFrom);
             }
+        }
+        if (msg instanceof CancelAdmitPatient) {
+            pendingAdtController.processAdmissionCancellation(visit, msg, (CancelAdmitPatient) msg, messageDateTime, storedFrom);
         }
     }
 
