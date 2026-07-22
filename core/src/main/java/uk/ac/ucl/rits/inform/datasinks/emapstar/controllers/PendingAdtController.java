@@ -10,6 +10,7 @@ import uk.ac.ucl.rits.inform.informdb.identity.HospitalVisit;
 import uk.ac.ucl.rits.inform.informdb.movement.Location;
 import uk.ac.ucl.rits.inform.informdb.movement.PlannedMovement;
 import uk.ac.ucl.rits.inform.informdb.movement.PlannedMovementAudit;
+import uk.ac.ucl.rits.inform.interchange.adt.AdmitPatient;
 import uk.ac.ucl.rits.inform.interchange.adt.AdtCancellation;
 import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
 import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingTransfer;
@@ -230,6 +231,45 @@ public class PendingAdtController {
     }
 
     /**
+     * Record a real admission as its own planned movement.
+     * <p>
+     * Unlike {@link #processHospitalServiceFallback}, this always inserts (or idempotently reuses) an
+     * ADMISSION row, regardless of whether a matching planned movement already exists or has the same
+     * hospital service. Any matched prior movement (e.g. a TRANSFER row from a pending transfer request)
+     * is only referenced via matchedMovementId - it is never itself modified.
+     * @param visit      associated visit
+     * @param msg        the admission message
+     * @param validFrom  time in the hospital when the message was created
+     * @param storedFrom time that emap core started processing the message
+     */
+    public void processAdmission(HospitalVisit visit, AdmitPatient msg, Instant validFrom, Instant storedFrom) {
+        if (msg.getHospitalService().isUnknown()) {
+            return;
+        }
+
+        Location fullLocation = null;
+        if (msg.getFullLocationString().isSave()) {
+            fullLocation = locationController.getOrCreateLocation(msg.getFullLocationString().get());
+        }
+        Instant eventDateTime = msg.getEventOccurredDateTime();
+
+        List<PlannedMovement> priorMovements = plannedMovementRepo.findMatchingMovementsForHospitalServiceFallback(
+                visit, fullLocation, eventDateTime);
+        Long matchedMovementId = priorMovements.isEmpty() ? null : priorMovements.get(priorMovements.size() - 1).getPlannedMovementId();
+
+        RowState<PlannedMovement, PlannedMovementAudit> plannedState = getOrCreate(
+                allFromRequest, visit, fullLocation, "ADMISSION", eventDateTime, validFrom, storedFrom
+        );
+        PlannedMovement movement = plannedState.getEntity();
+        plannedState.assignIfDifferent(eventDateTime, movement.getEventDatetime(), movement::setEventDatetime);
+        plannedState.assignInterchangeValue(msg.getHospitalService(), movement.getHospitalService(), movement::setHospitalService);
+        if (matchedMovementId != null) {
+            plannedState.assignIfDifferent(matchedMovementId, movement.getMatchedMovementId(), movement::setMatchedMovementId);
+        }
+        plannedState.saveEntityOrAuditLogIfRequired(plannedMovementRepo, plannedMovementAuditRepo);
+    }
+
+    /**
      * Process pending ADT cancellation.
      * <p>
      * If multiple pending ADT events exist that aren't cancelled, will cancel the earliest one that occurs before the cancellation time.
@@ -259,11 +299,11 @@ public class PendingAdtController {
 
 
     /**
-     * Cancel the matching hospital-service-fallback edit for a cancelled admission.
+     * Cancel the matching ADMISSION row for a cancelled admission.
      * <p>
-     * Only rows created by {@link #processHospitalServiceFallback} (event type EDIT/HOSPITAL_SERVICE_CHANGE)
-     * are ever cancelled here. A row originating from a real pending transfer/discharge request is left alone,
-     * since it represents a separately-tracked plan that may still be valid regardless of this one ADT message.
+     * Only rows created by {@link #processAdmission} (event type ADMISSION) are ever cancelled here.
+     * A row originating from a real pending transfer/discharge request is left alone, since it
+     * represents a separately-tracked plan that may still be valid regardless of this one ADT message.
      * @param visit        associated visit
      * @param msg          the ADT message, for the fields shared by all ADT messages
      * @param cancellation the same message, as its AdtCancellation view
@@ -284,7 +324,7 @@ public class PendingAdtController {
         }
 
         PlannedMovement movement = movements.get(movements.size() - 1);
-        if (!"EDIT/HOSPITAL_SERVICE_CHANGE".equals(movement.getEventType()) || movement.getCancelledDatetime() != null) {
+        if (!"ADMISSION".equals(movement.getEventType()) || movement.getCancelledDatetime() != null) {
             return;
         }
 

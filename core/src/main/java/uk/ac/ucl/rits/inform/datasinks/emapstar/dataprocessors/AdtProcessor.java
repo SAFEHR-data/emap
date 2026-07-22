@@ -13,6 +13,7 @@ import uk.ac.ucl.rits.inform.datasinks.emapstar.exceptions.RequiredDataMissingEx
 import uk.ac.ucl.rits.inform.informdb.identity.HospitalVisit;
 import uk.ac.ucl.rits.inform.informdb.identity.Mrn;
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessageProcessingException;
+import uk.ac.ucl.rits.inform.interchange.adt.AdmitPatient;
 import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
 import uk.ac.ucl.rits.inform.interchange.adt.CancelAdmitPatient;
 import uk.ac.ucl.rits.inform.interchange.adt.CancelPendingDischarge;
@@ -73,7 +74,9 @@ public class AdtProcessor {
         Instant messageDateTime = msg.bestGuessAtValidFrom();
         HospitalVisit visit = processPersonAndVisit(msg, storedFrom, messageDateTime);
         patientLocationController.processVisitLocation(visit, msg, storedFrom);
-        if (msg instanceof HospitalService) {
+        if (msg instanceof AdmitPatient) {
+            pendingAdtController.processAdmission(visit, (AdmitPatient) msg, messageDateTime, storedFrom);
+        } else if (msg instanceof HospitalService) {
             // UpdatePatientInfo doesn't create a visit of its own, so look up an existing one for the fallback.
             HospitalVisit visitForFallback = (visit != null) ? visit : visitController.getHospitalVisitIfExists(msg.getVisitNumber());
             if (visitForFallback != null) {

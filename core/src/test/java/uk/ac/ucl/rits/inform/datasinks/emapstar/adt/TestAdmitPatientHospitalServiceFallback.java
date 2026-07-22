@@ -15,16 +15,16 @@ import uk.ac.ucl.rits.inform.interchange.adt.PendingTransfer;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.NoSuchElementException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * A real admission (ADT^A01) should feed the same ADT-triggered hospital service fallback as Z99,
- * per <a href="https://github.com/SAFEHR-data/emap/issues/166">#166</a>.
+ * A real admission (ADT^A01) always records its own ADMISSION row in planned_movement,
+ * per <a href="https://github.com/SAFEHR-data/emap/issues/166">#166</a>. Unlike the Z99/A08
+ * hospital-service fallback, this never edits a matched row in place - it only links to it
+ * via matchedMovementId.
  */
 class TestAdmitPatientHospitalServiceFallback extends MessageProcessingBase {
     @Autowired
@@ -38,17 +38,10 @@ class TestAdmitPatientHospitalServiceFallback extends MessageProcessingBase {
 
     private AdmitPatient admitPatient;
     private PendingTransfer pendingTransfer;
-    private PendingTransfer pendingTransferLater;
-    private PendingTransfer pendingTransferAfter;
 
     private static final String VISIT_NUMBER = "123412341234";
     private static final String LOCATION_STRING = "1020100166^SDEC BY02^11 SDEC";
     private static final Instant ADMISSION_EVENT_TIME = Instant.parse("2022-04-22T00:00:00Z");
-
-    private PlannedMovement getPlannedMovementOrThrow(String visitNumber, String location) {
-        return plannedMovementRepository
-                .findByHospitalVisitIdEncounterAndLocationIdLocationString(visitNumber, location).orElseThrow();
-    }
 
     @BeforeEach
     void setup() throws IOException {
@@ -57,75 +50,82 @@ class TestAdmitPatientHospitalServiceFallback extends MessageProcessingBase {
         admitPatient.setEventOccurredDateTime(ADMISSION_EVENT_TIME);
 
         pendingTransfer = messageFactory.getAdtMessage("pending/A15.yaml");
-        pendingTransferLater = messageFactory.getAdtMessage("pending/A15.yaml");
-        pendingTransferAfter = messageFactory.getAdtMessage("pending/A15.yaml");
-
-        Instant laterTime = pendingTransferLater.getEventOccurredDateTime().plus(1, ChronoUnit.MINUTES);
-        pendingTransferLater.setEventOccurredDateTime(laterTime);
-
-        Instant afterTime = pendingTransferAfter.getEventOccurredDateTime().plus(1, ChronoUnit.HOURS);
-        pendingTransferAfter.setEventOccurredDateTime(afterTime);
     }
 
     /**
-     * Given that no entities exist in the database
-     * When an admission is processed
-     * Mrn, core demographics and hospital visit entities should be created,
-     * but no planned movement fallback row should be created as there is nothing to match against.
+     * Given that no planned movement exists at all (e.g. a direct A&E admission with no
+     * preceding pending transfer request), an admission still inserts its own ADMISSION row,
+     * with no matchedMovementId since there was nothing to fulfil.
      */
     @Test
-    void testAdmissionCreatesOtherEntitiesNoFallback() throws Exception {
+    void testAdmissionInsertsOwnRowWithNoPriorMovement() throws Exception {
         dbOps.processMessage(admitPatient);
 
         assertEquals(1, mrnRepository.count());
         assertEquals(1, coreDemographicRepository.count());
         assertEquals(1, hospitalVisitRepository.count());
 
-        assertThrows(NoSuchElementException.class, () -> getPlannedMovementOrThrow(VISIT_NUMBER, LOCATION_STRING));
-    }
-
-    /**
-     * If more than one pending transfer exists find the most recent one and if the admission
-     * has a different hospital service insert the edit into the planned movement table.
-     */
-    @Test
-    void testAdmissionInsertsEditIfHospitalServicesAreDifferent() throws Exception {
-        dbOps.processMessage(pendingTransfer);
-        dbOps.processMessage(pendingTransferLater);
-        dbOps.processMessage(pendingTransferAfter);
-        dbOps.processMessage(admitPatient);
-
         List<PlannedMovement> movements = plannedMovementRepository.findAllByHospitalVisitIdEncounter(VISIT_NUMBER);
-        assertEquals(4, movements.size());
-        assertEquals("EDIT/HOSPITAL_SERVICE_CHANGE", movements.get(3).getEventType());
-        assertEquals(Instant.parse("2022-04-22T00:00:00Z"), movements.get(3).getEventDatetime());
+        assertEquals(1, movements.size());
+        assertEquals("ADMISSION", movements.get(0).getEventType());
+        assertEquals(ADMISSION_EVENT_TIME, movements.get(0).getEventDatetime());
+        assertNull(movements.get(0).getMatchedMovementId());
     }
 
     /**
-     * Find the most recent matching planned movement, but don't add to the table
-     * if the admission has the same hospital service as it.
+     * A prior pending transfer creates a TRANSFER row. An admission with the SAME hospital
+     * service still inserts its own ADMISSION row (not a no-op), linking back to the TRANSFER
+     * row via matchedMovementId - the TRANSFER row itself is left untouched.
      */
     @Test
-    void testAdmissionDoesNotInsertIfHospitalServicesAreTheSame() throws Exception {
+    void testAdmissionInsertsOwnRowWhenHospitalServicesAreTheSame() throws Exception {
         dbOps.processMessage(pendingTransfer);
         admitPatient.setHospitalService(pendingTransfer.getHospitalService());
         dbOps.processMessage(admitPatient);
 
         List<PlannedMovement> movements = plannedMovementRepository.findAllByHospitalVisitIdEncounter(VISIT_NUMBER);
-        assertEquals(1, movements.size());
-        assertEquals("TRANSFER", movements.get(0).getEventType());
+        assertEquals(2, movements.size());
+
+        PlannedMovement transferRow = movements.get(0);
+        assertEquals("TRANSFER", transferRow.getEventType());
+
+        PlannedMovement admissionRow = movements.get(1);
+        assertEquals("ADMISSION", admissionRow.getEventType());
+        assertEquals(transferRow.getPlannedMovementId(), admissionRow.getMatchedMovementId());
+        assertEquals(admitPatient.getHospitalService().get(), admissionRow.getHospitalService());
     }
 
     /**
-     * If pending transfers only exist after the admission event, don't add the fallback edit.
+     * Same as above, but with a differing hospital service - still just one new ADMISSION row,
+     * not a separate EDIT/HOSPITAL_SERVICE_CHANGE row. The TRANSFER row is still untouched.
      */
     @Test
-    void testAdmissionDoesNotInsertIfTransfersAreAfter() throws Exception {
-        dbOps.processMessage(pendingTransferAfter);
+    void testAdmissionInsertsOwnRowWhenHospitalServicesDiffer() throws Exception {
+        dbOps.processMessage(pendingTransfer);
+        dbOps.processMessage(admitPatient);
+
+        List<PlannedMovement> movements = plannedMovementRepository.findAllByHospitalVisitIdEncounter(VISIT_NUMBER);
+        assertEquals(2, movements.size());
+
+        PlannedMovement transferRow = movements.get(0);
+        assertEquals("TRANSFER", transferRow.getEventType());
+
+        PlannedMovement admissionRow = movements.get(1);
+        assertEquals("ADMISSION", admissionRow.getEventType());
+        assertEquals(transferRow.getPlannedMovementId(), admissionRow.getMatchedMovementId());
+        assertEquals(admitPatient.getHospitalService().get(), admissionRow.getHospitalService());
+    }
+
+    /**
+     * Reprocessing the identical admission message must not duplicate the ADMISSION row.
+     */
+    @Test
+    void testReprocessingSameAdmissionIsIdempotent() throws Exception {
+        dbOps.processMessage(admitPatient);
         dbOps.processMessage(admitPatient);
 
         List<PlannedMovement> movements = plannedMovementRepository.findAllByHospitalVisitIdEncounter(VISIT_NUMBER);
         assertEquals(1, movements.size());
-        assertEquals("TRANSFER", movements.get(0).getEventType());
+        assertEquals("ADMISSION", movements.get(0).getEventType());
     }
 }

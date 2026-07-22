@@ -21,9 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Cancelling an admission (ADT^A11) should cancel a matching hospital-service-fallback edit row
- * (event type EDIT/HOSPITAL_SERVICE_CHANGE), but must never touch a planned_movement row that
- * originated from a real pending transfer/discharge request.
+ * Cancelling an admission (ADT^A11) should cancel the matching ADMISSION row created by
+ * {@link uk.ac.ucl.rits.inform.datasinks.emapstar.controllers.PendingAdtController#processAdmission},
+ * but must never touch a planned_movement row that originated from a real pending transfer/discharge
+ * request.
  */
 class TestCancelAdmitPatientHospitalServiceFallback extends MessageProcessingBase {
     @Autowired
@@ -61,11 +62,11 @@ class TestCancelAdmitPatientHospitalServiceFallback extends MessageProcessingBas
     }
 
     /**
-     * A pending transfer creates a TRANSFER row, then a differently-serviced admission creates an
-     * EDIT/HOSPITAL_SERVICE_CHANGE row. Cancelling that admission should cancel only the EDIT row.
+     * A pending transfer creates a TRANSFER row, then an admission creates its own ADMISSION row.
+     * Cancelling that admission should cancel only the ADMISSION row.
      */
     @Test
-    void testCancelsOnlyTheEditRow() throws Exception {
+    void testCancelsOnlyTheAdmissionRow() throws Exception {
         dbOps.processMessage(pendingTransfer);
         dbOps.processMessage(admitPatient);
         dbOps.processMessage(cancelAdmitPatient);
@@ -78,16 +79,15 @@ class TestCancelAdmitPatientHospitalServiceFallback extends MessageProcessingBas
         assertFalse(transferRow.getCancelled());
         assertNull(transferRow.getCancelledDatetime());
 
-        PlannedMovement editRow = movements.get(1);
-        assertEquals("EDIT/HOSPITAL_SERVICE_CHANGE", editRow.getEventType());
-        assertTrue(editRow.getCancelled());
-        assertEquals(ADMISSION_EVENT_TIME, editRow.getCancelledDatetime());
+        PlannedMovement admissionRow = movements.get(1);
+        assertEquals("ADMISSION", admissionRow.getEventType());
+        assertTrue(admissionRow.getCancelled());
+        assertEquals(ADMISSION_EVENT_TIME, admissionRow.getCancelledDatetime());
     }
 
     /**
-     * If no EDIT row was ever created (e.g. the admission never differed in service), cancelling the
-     * admission must not touch the pre-existing TRANSFER row, even though it's the most recent match
-     * at that location.
+     * If no admission was ever processed, cancelling the admission must not touch the pre-existing
+     * TRANSFER row, even though it's the most recent match at that location.
      */
     @Test
     void testDoesNotCancelTransferRow() throws Exception {
@@ -112,8 +112,8 @@ class TestCancelAdmitPatientHospitalServiceFallback extends MessageProcessingBas
         dbOps.processMessage(cancelAdmitPatient);
 
         List<PlannedMovement> movements = plannedMovementRepository.findAllByHospitalVisitIdEncounter(VISIT_NUMBER);
-        PlannedMovement editRow = movements.get(1);
-        assertTrue(editRow.getCancelled());
-        assertEquals(ADMISSION_EVENT_TIME, editRow.getCancelledDatetime());
+        PlannedMovement admissionRow = movements.get(1);
+        assertTrue(admissionRow.getCancelled());
+        assertEquals(ADMISSION_EVENT_TIME, admissionRow.getCancelledDatetime());
     }
 }
