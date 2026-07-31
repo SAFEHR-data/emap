@@ -5,6 +5,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessageProcessingException;
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessageProcessor;
+import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
 
 /**
  * Change patient demographics, can contain visit information.
@@ -13,7 +14,9 @@ import uk.ac.ucl.rits.inform.interchange.EmapOperationMessageProcessor;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
-public class UpdatePatientInfo extends AdtMessage {
+public class UpdatePatientInfo extends AdtMessage implements HospitalService {
+    private InterchangeValue<String> hospitalService = InterchangeValue.unknown();
+
     @Override
     public void processMessage(EmapOperationMessageProcessor processor) throws EmapOperationMessageProcessingException {
         processor.processMessage(this);

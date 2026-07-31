@@ -16,9 +16,10 @@ import java.time.Instant;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
-public class AdmitPatient extends AdtMessage implements AdmissionDateTime  {
+public class AdmitPatient extends AdtMessage implements AdmissionDateTime, HospitalService  {
     private InterchangeValue<Instant> admissionDateTime = InterchangeValue.unknown();
     private InterchangeValue<String> admissionType = InterchangeValue.unknown();
+    private InterchangeValue<String> hospitalService = InterchangeValue.unknown();
 
 
     @Override

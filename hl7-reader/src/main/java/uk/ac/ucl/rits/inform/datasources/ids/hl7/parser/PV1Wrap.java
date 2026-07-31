@@ -135,6 +135,9 @@ public interface PV1Wrap {
      * @throws HL7Exception if HAPI does
      */
     default String getHospitalService() throws HL7Exception {
+        if (!pv1SegmentExists()) {
+            return null;
+        }
         return getPV1().getHospitalService().getValue();
     }
 
