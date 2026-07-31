@@ -42,6 +42,15 @@ public class DepartmentMetadata extends EmapOperationMessage implements MinimalD
     private String departmentSpeciality;
     private Instant specialityUpdate;
     private String previousDepartmentSpeciality;
+
+    /**
+     * Variables added to make location processing more robust.
+     */
+    private String departmentType;
+    private Boolean isWardOrFlowArea;
+    private Boolean isCoreInpatientArea;
+    private String siteLocation;
+
     /**
      * Not used in processing, but useful to debugging ordering.
      */

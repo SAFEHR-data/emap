@@ -70,6 +70,18 @@ public class VisitController {
     }
 
     /**
+     * Look up an existing hospital visit without creating one.
+     * @param encounter encounter number
+     * @return the existing visit, or null if none exists for this encounter
+     */
+    public HospitalVisit getHospitalVisitIfExists(final String encounter) {
+        if (encounter == null || encounter.isEmpty()) {
+            return null;
+        }
+        return hospitalVisitRepo.findByEncounter(encounter).orElse(null);
+    }
+
+    /**
      * Get or create minimal hospital visit, and update whether it was created.
      * @param encounter       encounter number
      * @param mrn             Mrn
@@ -138,7 +150,7 @@ public class VisitController {
         Instant validFrom = msg.bestGuessAtValidFrom();
         RowState<HospitalVisit, HospitalVisitAudit> visitState = getOrCreateHospitalVisit(
                 msg.getVisitNumber(), mrn, msg.getSourceSystem(), validFrom, storedFrom);
-
+        addAdmissionType(msg, visitState);
         if (visitShouldBeUpdated(validFrom, msg.getSourceSystem(), visitState)) {
             updateGenericData(msg, visitState);
 
@@ -218,6 +230,17 @@ public class VisitController {
         HospitalVisit visit = visitState.getEntity();
         visitState.assignInterchangeValue(msg.getAdmissionDateTime(), visit.getAdmissionDatetime(), visit::setAdmissionDatetime);
     }
+
+    /**
+     * Add admission type.
+     * @param msg        AdmissionDateTime
+     * @param visitState visit wrapped in state class
+     */
+    private void addAdmissionType(final AdtMessage msg, RowState<HospitalVisit, HospitalVisitAudit> visitState) {
+        HospitalVisit visit = visitState.getEntity();
+        visitState.assignInterchangeValue(msg.getAdmissionType(), visit.getAdmissionType(), visit::setAdmissionType);
+    }
+
 
     /**
      * Delete admission specific information.
