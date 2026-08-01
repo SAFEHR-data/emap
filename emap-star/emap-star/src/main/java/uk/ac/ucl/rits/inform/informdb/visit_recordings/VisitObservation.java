@@ -33,7 +33,8 @@ import java.time.LocalDate;
 @Entity
 @Table(indexes = {@Index(name = "vo_hospital_visit_id", columnList = "hospitalVisitId"),
         @Index(name = "vo_visit_observation_type", columnList = "visitObservationTypeId"),
-        @Index(name = "vo_observation_datetime", columnList = "observationDatetime")})
+        @Index(name = "vo_observation_datetime", columnList = "observationDatetime"),
+        @Index(name = "vo_hospital_visit_type_datetime", columnList = "hospitalVisitId,visitObservationTypeId,observationDatetime")})
 @Data
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
@@ -47,7 +48,7 @@ public class VisitObservation extends TemporalCore<VisitObservation, VisitObserv
      * This is the primary key for the visitObservation table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private long visitObservationId;
 
     /**

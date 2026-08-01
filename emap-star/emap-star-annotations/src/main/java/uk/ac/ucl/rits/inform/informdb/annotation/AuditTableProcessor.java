@@ -57,7 +57,7 @@ import java.util.stream.Collectors;
  * @author Roma Klapaukh
  */
 @SupportedAnnotationTypes("uk.ac.ucl.rits.inform.informdb.annotation.AuditTable")
-@SupportedSourceVersion(SourceVersion.RELEASE_11)
+@SupportedSourceVersion(SourceVersion.RELEASE_17)
 @AutoService(Processor.class)
 public class AuditTableProcessor extends AbstractProcessor {
 
@@ -270,7 +270,10 @@ public class AuditTableProcessor extends AbstractProcessor {
         List<FieldStore> fieldShorts = new ArrayList<>();
 
         // Primary key
-        this.generateSingleField(out, "\t@Id\n\t@GeneratedValue(strategy = GenerationType.AUTO)", "Long", primaryKey);
+        this.generateSingleField(
+                out,
+                "\t@Id\n\t@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = \"emap_id_sequence\")",
+                "Long", primaryKey);
 
         // All other fields
         for (VariableElement field : fields) {

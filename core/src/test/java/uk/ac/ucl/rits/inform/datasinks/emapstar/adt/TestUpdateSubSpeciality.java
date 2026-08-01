@@ -99,7 +99,8 @@ class TestUpdateSubSpeciality extends MessageProcessingBase {
         List<PlannedMovement> movements = plannedMovementRepository.findAllByHospitalVisitIdEncounter(VISIT_NUMBER);
         assertEquals(4, movements.size());
         assertEquals("EDIT/HOSPITAL_SERVICE_CHANGE", movements.get(3).getEventType());
-        assertEquals(7, movements.get(3).getMatchedMovementId());
+        // I had to increase the number expected as once we are testing all the adt messages there will be many more admissions
+        assertEquals(203, movements.get(3).getMatchedMovementId());
         assertEquals(Instant.parse("2022-04-22T00:00:00Z"), movements.get(3).getEventDatetime());
     }
 

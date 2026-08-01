@@ -27,6 +27,7 @@ import uk.ac.ucl.rits.inform.interchange.location.LocationMetadata;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.Flowsheet;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.FlowsheetMetadata;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
+import uk.ac.ucl.rits.inform.interchange.NotesMetadataMessage;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -61,6 +62,19 @@ public class InterchangeMessageFactory {
         factory.fileStore = new FileStoreWithMonitoredAccess();
 
         return factory;
+    }
+
+    /**
+     * Builds an notesMetadata message from yaml file.
+     * @param fileName filename within test resources/NotesMetadataMessages
+     * @return NotesMetadata message
+     * @throws IOException if files don't exist
+     */
+    public <T extends NotesMetadataMessage> T getNotesMetadataMessage(final String fileName) throws IOException {
+        String resourcePath = "/NotesMetadata/" + fileName;
+        InputStream inputStream = getInputStream(resourcePath);
+
+        return EmapYamlMapper.readValue(inputStream, new TypeReference<>() {});
     }
 
     /**
@@ -103,6 +117,18 @@ public class InterchangeMessageFactory {
      */
     public AdvanceDecisionMessage getAdvanceDecision(final String fileName) throws IOException {
         InputStream inputStream = getInputStream(String.format("/AdvanceDecision/%s", fileName));
+        return EmapYamlMapper.readValue(inputStream, new TypeReference<>() {});
+    }
+
+    /**
+     * Builds notes metadata from the file given.
+     * 
+     * @param fileName filename within the notes metadata messages folder
+     * @return note metadata message
+     * @throws IOException if the file doesn't exist
+     */
+    public NotesMetadataMessage getNoteMessage(final String fileName) throws IOException {
+        InputStream inputStream = getInputStream(String.format("/Notes/%s", fileName));
         return EmapYamlMapper.readValue(inputStream, new TypeReference<>() {});
     }
 
@@ -272,7 +298,7 @@ public class InterchangeMessageFactory {
      *                    or null to not perform rounding
      * @return list of messages containing synthetic data
      */
-    public List<WaveformMessage> getWaveformMsgs(String sourceStreamId, String mappedStreamName,
+    public List<WaveformMessage> getWaveformMsgs(String sourceStreamId, String mappedStreamName, String channelId,
                                                  int samplingRate, final int numSamples, int maxSamplesPerMessage,
                                                  String sourceLocation, String mappedLocation,
                                                  Instant obsDatetime, String unit, ChronoUnit roundToUnit) {
@@ -283,8 +309,10 @@ public class InterchangeMessageFactory {
         while (samplesRemaining > 0) {
             int samplesThisMessage = Math.min(samplesRemaining, maxSamplesPerMessage);
             WaveformMessage waveformMessage = new WaveformMessage();
-            waveformMessage.setSourceStreamId(sourceStreamId);
-            waveformMessage.setMappedStreamDescription(mappedStreamName);
+            waveformMessage.setSourceObservationType("waveform");
+            waveformMessage.setSourceVariableId(sourceStreamId);
+            waveformMessage.setMappedVariableDescription(mappedStreamName);
+            waveformMessage.setSourceChannelId(channelId);
             waveformMessage.setSamplingRate(samplingRate);
             waveformMessage.setSourceLocationString(sourceLocation);
             waveformMessage.setMappedLocationString(mappedLocation);

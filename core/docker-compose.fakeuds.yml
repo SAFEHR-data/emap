@@ -1,14 +1,10 @@
 services:
   fakeuds:
     image: postgres:11-alpine
-    environment:
-      POSTGRES_DB: fakeuds
-      # should be from global config?
-      POSTGRES_USER: inform_user
-      POSTGRES_PASSWORD: inform
+    env_file:
+      - ../../config/fakeuds-postgres-config-envs
     volumes:
       - postgres-data-fakeuds:/var/lib/postgresql/data
-      - ./init/uds:/docker-entrypoint-initdb.d
     restart: unless-stopped
     ports:
       - "${FAKEUDS_PORT}:5432"

@@ -22,8 +22,8 @@
   </properties>
 
   <modules>
-    <module>emap-star</module>
     <module>emap-star-annotations</module>
+    <module>emap-star</module>
   </modules>
 
   <build>

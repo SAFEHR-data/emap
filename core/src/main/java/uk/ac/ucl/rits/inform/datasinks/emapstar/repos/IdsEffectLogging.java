@@ -23,7 +23,7 @@ import java.time.Instant;
         indexes = {@Index(columnList = "sourceId", unique = false)})
 public class IdsEffectLogging {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private Long id;
     private String sourceId;
     private Instant messageDatetime;

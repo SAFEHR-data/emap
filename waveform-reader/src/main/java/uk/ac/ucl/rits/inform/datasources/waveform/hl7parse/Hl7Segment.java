@@ -10,6 +10,7 @@ import java.util.List;
 
 public class Hl7Segment {
     private final Logger logger = LoggerFactory.getLogger(Hl7Segment.class);
+    private final Hl7Message message;
     @Getter
     private final String segmentName;
     private final List<Hl7Segment> childSegments = new ArrayList<>();
@@ -18,9 +19,18 @@ public class Hl7Segment {
     /**
      * Parse an HL7 segment to field level. Further parsing and all validation
      * is the responsibility of the calling code.
+     * @param message back reference to the top-level message
      * @param segment string containing the whole segment
+     * @throws Hl7ParseException if MSH-1 and MSH-2 are anything but the commonly
+     *                           encountered values. This is only a quick and dirty parser!
      */
-    public Hl7Segment(String segment) {
+    public Hl7Segment(Hl7Message message, String segment) throws Hl7ParseException {
+        this.message = message;
+        if (segment.startsWith("MSH") && !segment.startsWith("|^~\\&|", 3)) {
+            // no need to support anything other than the usual separators, but do detect it
+            throw new Hl7ParseException(message.getMessageAsStr(), "Parser only supports the commonly-used separators, received: "
+                    + segment.substring(0, Math.min(10, segment.length())));
+        }
         String[] fields = segment.split("\\|");
         this.segmentName = fields[0];
         if (this.segmentName.equals("MSH")) {
@@ -43,7 +53,7 @@ public class Hl7Segment {
         try {
             return fields[field1Index];
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw (Hl7ParseException) new Hl7ParseException("non existent field").initCause(e);
+            throw (Hl7ParseException) new Hl7ParseException(message.getMessageAsStr(), "non existent field").initCause(e);
         }
     }
 

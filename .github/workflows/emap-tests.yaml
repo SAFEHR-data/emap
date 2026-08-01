@@ -33,6 +33,10 @@ jobs:
               - '.github/**'
               - 'emap-checker.xml'
               - 'emap-interchange/**'
+            emap-utils:
+              - '.github/**'
+              - 'emap-checker.xml'
+              - 'emap-utils/**'
             core:
               - '.github/**'
               - 'emap-checker.xml'
@@ -48,6 +52,7 @@ jobs:
             waveform-reader:
               - '.github/**'
               - 'emap-checker.xml'
+              - 'emap-utils/**'
               - 'emap-interchange/**'
               - 'waveform-reader/**'
   emap-star-tests:
@@ -158,6 +163,9 @@ jobs:
           cache: 'maven'
       - name: Build emap-interchange
         working-directory: emap-interchange
+        run: mvn clean install
+      - name: Build emap-utils
+        working-directory: emap-utils
         run: mvn clean install
       - name: Run waveform-reader tests
         working-directory: waveform-reader

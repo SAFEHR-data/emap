@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
@@ -49,6 +50,7 @@ class TestWaveformProcessing extends MessageProcessingBase {
     class TestData {
         String sourceStreamId;
         String mappedStreamName;
+        String channelId;
         int numSamples;
         int samplingRate;
         int maxSamplesPerMessage;
@@ -65,27 +67,33 @@ class TestWaveformProcessing extends MessageProcessingBase {
     @Test
     @Sql("/populate_db.sql")
     void testAddWaveform() throws EmapOperationMessageProcessingException {
+        // all have a distinct numSamples as a simple way of proving we haven't mistaken one set of data for another
         var allTests = new TestData[]{
-                // Intended to be two patients each connected to two machines, but the nature of the
-                // bed/machine IDs may not quite be like this.
-                new TestData( "23", "stream 23", 20_000, 300, 900,
+                new TestData( "23", "stream 23", null, 20_000, 300, 900,
                         "source1", "T11E^T11E BY02^BY02-25", Instant.parse("2010-09-10T12:00:00Z"), "stream23unit", 106001L),
-                new TestData( "24", "stream 24", 25_000, 50, 500,
+                // same location at same time (so same patient), but a different stream (variable), not using channels
+                new TestData( "24", "stream 24", null, 20_001, 50, 500,
+                        "source1", "T11E^T11E BY02^BY02-25", Instant.parse("2010-09-10T12:00:00Z"), "stream24unit", 106001L),
+                // different location and time
+                new TestData( "24", "stream 24", "1", 25_000, 50, 500,
+                        "source2", "T42E^T42E BY03^BY03-17", Instant.parse("2010-09-14T15:27:00Z"), "stream24unit", 106002L),
+                // same as before but different channel
+                new TestData( "24", "stream 24", "2", 25_001, 50, 500,
                         "source2", "T42E^T42E BY03^BY03-17", Instant.parse("2010-09-14T15:27:00Z"), "stream24unit", 106002L),
                 // matches location but not time
-                new TestData( "23", "stream 23", 15_000, 300, 900,
+                new TestData( "23", "stream 23", null, 15_000, 300, 900,
                         "source1", "T11E^T11E BY02^BY02-25", Instant.parse("2010-09-14T16:00:00Z"), "stream23unit", null),
                 // matches time but not location
-                new TestData( "23", "stream 23", 17_000, 50, 500,
+                new TestData( "23", "stream 23", null, 17_000, 50, 500,
                         "source2", "T42E^T42E BY03^BY03-17", Instant.parse("2010-09-10T12:00:00Z"), "stream23unit", null),
                 // unknown location
-                new TestData( "23", "stream 23", 17_000, 50, 500,
+                new TestData( "23", "stream 23", null, 17_001, 50, 500,
                         "unknownlocation", null, Instant.parse("2010-09-10T12:00:00Z"), "stream23unit", null)
         };
         List<WaveformMessage> allMessages = new ArrayList<>();
         for (var test: allTests) {
             allMessages.addAll(
-                    messageFactory.getWaveformMsgs(test.sourceStreamId, test.mappedStreamName,
+                    messageFactory.getWaveformMsgs(test.sourceStreamId, test.mappedStreamName, test.channelId,
                             test.samplingRate, test.numSamples, test.maxSamplesPerMessage, test.sourceLocation,
                             test.mappedLocation, test.obsDatetime, test.unit, null));
         }
@@ -99,10 +107,14 @@ class TestWaveformProcessing extends MessageProcessingBase {
 
         int totalObservedNumSamples = 0;
         for (var test: allTests) {
-            List<Waveform> waveformRows = filterByDatetimeInterval(
-                    waveformRepository.findAllBySourceLocationOrderByObservationDatetime(test.sourceLocation),
+            List<Waveform> allForSourceLocation = new ArrayList<>();
+            waveformRepository.findAllBySourceLocationOrderByObservationDatetime(test.sourceLocation).forEach(allForSourceLocation::add);
+            List<Waveform> waveformRows = filterByDatetimeIntervalStreamChannel(
+                    allForSourceLocation,
                     test.obsDatetime,
-                    test.getEndObsTime());
+                    test.getEndObsTime(),
+                    test.sourceStreamId,
+                    test.channelId);
 
             assertFalse(waveformRows.isEmpty());
             // make sure we're testing the difficult case of multiple waveform rows that need to be stitched together
@@ -118,10 +130,14 @@ class TestWaveformProcessing extends MessageProcessingBase {
              * If not, it should be empty.
              * Is this repo query even useful? Might want to add time interval to it.
              */
-            List<Waveform> byHl7AdtLocation = filterByDatetimeInterval(
-                    waveformRepository.findAllByLocationOrderByObservationDatetime(test.mappedLocation),
+            List<Waveform> allForMappedLocation =  new ArrayList<>();
+            waveformRepository.findAllByLocationOrderByObservationDatetime(test.mappedLocation).forEach(allForMappedLocation::add);
+            List<Waveform> byHl7AdtLocation = filterByDatetimeIntervalStreamChannel(
+                    allForMappedLocation,
                     test.obsDatetime,
-                    test.getEndObsTime());
+                    test.getEndObsTime(),
+                    test.sourceStreamId,
+                    test.channelId);
 
             if (test.expectedLocationVisitId == null) {
                 assertTrue(waveformRows.stream().allMatch(aw -> aw.getLocationVisitId() == null));
@@ -160,6 +176,7 @@ class TestWaveformProcessing extends MessageProcessingBase {
             long totalActualTimeMicros = waveformRows.get(0).getObservationDatetime().until(projectedEndTime, ChronoUnit.MICROS);
             assertEquals(totalExpectedTimeMicros, totalActualTimeMicros);
         }
+        // all expected samples have been found; now check that there are no extras!
         assertEquals(Arrays.stream(allTests).map(d -> d.numSamples).reduce(Integer::sum).get(), totalObservedNumSamples);
         Map<String, VisitObservationType> allWaveformVO =
                 visitObservationTypeRepository.findAllBySourceObservationType("waveform")
@@ -271,15 +288,17 @@ class TestWaveformProcessing extends MessageProcessingBase {
         assertEquals(mappedStreamName, identicalVisitObs.getName());
     }
 
-    private static List<Waveform> filterByDatetimeInterval(Iterable<Waveform> waveforms, Instant beginTime, Instant endTime) {
-        List<Waveform> filteredRows = new ArrayList<>();
-        for (var waveform: waveforms) {
-            if (waveform.getObservationDatetime().compareTo(beginTime) >= 0
-                    && waveform.getObservationDatetime().compareTo(endTime) < 0) {
-                filteredRows.add(waveform);
-            }
-        }
-        return filteredRows;
+    private static List<Waveform> filterByDatetimeIntervalStreamChannel(List<Waveform> waveforms,
+                                                                        Instant beginTime, Instant endTime,
+                                                                        String sourceStreamId, String channelId) {
+        return waveforms.stream()
+                .filter(w -> w.getObservationDatetime().compareTo(beginTime) >= 0
+                        && w.getObservationDatetime().compareTo(endTime) < 0)
+                .filter(w -> w.getVisitObservationTypeId() != null)
+                .filter(w -> sourceStreamId.equals(w.getVisitObservationTypeId().getIdInApplication()))
+                // channel can be null
+                .filter(w -> Objects.equals(channelId, w.getChannelId()))
+                .collect(Collectors.toList());
     }
 
 }

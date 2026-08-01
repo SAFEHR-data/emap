@@ -41,7 +41,7 @@ public class MrnToLive extends TemporalCore<MrnToLive, MrnToLiveAudit> {
      * This is the primary key for the MrnToLive table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private Long mrnToLiveId;
 
     /**

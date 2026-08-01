@@ -10,6 +10,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import uk.ac.ucl.rits.inform.datasources.waveform.LocationMapping;
+import uk.ac.ucl.rits.inform.datasources.waveform_generator.patient_model.PatientLocationModel;
+import uk.ac.ucl.rits.inform.interchange.EmapOperationMessage;
+import uk.ac.ucl.rits.inform.interchange.messaging.Publisher;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
@@ -29,6 +33,8 @@ import java.util.stream.Collectors;
 @Component
 public class Hl7Generator {
     private final Logger logger = LoggerFactory.getLogger(Hl7Generator.class);
+
+    private final Publisher publisher;
 
     @Value("${waveform.synthetic.num_patients:30}")
     private int numPatients;
@@ -54,6 +60,9 @@ public class Hl7Generator {
      * Where we are up to in generating data (observation time).
      */
     private Instant progressDatetime;
+
+    private boolean haveInitialised = false;
+
     /**
      * @return Where we want to be up to in generating data (observation time).
      * This value is used to generate data at the correct rate.
@@ -65,6 +74,8 @@ public class Hl7Generator {
                 (monotonicNowNanos - monotonicStartTimeNanos) * warpFactor,
                 ChronoUnit.NANOS);
     }
+
+    private final LocationMapping locationMapping = new LocationMapping();
 
     // system time (not observation time) when we started running
     private Long monotonicStartTimeNanos = null;
@@ -90,15 +101,19 @@ public class Hl7Generator {
         } else {
             progressDatetime = startDatetime;
         }
+        // need to initialise with the fact time so ADT correlates with waveform times
+        patientLocationModel = new PatientLocationModel(possibleLocations, progressDatetime);
     }
 
     private final Hl7TcpClientFactory hl7TcpClientFactory;
 
     /**
      * @param hl7TcpClientFactory for sending generated messages
+     * @param publisher for sending synthetic ADT messages
      */
-    public Hl7Generator(Hl7TcpClientFactory hl7TcpClientFactory) {
+    public Hl7Generator(Hl7TcpClientFactory hl7TcpClientFactory, Publisher publisher) {
         this.hl7TcpClientFactory = hl7TcpClientFactory;
+        this.publisher = publisher;
     }
 
 
@@ -109,6 +124,13 @@ public class Hl7Generator {
      */
     @Scheduled(fixedDelay = 1000)
     public void generateMessages() throws IOException {
+        if (!haveInitialised) {
+            haveInitialised = true;
+            List<EmapOperationMessage> initialAdmits = patientLocationModel.getInitialLocations();
+            logger.info("First scheduled run, perform initial admits: {} messages", initialAdmits.size());
+            submitBatch(initialAdmits);
+        }
+
         var start = Instant.now();
         // The warp factor is the main mechanism used to control how much data to put in now.
         // Although the scheduling interval and chunk size/count will affect what warp factor is achievable.
@@ -173,13 +195,13 @@ public class Hl7Generator {
     }
 
     private String applyHl7Template(long samplingRate, String locationId, Instant observationDatetime,
-                                    String messageId, List<ImmutablePair<String, List<Double>>> valuesByStreamId) {
+                                    String messageId, List<ImmutablePair<String, List<Double>>> valuesByVariableId, String obr13Value) {
         // lines in HL7 messages must be CR terminated
         final String templateStr = """
                 MSH|^~\\&|DATACAPTOR||||${messageDatetime}||ORU^R01|${messageId}|P|2.3||||||UNICODE UTF-8|\r\
                 PID|\r\
                 PV1||I|${locationId}|\r\
-                OBR|||||||${obsDatetime}|||${locationId}|||${locationId}|\r\
+                OBR|||||||${obsDatetime}|||${locationId}|||${obr13Value}|\r\
                 """;
         final String obxTemplate = """
                 OBX|${obxI}|${dataType}|${streamId}||${valuesAsStr}||||||F||20|${obsDatetime}|\r\
@@ -196,11 +218,11 @@ public class Hl7Generator {
         parameters.put("obsDatetime", obsDatetime);
         parameters.put("messageDatetime", messageDatetimeStr);
         parameters.put("messageId", messageId);
-
+        parameters.put("obr13Value", obr13Value);
         StringSubstitutor stringSubstitutor = new StringSubstitutor(parameters);
         StringBuilder obrMsg = new StringBuilder(stringSubstitutor.replace(templateStr));
-        for (int obxI = 0; obxI < valuesByStreamId.size(); obxI++) {
-            var streamValuePair = valuesByStreamId.get(obxI);
+        for (int obxI = 0; obxI < valuesByVariableId.size(); obxI++) {
+            var streamValuePair = valuesByVariableId.get(obxI);
             List<Double> values = streamValuePair.getRight();
             String valuesAsStr = values.stream().map(d -> String.format("%.3f", d)).collect(Collectors.joining("^"));
             String dataType;
@@ -229,6 +251,7 @@ public class Hl7Generator {
      * Make synthetic HL7 messages for a single patient and single machine, max one second per message.
      * @param locationId where the data originates from (machine/bed location)
      * @param streamId identifier for the stream
+     * @param channelIds list of channel IDs to generate for, or null if the variable/stream does not have channels
      * @param samplingRate in samples per second
      * @param signalFrequencyHz the signal baseline frequency (Hz)
      * @param numMillis number of milliseconds to produce data for
@@ -236,8 +259,10 @@ public class Hl7Generator {
      * @param maxSamplesPerMessage max samples per message (will split into multiple messages if needed)
      * @return all messages
      */
+    @SuppressWarnings("checkstyle:ParameterNumber")
     private List<String> makeSyntheticWaveformMsgs(final String locationId,
                                                    final String streamId,
+                                                   final List<String> channelIds,
                                                    final long samplingRate,
                                                    final double signalFrequencyHz,
                                                    final long numMillis,
@@ -247,6 +272,20 @@ public class Hl7Generator {
         List<String> allMessages = new ArrayList<>();
         final long numSamplesThisCall = numMillis * samplingRate / 1000;
         final double maxValue = 999;
+        // The use of OBR-13 is a bit weird. For Variables that use channels such as 27 (ECG),
+        // it's used for the channel ID. For those without channels, it repeats the location string.
+        // Aside from the dual purpose, this also inverts the expected hierarchy: there are multiple
+        // channels in a variable, and multiple OBX segments in an OBR,
+        // but the channel ID is stored at the OBR level and the variable ID at
+        // the OBX level!!
+        // In practice, data for variables that use channels splits each channel's data into a
+        // separate message which has only one OBR that contains only one OBX.
+        List<String> obr13Values;
+        if (channelIds == null) {
+            obr13Values = List.of(locationId);
+        } else {
+            obr13Values = channelIds;
+        }
         GeneratorContext.GeneratorContextRecord context = generatorContext.getContext(locationId, streamId);
         // This counter persists over repeated calls to this function to avoid the input
         // to sin being reset to zero every few seconds
@@ -255,7 +294,7 @@ public class Hl7Generator {
             long microsAfterStart = thisCallCounter * 1000_000L / samplingRate;
             Instant messageStartTime = startTime.plus(microsAfterStart, ChronoUnit.MICROS);
             String timeStr = DateTimeFormatter.ofPattern("HHmmss").format(startTime.atOffset(ZoneOffset.UTC));
-            String messageId = String.format("%s_s%s_t%s_msg%05d", locationId, streamId, timeStr, persistentSampleIdx);
+            String messageIdBase = String.format("%s_s%s_t%s_msg%05d", locationId, streamId, timeStr, persistentSampleIdx);
 
             var values = new ArrayList<Double>();
             for (long valueIdx = 0;
@@ -264,11 +303,27 @@ public class Hl7Generator {
                 values.add(maxValue * Math.sin(2 * Math.PI * signalFrequencyHz * persistentSampleIdx / samplingRate));
             }
 
-            // Only one stream ID per HL7 message for the time being
-            List<ImmutablePair<String, List<Double>>> valuesByStreamId = new ArrayList<>();
-            valuesByStreamId.add(new ImmutablePair<>(streamId, values));
-            String fullHl7message = applyHl7Template(samplingRate, locationId, messageStartTime, messageId, valuesByStreamId);
-            allMessages.add(fullHl7message);
+            for (int i = 0; i < obr13Values.size(); i++) {
+                String obr13Value = obr13Values.get(i);
+                String messageId;
+                if (obr13Values.size() > 1) {
+                    // make sure different channels have unique message IDs
+                    messageId = String.format("%s_ch%s", messageIdBase, obr13Value);
+                } else {
+                    messageId = messageIdBase;
+                }
+                // Only one stream ID per HL7 message for the time being
+                List<ImmutablePair<String, List<Double>>> valuesByStreamId = new ArrayList<>();
+                List<Double> valuesForThisChannel = values;
+                if (i > 0) {
+                    // make the values for each channel slightly different
+                    int finalI = i;
+                    valuesForThisChannel = values.stream().map(val -> Math.pow(1.2, finalI) * val).toList();
+                }
+                valuesByStreamId.add(new ImmutablePair<>(streamId, valuesForThisChannel));
+                String fullHl7message = applyHl7Template(samplingRate, locationId, messageStartTime, messageId, valuesByStreamId, obr13Value);
+                allMessages.add(fullHl7message);
+            }
         }
         context.setCounter(persistentSampleIdx);
         return allMessages;
@@ -278,10 +333,12 @@ public class Hl7Generator {
             "UCHT03ICURM01", "UCHT03ICURM02", "UCHT03ICURM03", "UCHT03ICURM04", "UCHT03ICURM05", "UCHT03ICURM06",
             "UCHT03ICURM07", "UCHT03ICURM08", "UCHT03ICURM09", "UCHT03ICURM10", "UCHT03ICURM32",
             "UCHT03ICUBED11", "UCHT03ICUBED12", "UCHT03ICUBED14", "UCHT03ICUBED15", "UCHT03ICUBED16", "UCHT03ICUBED17",
-            "UCHT03ICUBED18", "UCHT03ICUBED19", "UCHT03ICUBED20", "UCHT03ICUBED21", "UCHT03ICUBED23", "UCHT03ICUBED24",
-            "UCHT03ICUBED25", "UCHT03ICUBED26", "UCHT03ICUBED27", "UCHT03ICUBED28", "UCHT03ICUBED29", "UCHT03ICUBED30",
-            "UCHT03ICUBED31", "UCHT03ICUBED32", "UCHT03ICUBED33", "UCHT03ICUBED34", "UCHT03ICUBED35", "UCHT03ICUBED36"
+            "UCHT03ICUBED18", "UCHT03ICUBED19", "UCHT03ICUBED20", "UCHT03ICUBED21", "UCHT03ICUBED22", "UCHT03ICUBED23",
+            "UCHT03ICUBED24", "UCHT03ICUBED25", "UCHT03ICUBED26", "UCHT03ICUBED27", "UCHT03ICUBED28", "UCHT03ICUBED29",
+            "UCHT03ICUBED30", "UCHT03ICUBED31", "UCHT03ICUBED33", "UCHT03ICUBED34", "UCHT03ICUBED35", "UCHT03ICUBED36"
             );
+
+    private PatientLocationModel patientLocationModel = null;
 
     /**
      * Generate synthetic waveform data for numPatients patients to cover a period of
@@ -296,11 +353,19 @@ public class Hl7Generator {
         List<String> waveformMsgs = new ArrayList<>();
         numPatients = Math.min(numPatients, possibleLocations.size());
         List<SyntheticStream> syntheticStreams = List.of(
-                new SyntheticStream("52912", 50, 0.3, 5), // airway volume
-                new SyntheticStream("27", 300, 1.2, 10) // ECG
+                new SyntheticStream("52912", 0, 50, 0.3, 50), // airway volume
+                new SyntheticStream("27", 3, 300, 1.2, 300) // ECG
         );
+        List<EmapOperationMessage> locationChangeMessages = patientLocationModel.makeModifications(startTime);
+        submitBatch(locationChangeMessages);
+
+        List<String> empties = new ArrayList<>();
         for (int p = 0; p < numPatients; p++) {
-            var location = possibleLocations.get(p);
+            String location = possibleLocations.get(p);
+            if (patientLocationModel.getPatientForLocation(location) == null) {
+                empties.add(location);
+                continue;
+            }
             int sizeBefore = waveformMsgs.size();
             // each bed has a slightly different frequency
             double frequencyFactor =  0.95 + 0.1 * p / possibleLocations.size();
@@ -312,18 +377,47 @@ public class Hl7Generator {
                     continue;
                 }
                 SyntheticStream stream = syntheticStreams.get(si);
+                List<String> channelIds = null;
+                if (stream.numChannels > 0) {
+                    channelIds = new ArrayList<>();
+                    for (int i = 1; i <= stream.numChannels; i++) {
+                        channelIds.add(String.valueOf(i));
+                    }
+                }
                 waveformMsgs.addAll(makeSyntheticWaveformMsgs(
-                        location, stream.streamId, stream.samplingRate,
+                        location, stream.streamId, channelIds, stream.samplingRate,
                         stream.baselineSignalFrequency * frequencyFactor, numMillis, startTime, stream.maxSamplesPerMessage));
             }
             int sizeAfter = waveformMsgs.size();
-            logger.debug("Patient {} (location {}), generated {} messages", p, location, sizeAfter - sizeBefore);
+            logger.debug("Patient {} (location {}), generated {} messages (incl ADT)", p, location, sizeAfter - sizeBefore);
         }
+        logger.info("Not generating data for empty locations: {}", empties);
 
         return waveformMsgs;
     }
 
-    record SyntheticStream(String streamId, int samplingRate, double baselineSignalFrequency, int maxSamplesPerMessage) {
+    private void submitBatch(List<? extends EmapOperationMessage> adtMsgs) {
+        List<ImmutablePair<EmapOperationMessage, String>> batch = new ArrayList<>();
+        int i = 0;
+        for (var adt: adtMsgs) {
+            i++;
+            batch.add(new ImmutablePair<>(adt, String.format("%s_message_%d",
+                    Instant.now().toEpochMilli(), i)));
+        }
+        if (batch.isEmpty()) {
+            return;
+        }
+        try {
+            String batchId = batch.get(0).getRight();
+            publisher.submit(batch, batchId, () -> {
+                logger.info("Successfully submitted batch {} (size {})", batchId, batch.size());
+            });
+        } catch (InterruptedException e) {
+            logger.error("submit interrupted", e);
+        }
+    }
+
+    record SyntheticStream(String streamId, int numChannels, int samplingRate, double baselineSignalFrequency, int maxSamplesPerMessage) {
     }
 
     private class GeneratorContext {

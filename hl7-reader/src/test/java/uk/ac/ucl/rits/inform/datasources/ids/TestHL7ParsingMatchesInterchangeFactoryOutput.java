@@ -10,6 +10,7 @@ import uk.ac.ucl.rits.inform.interchange.AdvanceDecisionMessage;
 import uk.ac.ucl.rits.inform.interchange.ConsultRequest;
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessage;
 import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
+import uk.ac.ucl.rits.inform.interchange.NotesMetadataMessage;
 import uk.ac.ucl.rits.inform.interchange.PatientAllergy;
 import uk.ac.ucl.rits.inform.interchange.PatientInfection;
 import uk.ac.ucl.rits.inform.interchange.PatientProblem;
@@ -266,6 +267,28 @@ public class TestHL7ParsingMatchesInterchangeFactoryOutput extends TestHl7Messag
     @Test
     void testNotesConsult() throws Exception {
         checkConsultMatchesInterchange("notes");
+    }
+
+    void checkNotesMetadataMatchesInterchange(String fileName) throws Exception {
+        List<? extends EmapOperationMessage> messagesFromHl7Message = processSingleMessage("NotesMetadata/" + fileName + ".txt");
+        NotesMetadataMessage expected = interchangeFactory.getNotesMetadataMessage(String.format("%s.yaml", fileName));
+        Assertions.assertEquals(1, messagesFromHl7Message.size());
+        assertEquals(expected, messagesFromHl7Message.get(0));
+    }
+
+    @Test
+    void testMinimalNotesMetadata() throws Exception {
+        checkNotesMetadataMatchesInterchange("minimal");
+    }
+
+    @Test
+    void testMinimalT08NotesMetadata() throws Exception {
+        checkNotesMetadataMatchesInterchange("minimal_T08");
+    }
+
+    @Test
+    void testMissingNotesMetadata() throws Exception {
+        checkNotesMetadataMatchesInterchange("missing_date");
     }
 
     void checkAdvanceDecisionMatchesInterchange(String fileName) throws Exception {
