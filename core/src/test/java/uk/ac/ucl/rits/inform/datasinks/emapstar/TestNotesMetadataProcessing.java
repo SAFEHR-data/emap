@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test cases to assert correct processing of NotesMetadataMessages.
- * @author Anika Cawthorn
+ * @author Sarah Keating
  */
 public class TestNotesMetadataProcessing extends MessageProcessingBase {
     @Autowired
@@ -44,7 +44,7 @@ public class TestNotesMetadataProcessing extends MessageProcessingBase {
     private static String NOTES_METADATA_MRN = "40800000";
 
     @BeforeEach
-    public void setUp() throws IOException {
+    private void setUp() throws IOException {
         minimal = messageFactory.getNotesMetadataMessage("minimal.yaml");
     }
 
