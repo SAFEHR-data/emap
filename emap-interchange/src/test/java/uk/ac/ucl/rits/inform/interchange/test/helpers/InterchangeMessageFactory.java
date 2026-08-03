@@ -272,7 +272,7 @@ public class InterchangeMessageFactory {
      *                    or null to not perform rounding
      * @return list of messages containing synthetic data
      */
-    public List<WaveformMessage> getWaveformMsgs(String sourceStreamId, String mappedStreamName,
+    public List<WaveformMessage> getWaveformMsgs(String sourceStreamId, String mappedStreamName, String channelId,
                                                  int samplingRate, final int numSamples, int maxSamplesPerMessage,
                                                  String sourceLocation, String mappedLocation,
                                                  Instant obsDatetime, String unit, ChronoUnit roundToUnit) {
@@ -283,8 +283,10 @@ public class InterchangeMessageFactory {
         while (samplesRemaining > 0) {
             int samplesThisMessage = Math.min(samplesRemaining, maxSamplesPerMessage);
             WaveformMessage waveformMessage = new WaveformMessage();
-            waveformMessage.setSourceStreamId(sourceStreamId);
-            waveformMessage.setMappedStreamDescription(mappedStreamName);
+            waveformMessage.setSourceObservationType("waveform");
+            waveformMessage.setSourceVariableId(sourceStreamId);
+            waveformMessage.setMappedVariableDescription(mappedStreamName);
+            waveformMessage.setSourceChannelId(channelId);
             waveformMessage.setSamplingRate(samplingRate);
             waveformMessage.setSourceLocationString(sourceLocation);
             waveformMessage.setMappedLocationString(mappedLocation);

@@ -5,7 +5,9 @@ import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.ac.ucl.rits.inform.datasources.waveform.LocationMapping;
+import uk.ac.ucl.rits.inform.interchange.EmapOperationMessage;
 import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
+import uk.ac.ucl.rits.inform.interchange.ResearchOptOut;
 import uk.ac.ucl.rits.inform.interchange.adt.AdmitPatient;
 import uk.ac.ucl.rits.inform.interchange.adt.AdtMessage;
 import uk.ac.ucl.rits.inform.interchange.adt.DischargePatient;
@@ -13,6 +15,8 @@ import uk.ac.ucl.rits.inform.interchange.adt.TransferPatient;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 public class PatientDetails {
@@ -37,6 +41,8 @@ public class PatientDetails {
     // need to track admit time as non-admit HL7 ADT messages require it
     @Getter
     private final Instant admitDatetime;
+    @Getter
+    private final boolean isResearchOptOut;
 
     // datetime for latest event (transfer, discharge, etc)
     @Getter @Setter
@@ -86,6 +92,14 @@ public class PatientDetails {
         this.mrn = makeFakeMrn();
         this.csn = makeFakeCsn();
         this.nhsNumber = makeFakeNhsNumber();
+        // Make the same MRN always have the same opt out status
+        this.isResearchOptOut = chooseIsResearchOptOut(this.mrn);
+    }
+
+    private boolean chooseIsResearchOptOut(String stringToHash) {
+        // String.hashCode depends only on the contents of the string and is stable over time, so you can
+        // use an identifier such as the MRN to produce an arbitrary but repeatable opt out value.
+        return stringToHash.hashCode() % 10 == 0;
     }
 
     private String makeFakeNhsNumber() {
@@ -160,12 +174,23 @@ public class PatientDetails {
      * Interpret this set of patient details as if an admit had just happened.
      * @return an admit interchange message representing the admission
      */
-    public AdmitPatient makeAdmitMessage() {
+    public List<EmapOperationMessage> makeAdmitAndOptoutMessages() {
+        List<EmapOperationMessage> allMessages = new ArrayList<>();
         AdmitPatient admitPatient = new AdmitPatient();
         setGenericAdtFields(admitPatient);
         admitPatient.setFullLocationString(new InterchangeValue<>(getAdtLocation()));
         admitPatient.setAdmissionDateTime(new InterchangeValue<>(getAdmitDatetime()));
+        allMessages.add(admitPatient);
+        // always add an opt out message for new patients
+        allMessages.add(makeResearchOptOutMessage());
+        return allMessages;
+    }
 
-        return admitPatient;
+    private ResearchOptOut makeResearchOptOutMessage() {
+        ResearchOptOut researchOptOut = new ResearchOptOut(this.nhsNumber, this.mrn, this.admitDatetime, this.isResearchOptOut);
+        researchOptOut.setSourceMessageId(String.format(
+                "ROO_%s_%s", admitDatetime.toEpochMilli(), Instant.now().toEpochMilli()));
+        researchOptOut.setSourceSystem("synthetic_waveform_generator_ROO");
+        return researchOptOut;
     }
 }

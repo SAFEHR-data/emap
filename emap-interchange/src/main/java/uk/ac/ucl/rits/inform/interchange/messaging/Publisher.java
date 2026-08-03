@@ -296,4 +296,15 @@ public class Publisher implements Runnable, Releasable {
     private boolean currentDelayIsFirstThreeRounds() {
         return currentDelay <= initialDelay * delayMultiplier * delayMultiplier;
     }
+
+    /**
+     * @return total messages in blocking queue (not yet sent) plus waiting map (sent, awaiting confirm)
+     */
+    public int getTotalPendingMessageCount() {
+        int queued = 0;
+        for (MessageBatch<?> batch : blockingQueue) {
+            queued += batch.getNumberOfMessages();
+        }
+        return queued + waitingMap.size();
+    }
 }

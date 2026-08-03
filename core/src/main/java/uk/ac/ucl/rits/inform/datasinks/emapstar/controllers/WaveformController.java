@@ -80,6 +80,7 @@ public class WaveformController {
         dataRow.setSourceLocation(msg.getSourceLocationString());
         dataRow.setVisitObservationTypeId(visitObservationType);
         dataRow.setUnit(msg.getUnit());
+        dataRow.setChannelId(msg.getSourceChannelId());
         dataRow.setValuesArray(valuesAsArray);
         waveformRepository.save(dataRow);
     }

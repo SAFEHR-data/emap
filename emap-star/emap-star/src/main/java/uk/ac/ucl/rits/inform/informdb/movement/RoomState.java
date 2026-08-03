@@ -33,7 +33,7 @@ public class RoomState extends AuditCore<RoomState> {
      * This is the primary key for the roomState table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private Long roomStateId;
 
     /**

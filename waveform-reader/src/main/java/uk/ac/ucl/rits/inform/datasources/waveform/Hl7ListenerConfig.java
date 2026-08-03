@@ -8,6 +8,7 @@ import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.integration.channel.MessagePublishingErrorHandler;
@@ -96,6 +97,7 @@ public class Hl7ListenerConfig {
      * @return connection factory
      */
     @Bean
+    @Profile("!hl7-replay")
     public TcpNetServerConnectionFactory serverConnectionFactory(
             @Value("${waveform.hl7.listen_port}") int listenPort,
             @Value("${waveform.hl7.source_address_allow_list}") List<String> sourceAddressAllowList,
@@ -147,6 +149,7 @@ public class Hl7ListenerConfig {
      * @return adapter
      */
     @Bean
+    @Profile("!hl7-replay")
     TcpReceivingChannelAdapter hl7InboundTcpAdapter(TcpNetServerConnectionFactory connectionFactory, MessageChannel hl7MessageChannel) {
         TcpReceivingChannelAdapter adapter = new TcpReceivingChannelAdapter();
         adapter.setConnectionFactory(connectionFactory);

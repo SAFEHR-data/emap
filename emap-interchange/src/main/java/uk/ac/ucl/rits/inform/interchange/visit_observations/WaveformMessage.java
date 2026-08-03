@@ -24,8 +24,6 @@ import java.util.List;
 @ToString(callSuper = true)
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")
 public class WaveformMessage extends EmapOperationMessage {
-    private String sourceObservationType = "waveform";
-
     /**
      * Time of the observation.
      */
@@ -43,14 +41,25 @@ public class WaveformMessage extends EmapOperationMessage {
     private String mappedLocationString;
 
     /**
-     * Stream ID according to the source system.
+     * What source of waveform? Eg. carescape, etc
      */
-    private String sourceStreamId;
+    private String sourceObservationType;
 
     /**
-     * Stream description mapped by the data source.
+     * Variable ID according to the source system.
+     * Has previously been referred to as stream ID, so you may see that in some places.
      */
-    private String mappedStreamDescription;
+    private String sourceVariableId;
+
+    /**
+     * Channel ID according to the source system.
+     */
+    private String sourceChannelId;
+
+    /**
+     * Variable (aka. stream) description mapped by the data source.
+     */
+    private String mappedVariableDescription;
 
     /**
      * Sampling rate in Hz.

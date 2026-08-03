@@ -31,7 +31,8 @@ def get_all_params():
                                  SELECT DISTINCT
                                      w.visit_observation_type_id,
                                      w.source_location,
-                                     vot.name
+                                     w.channel_id,
+                                     vot.name || ' [' || vot.id_in_application || ']' as name
                                  FROM WAVEFORM w
                                  INNER JOIN VISIT_OBSERVATION_TYPE vot
                                      ON vot.visit_observation_type_id = w.visit_observation_type_id
@@ -54,7 +55,7 @@ def get_min_max_time_for_single_stream(visit_observation_type_id, source_locatio
         return minmax.iloc[0].min_time, minmax.iloc[0].max_time
 
 
-def get_data_single_stream_rounded(visit_observation_type_id, source_location, graph_start_time, graph_end_time, max_time, max_row_length_seconds=30):
+def get_data_single_stream_rounded(visit_observation_type_id, channel_id, source_location, graph_start_time, graph_end_time, max_time, max_row_length_seconds=30):
     # Because a row's observation_datetime is the time of the *first* data point in the array,
     # to get the data starting at time T, you have to query the DB for data a little earlier than T.
     # Additionally, to aid caching, round down further so repeated calls with
@@ -75,12 +76,12 @@ def get_data_single_stream_rounded(visit_observation_type_id, source_location, g
         rounded_max_time = max_time
     print(f"Adjusted min time {graph_start_time} -> {rounded_min_time}")
     print(f"Adjusted max time {graph_end_time} -> {rounded_max_time} {'(capped)' if capped_at_max else ''}")
-    return get_data_single_stream(visit_observation_type_id, source_location, rounded_min_time, rounded_max_time)
+    return get_data_single_stream(visit_observation_type_id, channel_id, source_location, rounded_min_time, rounded_max_time)
 
 
 @st.cache_data(ttl=1800)
-def get_data_single_stream(visit_observation_type_id, source_location, min_time, max_time):
-    params = (visit_observation_type_id, source_location, min_time, max_time)
+def get_data_single_stream(visit_observation_type_id, channel_id, source_location, min_time, max_time):
+    params = (visit_observation_type_id, source_location, channel_id, channel_id, min_time, max_time)
     # Index(['waveform_id', 'stored_from', 'valid_from', 'observation_datetime',
     #        'sampling_rate', 'source_location', 'unit', 'values_array',
     #        'location_visit_id', 'visit_observation_type_id'],
@@ -101,6 +102,7 @@ def get_data_single_stream(visit_observation_type_id, source_location, min_time,
                                  w.visit_observation_type_id
                              FROM WAVEFORM w, unnest(w.values_array) WITH ORDINALITY v
                              WHERE visit_observation_type_id = %s AND source_location = %s
+                               AND (%s IS NULL OR w.channel_id = %s)
                                AND observation_datetime >= %s
                                AND observation_datetime <= %s
                              ORDER BY observation_datetime

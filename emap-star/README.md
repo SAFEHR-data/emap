@@ -44,7 +44,7 @@ relational database. We have chosen a relational structure for ease of use and e
     * This is the primary key for the department table.
     */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private Long departmentId;  
     ```
 
@@ -62,7 +62,7 @@ relational database. We have chosen a relational structure for ease of use and e
     ```
   - In Java, these are defined as `Long` types, which default to null, before auto generation. `long` would default to 0.
     ```java
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private Long mrnId;
     ```
 - Foreign keys use the same name as the primary key

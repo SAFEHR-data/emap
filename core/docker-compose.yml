@@ -19,6 +19,9 @@ services:
       rabbitmq:
         condition: service_healthy
   rabbitmq:
+    # As per https://hub.docker.com/_/rabbitmq#how-to-use-this-image, set a fixed hostname
+    # so our data doesn't get orphaned on container recreation.
+    hostname: rabbitmq
     build:
       context: .
       dockerfile: ./init/rabbitmq/Dockerfile.rabbitmq
@@ -27,6 +30,8 @@ services:
     ports:
       - "${RABBITMQ_PORT}:5672"
       - "${RABBITMQ_ADMIN_PORT}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     restart: on-failure
     healthcheck:
       # rabbitmq server crashes if any rabbitmq-diagnostics cmd is run very soon
@@ -86,6 +91,9 @@ services:
       - "${PORTAL_PORT}:80"
 
 
+
+volumes:
+  rabbitmq_data:
 
 secrets:
   portal-build-secrets:

@@ -36,6 +36,10 @@ import java.util.concurrent.atomic.AtomicLong;
 public class Hl7MessageCompressor implements SmartLifecycle {
     private static final Logger logger = LoggerFactory.getLogger(Hl7MessageCompressor.class);
     static final DateTimeFormatter HOURLY_DIR_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd'T'HH");
+    /**
+     * The datestamp part of the bz2 archive files, Eg. "20251030T1423Z"
+     */
+    public static final DateTimeFormatter FILE_NAME_DATETIME_PATTERN = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmm'Z'");
 
     @Getter
     private final Path saveDirectory;
@@ -97,6 +101,8 @@ public class Hl7MessageCompressor implements SmartLifecycle {
     /**
      * Close archives if we haven't written to them for a minute or so.
      * A new one can always be opened if more data comes in.
+     *
+     * All Scheduling is disabled for HL7 replay, but replay doesn't save messages anyway so that doesn't matter here.
      */
     @Scheduled(fixedDelay = 30000)
     public void closeStreamsNotRecentlyUsed() {
@@ -178,8 +184,7 @@ public class Hl7MessageCompressor implements SmartLifecycle {
                 .withZone(ZoneOffset.UTC)
                 .format(roundedTime);
 
-        // Eg. "20251030T1423Z"
-        String timestampStr = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmm'Z'")
+        String timestampStr = FILE_NAME_DATETIME_PATTERN
                 .withZone(ZoneOffset.UTC)
                 .format(roundedTime);
 

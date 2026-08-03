@@ -54,7 +54,7 @@ public class LocationVisit extends TemporalCore<LocationVisit, LocationVisitAudi
      * This is the primary key for the locationVisit table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private long locationVisitId;
 
     /**

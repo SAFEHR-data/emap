@@ -40,7 +40,7 @@ public class LabResult extends TemporalCore<LabResult, LabResultAudit> {
      * This is the primary key for the labResult table.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emap_id_sequence")
     private long labResultId;
 
     /**
