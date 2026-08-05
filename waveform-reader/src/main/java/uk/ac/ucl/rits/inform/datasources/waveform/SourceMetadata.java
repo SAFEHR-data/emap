@@ -53,15 +53,17 @@ public class SourceMetadata {
             try {
                 samplingRate = Integer.parseInt(row.get("frequency"));
             } catch (NumberFormatException e) {
+                // not everything is a waveform!
                 samplingRate = null;
             }
             String unit = row.get("value_unit_name");
             String description = row.get("value_name");
+            String valueType = row.get("value_type");
             // Look up channels, if any.
             // If channels column is empty this means there are no channels used,
             // ie. treated same as if the row didn't exist in CHANNELS_CSV
             List<String> channels = variablesToChannels.getOrDefault(key, Collections.emptyList());
-            SourceMetadataItem metadataItem = new SourceMetadataItem(key, description, unit, samplingRate, channels);
+            SourceMetadataItem metadataItem = new SourceMetadataItem(key, description, unit, valueType, samplingRate, channels);
             logger.debug("Metadata item: {}", metadataItem);
             if (!metadataItem.isUsable()) {
                 logger.warn("Metadata item cannot be used for mapping: {}", VARIABLE_CSV);
@@ -90,12 +92,7 @@ public class SourceMetadata {
      * @return metadata record wrapped in Optional
      */
     public Optional<SourceMetadataItem> getVariableMetadata(String variableId) {
-        SourceMetadataItem metadata = metadataByVariableId.get(variableId);
-        if (metadata == null) {
-            return Optional.empty();
-        }
-        return Optional.of(new SourceMetadataItem(variableId, metadata.mappedVariableDescription(),
-                metadata.unit(), metadata.samplingRate(), metadata.channelIds()));
+        return Optional.ofNullable(metadataByVariableId.get(variableId));
     }
 }
 
@@ -104,14 +101,29 @@ public class SourceMetadata {
  * @param sourceVariableId the source variable unique Id, Eg. "52912"
  * @param mappedVariableDescription Description of the variable eg. "Airway Volume Waveform"
  * @param unit The unit relating to the value, eg. "mL"
+ * @param valueType possible values: Set Static Variable Waveform
  * @param samplingRate number of samples per second, eg. 50
  * @param channelIds the names of the expected channels for this variable. Can be null or empty...
  */
-record SourceMetadataItem(String sourceVariableId, String mappedVariableDescription, String unit, Integer samplingRate, List<String> channelIds) {
+record SourceMetadataItem(
+        String sourceVariableId,
+        String mappedVariableDescription,
+        String unit,
+        String valueType,
+        Integer samplingRate,
+        List<String> channelIds) {
     // allow unusable to exist for the sake of better logging messages
     public boolean isUsable() {
-        // We need to know the sampling rate so we can check the data is free of gaps, for one thing
-        return samplingRate != null && unit != null;
+        if (isWaveform()) {
+            // We need to know the sampling rate so we can check the data is free of gaps, for one thing
+            return samplingRate != null && unit != null;
+        } else {
+            return unit != null;
+        }
+    }
+
+    public boolean isWaveform() {
+        return valueType.equals("Waveform");
     }
 
     /**
