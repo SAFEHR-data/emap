@@ -21,14 +21,14 @@ import java.util.Optional;
 
 /**
  * The source data (from HL7 messages) is not fully self-describing.
- * We need external metadata to tell us certain things about each data stream.
+ * We need external metadata to tell us certain things about each data variable.
  */
 @Component
 public class SourceMetadata {
     private final Logger logger = LoggerFactory.getLogger(Hl7ParseAndQueue.class);
     private static final Resource VARIABLE_CSV = new ClassPathResource("source-metadata/Device_Values_formatted.csv");
     private static final Resource CHANNELS_CSV = new ClassPathResource("source-metadata/Carescape parameters.csv");
-    private Map<String, SourceMetadataItem> metadataByStreamId = new HashMap<>();
+    private Map<String, SourceMetadataItem> metadataByVariableId = new HashMap<>();
 
     SourceMetadata() throws IOException {
         logger.info("Loading metadata from {}", CHANNELS_CSV);
@@ -66,10 +66,10 @@ public class SourceMetadata {
             if (!metadataItem.isUsable()) {
                 logger.warn("Metadata item cannot be used for mapping: {}", VARIABLE_CSV);
             }
-            metadataByStreamId.put(key, metadataItem);
+            metadataByVariableId.put(key, metadataItem);
         }
         variablesMappingIterator.close();
-        logger.info("Loaded {} metadata items from {}", metadataByStreamId.size(), VARIABLE_CSV);
+        logger.info("Loaded {} metadata items from {}", metadataByVariableId.size(), VARIABLE_CSV);
     }
 
     private static MappingIterator<Map<String, String>> readCsv(Resource csvToRead) throws IOException {
@@ -85,29 +85,29 @@ public class SourceMetadata {
 
 
     /**
-     * Get metadata for the stream ID, if we know it (hence Optional).
-     * @param streamId stream unique ID
+     * Get metadata for the variable ID, if we know it (hence Optional).
+     * @param variableId variable unique ID
      * @return metadata record wrapped in Optional
      */
-    public Optional<SourceMetadataItem> getStreamMetadata(String streamId) {
-        SourceMetadataItem metadata = metadataByStreamId.get(streamId);
+    public Optional<SourceMetadataItem> getVariableMetadata(String variableId) {
+        SourceMetadataItem metadata = metadataByVariableId.get(variableId);
         if (metadata == null) {
             return Optional.empty();
         }
-        return Optional.of(new SourceMetadataItem(streamId, metadata.mappedStreamDescription(),
+        return Optional.of(new SourceMetadataItem(variableId, metadata.mappedVariableDescription(),
                 metadata.unit(), metadata.samplingRate(), metadata.channelIds()));
     }
 }
 
 /**
- * Describes a source stream.
- * @param sourceStreamId the source stream unique Id, Eg. "52912"
- * @param mappedStreamDescription Description of the stream eg. "Airway Volume Waveform"
+ * Describes a source variable.
+ * @param sourceVariableId the source variable unique Id, Eg. "52912"
+ * @param mappedVariableDescription Description of the variable eg. "Airway Volume Waveform"
  * @param unit The unit relating to the value, eg. "mL"
  * @param samplingRate number of samples per second, eg. 50
  * @param channelIds the names of the expected channels for this variable. Can be null or empty...
  */
-record SourceMetadataItem(String sourceStreamId, String mappedStreamDescription, String unit, Integer samplingRate, List<String> channelIds) {
+record SourceMetadataItem(String sourceVariableId, String mappedVariableDescription, String unit, Integer samplingRate, List<String> channelIds) {
     // allow unusable to exist for the sake of better logging messages
     public boolean isUsable() {
         // We need to know the sampling rate so we can check the data is free of gaps, for one thing

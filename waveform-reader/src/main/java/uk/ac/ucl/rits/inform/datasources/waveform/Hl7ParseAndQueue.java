@@ -144,14 +144,14 @@ public class Hl7ParseAndQueue {
                 String variableId = obx.getField(3);
 
 
-                Optional<SourceMetadataItem> metadataOpt = sourceMetadata.getStreamMetadata(variableId);
+                Optional<SourceMetadataItem> metadataOpt = sourceMetadata.getVariableMetadata(variableId);
                 if (metadataOpt.isEmpty()) {
-                    logger.warn("Skipping stream {}, unrecognised streamID", variableId);
+                    logger.warn("Skipping variable {}, unrecognised variableID", variableId);
                     continue;
                 }
                 SourceMetadataItem metadata = metadataOpt.get();
                 if (!metadata.isUsable()) {
-                    logger.warn("Skipping stream {}, insufficient metadata", variableId);
+                    logger.warn("Skipping variable {}, insufficient metadata", variableId);
                     continue;
                 }
 
@@ -159,17 +159,17 @@ public class Hl7ParseAndQueue {
                 // shouldn't treat it as the channel!
                 String channelId = metadata.hasChannels() ? obr.getField(13) : null;
 
-                // Sampling rate and stream description is not in the message, so use the metadata
+                // Sampling rate and variable description is not in the message, so use the metadata
                 int samplingRate = metadata.samplingRate();
                 String mappedLocation = locationMapping.hl7AdtLocationFromCapsuleLocation(locationId);
-                String mappedStreamDescription = metadata.mappedStreamDescription();
+                String mappedVariableDescription = metadata.mappedVariableDescription();
                 String unit = metadata.unit();
 
                 // non-numerical types won't be able to go in the waveform table, but it's possible
                 // we might need them as a VisitObservation
                 String hl7Type = obx.getField(2);
                 if (!Set.of("NM", "NA").contains(hl7Type)) {
-                    logger.warn("Skipping stream {} with type {}, not numerical", variableId, hl7Type);
+                    logger.warn("Skipping variable {} with type {}, not numerical", variableId, hl7Type);
                     continue;
                 }
                 String allPointsStr = obx.getField(5);
@@ -184,7 +184,7 @@ public class Hl7ParseAndQueue {
                         locationId, obsDatetime, messageIdSpecific, points.size());
                 WaveformMessage waveformMessage = waveformMessageFromValues(
                         samplingRate, locationId, mappedLocation, obsDatetime, messageIdSpecific,
-                        variableId, mappedStreamDescription, channelId, unit, points);
+                        variableId, mappedVariableDescription, channelId, unit, points);
 
                 allWaveformMessages.add(waveformMessage);
             }
