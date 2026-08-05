@@ -1,0 +1,59 @@
+@startuml
+
+left to right direction
+
+skinparam TitleFontSize 22
+skinparam TitleFontStyle bold
+
+title "Waveform Data Sources Details"
+
+rectangle "UCH\nMonitor" as uch_monitor #CFE2FF
+rectangle "UCH\nVentilator" as uch_ventilator #FAD7A0
+rectangle "UCH\nPumps" as uch_pumps #E8E5D0
+rectangle "NHNN\nMonitor" as nhnn_monitor #D5F5D5
+
+rectangle "DIM" as dim_monitor #F2F2F2
+rectangle "DIM" as dim_ventilator #F2F2F2
+rectangle "DIM" as dim_pumps #F2F2F2
+
+rectangle "Phillips\nAxon" as phillips_axon #F2F2F2
+rectangle "Phillips\nCarestation" as phillips_carestation #F2F2F2
+component "Smartlinx" as smartlinx_core #EAE5FF
+component "EPIC" as epic #CFE2FF
+uch_monitor --> dim_monitor
+uch_ventilator --> dim_ventilator
+uch_pumps --> dim_pumps
+nhnn_monitor --> phillips_carestation
+
+dim_monitor --> phillips_axon
+dim_ventilator --> phillips_axon
+dim_pumps --> phillips_axon
+
+phillips_axon --> smartlinx_core
+phillips_carestation --> smartlinx_core
+
+smartlinx_core ---r--> epic : EPIC PRD Port
+
+
+rectangle "Data Output to Emap" as data_outputs #line.dashed {
+  rectangle "Waveform\nCarescape - ECG\nCarescape - Arterial\nCarescape - ETCO2" as waveforms_epic #D6EAF8
+  rectangle "Waveform\nServo U - Flow\nServo U - Pressure\nServo U - Volume" as waveforms_ventilator #FAD7A0
+  rectangle "Variables\nRR, P0.1" as variables_ventilator #FAD7A0
+  rectangle "Settings\nRise time\nI:E ratio\nPS or PC" as settings_ventilator #FAD7A0
+  rectangle "NHNN\nHL7's 0.2Hz\nHR, NIBP, SaO2" as nhnn_hl7 #D5F5D5
+}
+
+package "Emap" as emap_system #F8F8F8 {
+    component "Waveform Reader" as waveform_reader #DDDDDD
+    note bottom of waveform_reader
+      detailed in "pipeline" diagram
+    end note
+}
+
+smartlinx_core -l-- data_outputs
+data_outputs --r-> waveform_reader : EMAP Port
+
+epic -[hidden]-> data_outputs
+data_outputs -[hidden]-> waveform_reader
+
+@enduml
