@@ -41,7 +41,7 @@ public class TestWaveformCollation {
     }
 
     List<WaveformMessage> makeTestMessages() {
-        // Check that we can handle adding messages from different streams,
+        // Check that we can handle adding messages from different variables+channels,
         // as would be found in a real HL7 message
         List<WaveformMessage> uncollatedMsgs = messageFactory.getWaveformMsgs(
                 "59912", "something1", null,
@@ -126,7 +126,7 @@ public class TestWaveformCollation {
         Instant now = messageStartDatetime.plus(nowAfterFirstMessageMillis, assumedRounding);
         List<WaveformMessage> allCollatedMsgs = waveformCollator.getReadyMessages(
                 now, targetNumSamples, waitForDataLimitMillis, assumedRounding);
-        // only test messages from one stream
+        // only test messages from one channel
         List<WaveformMessage> collatedMsgs =
                 allCollatedMsgs.stream().filter(msg -> waveformCollator.makeKey(msg).equals(keyOfInterest)).toList();
 
@@ -172,7 +172,7 @@ public class TestWaveformCollation {
         List<WaveformMessage> allCollatedMsgs = waveformCollator.getReadyMessages(
                 now, targetCollatedMessageSamples, waitForDataLimitMillis, ChronoUnit.MILLIS);
         Triple<String, String, String> keyOfInterest = new ImmutableTriple<>("UCHT03TEST", "59912", null);
-        // only test messages from one stream
+        // only test messages from one channel
         List<WaveformMessage> collatedMsgs =
                 allCollatedMsgs.stream().filter(msg -> waveformCollator.makeKey(msg).equals(keyOfInterest)).toList();
 
