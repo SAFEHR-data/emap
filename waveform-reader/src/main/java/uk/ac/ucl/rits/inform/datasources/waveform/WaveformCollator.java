@@ -34,7 +34,7 @@ public class WaveformCollator {
 
     /**
      * Add short messages from the same patient for collating.
-     * @param messagesToAdd messages to add, can be for different location+stream
+     * @param messagesToAdd messages to add, can be for different location+variable+channel
      * @throws CollationException if a message duplicates another message
      */
     public void addMessages(List<WaveformMessage> messagesToAdd) throws CollationException {
@@ -54,9 +54,9 @@ public class WaveformCollator {
         }
 
         /* The bulk of time is spent only with a lock held on the data structure specific to
-         * the location+stream, thus enabling more parallelism.
+         * the location+variable+channel, thus enabling more parallelism.
          * Need lock because we may be trying to collate at the same time as we're adding here.
-         * Group together all the messages for a particular location+stream, so that the lock
+         * Group together all the messages for a particular location+variable+channel, so that the lock
          * for each one only needs to be taken out once.
          */
         for (var key: messagesToAddByKey.keySet()) {
@@ -90,7 +90,7 @@ public class WaveformCollator {
      *                        not make such an assumption.
      * @return the collated messages that are now ready for sending, may be empty if none are ready
      * @throws CollationException if any set within pendingMessages contains messages not in
-     *                             fact all from the same patient+stream
+     *                             fact all from the same location+variable+channel
      */
     public List<WaveformMessage> getReadyMessages(Instant nowTime,
                                                   int targetCollatedMessageSamples,
@@ -132,7 +132,7 @@ public class WaveformCollator {
 
 
     /**
-     * Given a sorted map of messages (all for same patient+stream), squash as much as possible
+     * Given a sorted map of messages (all for same location+variable+channel), squash as much as possible
      * into a single message, respecting the target number of samples. If a time gap is detected
      * in the sequence of messages, stop. Ie. do not straddle the gap within the same message.
      * Remove messages from the structure which were used as source data for the collated message.
@@ -143,7 +143,7 @@ public class WaveformCollator {
      * @param waitForDataLimitMillis see {@link #getReadyMessages}
      * @param assumedRounding see {@link #getReadyMessages}
      * @return the collated message, or null if the messages cannot be collated
-     * @throws CollationException if perPatientMap messages are not in fact all from the same patient+stream
+     * @throws CollationException if perPatientMap messages are not in fact all from the same location+variable+channel
      */
 
     private WaveformMessage collateContiguousData(SortedMap<Instant, WaveformMessage> perPatientMap,
