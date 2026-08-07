@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformLowFreqMessage;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
 
 import java.time.Instant;
@@ -30,6 +31,10 @@ public class WaveformCollator {
 
     Triple<String, String, String> makeKey(WaveformMessage msg) {
         return new ImmutableTriple<>(msg.getSourceLocationString(), msg.getSourceVariableId(), msg.getSourceChannelId());
+    }
+
+    public void addNonCollatableMessages(List<WaveformLowFreqMessage> messagesToAdd) {
+        // XXX: yes what indeed
     }
 
     /**

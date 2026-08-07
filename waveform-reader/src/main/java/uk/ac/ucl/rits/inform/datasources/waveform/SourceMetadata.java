@@ -28,7 +28,13 @@ public class SourceMetadata {
     private final Logger logger = LoggerFactory.getLogger(Hl7ParseAndQueue.class);
     private static final Resource VARIABLE_CSV = new ClassPathResource("source-metadata/Device_Values_formatted.csv");
     private static final Resource CHANNELS_CSV = new ClassPathResource("source-metadata/Carescape parameters.csv");
+    private static final Resource UNITS_CSV = new ClassPathResource("source-metadata/unit_codes.csv");
+    private static final Resource VENTILATOR_MODE_CSV = new ClassPathResource("source-metadata/ventilator_mode_mapping.csv");
+    private static final Resource INSPIRATORY_TRIGGER_TYPE_CSV = new ClassPathResource("source-metadata/inspiratory_trigger_type_value_mapping.csv");
     private Map<String, SourceMetadataItem> metadataByVariableId = new HashMap<>();
+    private Map<String, String> unitsByCode = new HashMap<>();
+    private Map<String, String> ventModes = new HashMap<>();
+    private Map<String, String> inspTriggerTypes = new HashMap<>();
 
     SourceMetadata() throws IOException {
         logger.info("Loading metadata from {}", CHANNELS_CSV);
@@ -72,7 +78,54 @@ public class SourceMetadata {
         }
         variablesMappingIterator.close();
         logger.info("Loaded {} metadata items from {}", metadataByVariableId.size(), VARIABLE_CSV);
+
+        loadUnitCodes();
+        loadVentModes();
+        loadInspTriggerTypes();
     }
+
+    private void loadUnitCodes() throws IOException {
+        try (MappingIterator<Map<String, String>> unitCodesIterator = readCsv(UNITS_CSV)) {
+            while (unitCodesIterator.hasNext()) {
+                Map<String, String> row = unitCodesIterator.next();
+                String code = row.get("UnitCode");
+                String symbolicUnit = row.get("Short Description");
+                if (code == null || symbolicUnit == null) {
+                    throw new RuntimeException("Could not load units from CSV");
+                }
+                unitsByCode.put(code, symbolicUnit);
+            }
+        }
+    }
+
+    private void loadInspTriggerTypes() throws IOException {
+        try (MappingIterator<Map<String, String>> inspTriggerTypesIterator = readCsv(INSPIRATORY_TRIGGER_TYPE_CSV)) {
+            while (inspTriggerTypesIterator.hasNext()) {
+                Map<String, String> row = inspTriggerTypesIterator.next();
+                String variableValue = row.get("variable_value");
+                String variableDescription = row.get("variable_description");
+                if (variableValue == null || variableDescription == null) {
+                    throw new RuntimeException("Could not load insp trigger types from CSV");
+                }
+                inspTriggerTypes.put(variableValue, variableDescription);
+            }
+        }
+    }
+
+    private void loadVentModes() throws IOException {
+        try (MappingIterator<Map<String, String>> unitCodesIterator = readCsv(VENTILATOR_MODE_CSV)) {
+            while (unitCodesIterator.hasNext()) {
+                Map<String, String> row = unitCodesIterator.next();
+                String ventModeValue = row.get("Value of Variable 584");
+                String ventModeDesc = row.get("Variable Description");
+                if (ventModeValue == null || ventModeDesc == null) {
+                    throw new RuntimeException("Could not load VentMode from CSV");
+                }
+                ventModes.put(ventModeValue, ventModeDesc);
+            }
+        }
+    }
+
 
     private static MappingIterator<Map<String, String>> readCsv(Resource csvToRead) throws IOException {
         CsvMapper mapper = new CsvMapper();
@@ -93,6 +146,48 @@ public class SourceMetadata {
      */
     public Optional<SourceMetadataItem> getVariableMetadata(String variableId) {
         return Optional.ofNullable(metadataByVariableId.get(variableId));
+    }
+
+    /**
+     * @param code a string code from the HL7 message
+     * @return a string representation of the unit if it exists
+     */
+    public Optional<String> getUnitFromCode(String code) {
+        return Optional.ofNullable(unitsByCode.get(code));
+    }
+
+    /**
+     * Try to map a categorical value from HL7.
+     * @param variableId the variable ID
+     * @param sourceValue the value of the variable that may be categorical
+     * @return non-null Optional if successfully mapped, Optional.empty() if not a known categorical variable
+     * @throws UnknownCategoricalValueException if is a known categorical variable, but the value is unknown for that variable
+     */
+    public Optional<String> tryMapCategorical(String variableId, String sourceValue) throws UnknownCategoricalValueException {
+        if (variableId.equals("584")) {
+            // Ventilation Mode
+            String mappedValue = ventModes.get(sourceValue);
+            if (mappedValue != null) {
+                return Optional.of(mappedValue);
+            }
+        } else if (variableId.equals("2047")) {
+            // 2047,Inspired Trigger Type,,Variable,Servo-U,TRUE,
+            String mappedValue = inspTriggerTypes.get(sourceValue);
+            if (mappedValue != null) {
+                return Optional.of(mappedValue);
+            }
+        } else {
+            // it's not a known categorical variable so you can assume it's a numerical
+            return Optional.empty();
+        }
+        throw new UnknownCategoricalValueException(
+                String.format("Categorical variable %s identified but value %s is invalid", variableId, sourceValue));
+    }
+}
+
+class UnknownCategoricalValueException extends Exception {
+    UnknownCategoricalValueException(String msg) {
+        super(msg);
     }
 }
 

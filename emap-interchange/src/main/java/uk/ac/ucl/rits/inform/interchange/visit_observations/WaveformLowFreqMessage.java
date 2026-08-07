@@ -1,6 +1,5 @@
 package uk.ac.ucl.rits.inform.interchange.visit_observations;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -9,12 +8,9 @@ import uk.ac.ucl.rits.inform.interchange.EmapOperationMessageProcessingException
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessageProcessor;
 import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-
 /**
- * Represent a high-frequency Waveform message.
+ * Data that is adjacent to Waveform data, but is not itself high-frequency data.
+ * Eg. settings such as ventilation mode, and low-frequency measurements such as respiration rate.
  * At this time, waveform data doesn't come with any direct identifiers for
  * the patient, only their location.
  * @author Jeremy Stein
@@ -23,21 +19,21 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")
-public class WaveformMessage extends WaveformBaseMessage {
+public class WaveformLowFreqMessage extends WaveformBaseMessage {
     /**
-     * Channel ID according to the source system.
+     * Unmapped value.
      */
-    private String sourceChannelId;
+    private InterchangeValue<String> sourceValue = InterchangeValue.unknown();
 
     /**
-     * Sampling rate in Hz.
+     * Mapped value, if it's a numerical value.
      */
-    private int samplingRate;
+    private InterchangeValue<Double> numericValue = InterchangeValue.unknown();
 
     /**
-     * Numeric array.
+     * Mapped value, if it's a string. Also use for categorical, eg.  "Flow Trig"
      */
-    private InterchangeValue<List<Double>> numericValues = InterchangeValue.unknown();
+    private InterchangeValue<String> stringValue = InterchangeValue.unknown();
 
     /**
      * Call back to the processor so it knows what type this object is (ie. double dispatch).
@@ -47,17 +43,6 @@ public class WaveformMessage extends WaveformBaseMessage {
     @Override
     public void processMessage(EmapOperationMessageProcessor processor) throws EmapOperationMessageProcessingException {
         processor.processMessage(this);
-    }
-
-    /**
-     * @return expected observation datetime for the next message, if it exists and there are
-     * no gaps between messages
-     */
-    @JsonIgnore
-    public Instant getExpectedNextObservationDatetime() {
-        int numValues = numericValues.get().size();
-        long microsToAdd = 1_000_000L * numValues / samplingRate;
-        return getObservationTime().plus(microsToAdd, ChronoUnit.MICROS);
     }
 
 }

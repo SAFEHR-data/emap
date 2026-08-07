@@ -10,6 +10,8 @@ import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7Message;
 import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7ParseException;
 import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7Segment;
 import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformBaseMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformLowFreqMessage;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
 
 import java.io.IOException;
@@ -62,7 +64,7 @@ public class Hl7ParseAndQueue {
 
     public record FullyParsedMessage(
             String rawHl7Trimmed,
-            List<WaveformMessage> waveformMessages,
+            List<WaveformBaseMessage> waveformBaseMessages,
             String bedLocation,
             Instant messageTimestamp,
             Instant messageTimeslot) {}
@@ -107,7 +109,7 @@ public class Hl7ParseAndQueue {
 
     FullyParsedMessage parseHl7Fully(PartiallyParsedMessage partiallyParsedMessage) throws Hl7ParseException {
         Hl7Message message = partiallyParsedMessage.hl7MessageParser();
-        List<WaveformMessage> allWaveformMessages = new ArrayList<>();
+        List<WaveformBaseMessage> allWaveformMessages = new ArrayList<>();
         if (message == null) {
             return new FullyParsedMessage(
                     partiallyParsedMessage.rawHl7Trimmed,
@@ -158,35 +160,62 @@ public class Hl7ParseAndQueue {
                 // If it's a no-channel flavour of HL7 message, OBR-13 is the location and we
                 // shouldn't treat it as the channel!
                 String channelId = metadata.hasChannels() ? obr.getField(13) : null;
-
-                // Sampling rate and variable description is not in the message, so use the metadata
-                int samplingRate = metadata.samplingRate();
                 String mappedLocation = locationMapping.hl7AdtLocationFromCapsuleLocation(locationId);
-                String mappedVariableDescription = metadata.mappedVariableDescription();
-                String unit = metadata.unit();
-
-                // non-numerical types won't be able to go in the waveform table, but it's possible
-                // we might need them as a VisitObservation
-                String hl7Type = obx.getField(2);
-                if (!Set.of("NM", "NA").contains(hl7Type)) {
-                    logger.warn("Skipping variable {} with type {}, not numerical", variableId, hl7Type);
-                    continue;
-                }
-                String allPointsStr = obx.getField(5);
-                if (allPointsStr.contains("~")) {
-                    throw new Hl7ParseException(partiallyParsedMessage.rawHl7Trimmed, "must only be 1 repeat in OBX-5");
-                }
-
-                List<Double> points = Arrays.stream(allPointsStr.split("\\^")).map(Double::parseDouble).toList();
-
                 String messageIdSpecific = String.format("%s_%d_%d", messageIdBase, obrI, obxI);
-                logger.debug("location {}, time {}, messageId {}, value count = {}",
-                        locationId, obsDatetime, messageIdSpecific, points.size());
-                WaveformMessage waveformMessage = waveformMessageFromValues(
-                        samplingRate, locationId, mappedLocation, obsDatetime, messageIdSpecific,
-                        variableId, mappedVariableDescription, channelId, unit, points);
+                // Sampling rate and variable description are not in the message, so use the metadata
+                String mappedVariableDescription = metadata.mappedVariableDescription();
+                // Units can vary even within the same variable, so use the values in the HL7 messages in preference to the
+                // ones in metadata.
+                String unitCode = obx.getField(6);
+                String unit = sourceMetadata.getUnitFromCode(unitCode).orElse(metadata.unit());
 
-                allWaveformMessages.add(waveformMessage);
+                if (metadata.isWaveform()) {
+                    int samplingRate = metadata.samplingRate();
+
+
+                    // non-numerical types won't be able to go in the waveform table, but it's possible
+                    // we might need them as a VisitObservation
+                    String hl7Type = obx.getField(2);
+                    if (!Set.of("NM", "NA").contains(hl7Type)) {
+                        logger.warn("Skipping variable {} with type {}, not numerical", variableId, hl7Type);
+                        continue;
+                    }
+                    String allPointsStr = obx.getField(5);
+                    if (allPointsStr.contains("~")) {
+                        throw new Hl7ParseException(partiallyParsedMessage.rawHl7Trimmed, "must only be 1 repeat in OBX-5");
+                    }
+
+                    List<Double> points = Arrays.stream(allPointsStr.split("\\^")).map(Double::parseDouble).toList();
+                    logger.debug("location {}, time {}, messageId {}, value count = {}",
+                            locationId, obsDatetime, messageIdSpecific, points.size());
+
+                    WaveformMessage waveformMessage = new WaveformMessage();
+                    setBaseFields(
+                            waveformMessage, locationId, mappedLocation, obsDatetime, messageIdSpecific, variableId, mappedVariableDescription, unit);
+                    setWaveformFields(waveformMessage, samplingRate, channelId, points);
+                    allWaveformMessages.add(waveformMessage);
+                } else {
+                    WaveformLowFreqMessage lfMessage = new WaveformLowFreqMessage();
+                    setBaseFields(lfMessage, locationId, mappedLocation, obsDatetime, messageIdSpecific, variableId, mappedVariableDescription, unit);
+                    String sourceValue = obx.getField(5);
+                    // depending on the variableId, sourceValue might be a category code or a numeric field
+                    lfMessage.setSourceValue(new InterchangeValue<>(sourceValue));
+                    Optional<String> mappedCategory;
+                    try {
+                        mappedCategory = sourceMetadata.tryMapCategorical(variableId, sourceValue);
+                    } catch (UnknownCategoricalValueException e) {
+                        logger.error("Failed mapping variable {} with value {}", variableId, sourceValue, e);
+                        continue;
+                    }
+                    if (mappedCategory.isPresent()) {
+                        lfMessage.setStringValue(new InterchangeValue<>(mappedCategory.get()));
+                    } else {
+                        // not a known categorical, assume it's numeric
+                        Double numericValue = Double.parseDouble(sourceValue);
+                        lfMessage.setNumericValue(new InterchangeValue<>(numericValue));
+                    }
+                    allWaveformMessages.add(lfMessage);
+                }
             }
         }
 
@@ -215,25 +244,26 @@ public class Hl7ParseAndQueue {
     }
 
     @SuppressWarnings("checkstyle:ParameterNumber")
-    private WaveformMessage waveformMessageFromValues(
-            int samplingRate, String locationId, String mappedLocation, Instant messageStartTime, String messageId,
-            String sourceVariableId, String mappedVariableDescription, String sourceChannelId, String unit, List<Double> arrayValues) {
-        WaveformMessage waveformMessage = new WaveformMessage();
-        // XXX: get from the CSV device file thingy and prefix with "waveform-" But aren't they all just "Waveform"?
-        // We might need to ask how we know which is Carescape and which is etc.
-        waveformMessage.setSourceObservationType("waveform");
+    private void setBaseFields(WaveformBaseMessage message, String locationId, String mappedLocation, Instant messageStartTime, String messageId,
+                               String sourceVariableId, String mappedVariableDescription, String unit) {
+        message.setSourceMessageId(messageId);
+        message.setSourceLocationString(locationId);
+        message.setMappedLocationString(mappedLocation);
+        message.setMappedVariableDescription(mappedVariableDescription);
+        message.setObservationTime(messageStartTime);
+        message.setSourceVariableId(sourceVariableId);
+        message.setUnit(unit);
+
+    }
+
+    @SuppressWarnings("checkstyle:ParameterNumber")
+    private void setWaveformFields(
+            WaveformMessage waveformMessage,
+            int samplingRate, String sourceChannelId, List<Double> arrayValues) {
         waveformMessage.setSamplingRate(samplingRate);
-        waveformMessage.setSourceLocationString(locationId);
-        waveformMessage.setMappedLocationString(mappedLocation);
-        waveformMessage.setMappedVariableDescription(mappedVariableDescription);
-        waveformMessage.setObservationTime(messageStartTime);
-        waveformMessage.setSourceMessageId(messageId);
-        waveformMessage.setSourceVariableId(sourceVariableId);
         waveformMessage.setSourceChannelId(sourceChannelId);
-        waveformMessage.setUnit(unit);
         waveformMessage.setNumericValues(new InterchangeValue<>(arrayValues));
-        logger.trace("output interchange waveform message = {}", waveformMessage);
-        return waveformMessage;
+        logger.trace("output interchange WaveformMessage = {}", waveformMessage);
     }
 
     /**
@@ -304,9 +334,20 @@ public class Hl7ParseAndQueue {
     }
 
     void queueForCollation(FullyParsedMessage fullyParsed) throws WaveformCollator.CollationException {
-        List<WaveformMessage> msgs = fullyParsed.waveformMessages();
-        logger.trace("HL7 message generated {} Waveform messages, sending for collation", msgs.size());
-        waveformCollator.addMessages(msgs);
+        // it would be very unexpected for an HL7 message to have a mixture of HF and LF data.
+        List<WaveformBaseMessage> msgs = fullyParsed.waveformBaseMessages();
+        List<WaveformMessage> waveformMessages = msgs.stream()
+                .filter(msg -> msg instanceof WaveformMessage)
+                .map(msg -> (WaveformMessage) msg)
+                .toList();
+        List<WaveformLowFreqMessage> lfMessages = msgs.stream()
+                .filter(msg -> !(msg instanceof WaveformMessage))
+                .map(msg -> (WaveformLowFreqMessage) msg)
+                .toList();
+        logger.trace("HL7 message generated {} Waveform messages ({} collatable, {} not), sending for collation",
+                msgs.size(), waveformMessages.size(), lfMessages.size());
+        waveformCollator.addMessages(waveformMessages);
+        waveformCollator.addNonCollatableMessages(lfMessages);
         numHl7++;
         if (numHl7 % 5000 == 0) {
             logger.debug("Have parsed and queued {} HL7 messages in total, {} pending messages, "
