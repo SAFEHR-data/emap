@@ -38,3 +38,7 @@ patientSex:
   "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
   status: "SAVE"
   value: "F"
+hospitalService:
+  "@class": "uk.ac.ucl.rits.inform.interchange.InterchangeValue"
+  value: "Anaes"
+  status: "SAVE"

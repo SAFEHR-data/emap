@@ -165,4 +165,9 @@ public class TestAdtFields extends TestHl7MessageStream {
     void testEthnicGroup() {
         assertEquals(InterchangeValue.buildFromHl7("Not Yet Asked"), msg.getEthnicGroup());
     }
+
+    @Test
+    void testAdmissionType() {
+        assertEquals(InterchangeValue.buildFromHl7("Elective"), msg.getAdmissionType());
+    }
 }

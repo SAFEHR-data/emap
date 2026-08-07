@@ -63,9 +63,14 @@ public class PlannedMovement extends TemporalCore<PlannedMovement, PlannedMoveme
     private Location locationId;
 
     /**
-     * \brief The type of planned movement event (ADMIT, TRANSFER, DISCHARGE).
+     * \brief The type of planned movement event (ADMIT, TRANSFER, DISCHARGE, EDIT).
      */
     private String eventType;
+
+    /**
+      * \brief Edit messages can have a matched movement ID, based on which movement we think is edited.
+      */
+    private Long matchedMovementId;
 
     /**
      * \brief The date and time that the planned movement event was made.
@@ -113,6 +118,7 @@ public class PlannedMovement extends TemporalCore<PlannedMovement, PlannedMoveme
         hospitalVisitId = other.hospitalVisitId;
         locationId = other.locationId;
         eventType = other.eventType;
+        matchedMovementId = other.matchedMovementId;
         eventDatetime = other.eventDatetime;
         cancelled = other.cancelled;
         cancelledDatetime = other.cancelledDatetime;

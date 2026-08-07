@@ -35,6 +35,7 @@ import uk.ac.ucl.rits.inform.interchange.adt.CancelTransferPatient;
 import uk.ac.ucl.rits.inform.interchange.adt.ChangePatientIdentifiers;
 import uk.ac.ucl.rits.inform.interchange.adt.DeletePersonInformation;
 import uk.ac.ucl.rits.inform.interchange.adt.DischargePatient;
+import uk.ac.ucl.rits.inform.interchange.adt.HospitalService;
 import uk.ac.ucl.rits.inform.interchange.adt.ImpliedAdtMessage;
 import uk.ac.ucl.rits.inform.interchange.adt.MergePatient;
 import uk.ac.ucl.rits.inform.interchange.adt.MoveVisitInformation;
@@ -47,6 +48,7 @@ import uk.ac.ucl.rits.inform.interchange.adt.RegisterPatient;
 import uk.ac.ucl.rits.inform.interchange.adt.SwapLocations;
 import uk.ac.ucl.rits.inform.interchange.adt.TransferPatient;
 import uk.ac.ucl.rits.inform.interchange.adt.UpdatePatientInfo;
+import uk.ac.ucl.rits.inform.interchange.adt.UpdateSubSpeciality;
 
 /**
  * Build an AdtMessage Emap interchange object from an HL7 message.
@@ -193,6 +195,8 @@ public class AdtMessageFactory {
             case "A01":
                 AdmitPatient admitPatient = new AdmitPatient();
                 admitPatient.setAdmissionDateTime(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionDateTime()));
+                admitPatient.setAdmissionType(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionType()));
+                setHospitalService(pv1Wrap, admitPatient);
                 msg = admitPatient;
                 break;
             case "A02":
@@ -200,11 +204,13 @@ public class AdtMessageFactory {
             case "A07":
                 TransferPatient transferPatient = new TransferPatient();
                 transferPatient.setAdmissionDateTime(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionDateTime()));
+                transferPatient.setAdmissionType(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionType()));
                 msg = transferPatient;
                 break;
             case "A03":
                 DischargePatient dischargeMsg = new DischargePatient();
                 dischargeMsg.setAdmissionDateTime(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionDateTime()));
+                dischargeMsg.setAdmissionType(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionType()));
                 dischargeMsg.setDischargeDateTime(pv1Wrap.getDischargeDateTime());
                 dischargeMsg.setDischargeDisposition(pv1Wrap.getDischargeDisposition());
                 dischargeMsg.setDischargeLocation(pv1Wrap.getDischargeLocation());
@@ -216,12 +222,15 @@ public class AdtMessageFactory {
                 }
                 RegisterPatient registerPatient = new RegisterPatient();
                 registerPatient.setPresentationDateTime(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionDateTime()));
+                registerPatient.setAdmissionType(InterchangeValue.buildFromHl7(pv1Wrap.getAdmissionType()));
                 msg = registerPatient;
                 break;
             case "A08":
             case "A28":
             case "A31":
-                msg = new UpdatePatientInfo();
+                UpdatePatientInfo updatePatientInfo = new UpdatePatientInfo();
+                setHospitalService(pv1Wrap, updatePatientInfo);
+                msg = updatePatientInfo;
                 break;
             // We are receiving A05 and A14, A38 messages but are not implementing scheduling
             case "A14":
@@ -292,6 +301,12 @@ public class AdtMessageFactory {
                 ChangePatientIdentifiers changePatientIdentifiers = new ChangePatientIdentifiers();
                 setPreviousIdentifiers(changePatientIdentifiers, hl7Msg);
                 msg = changePatientIdentifiers;
+                break;
+            case "Z99":
+                // Z99 messages may be used to update the sub - speciality
+                UpdateSubSpeciality updateSubSpeciality = new UpdateSubSpeciality();
+                setHospitalService(pv1Wrap, updateSubSpeciality);
+                msg = updateSubSpeciality;
                 break;
             default:
                 throw new Hl7MessageNotImplementedException(String.format("Unimplemented ADT trigger event %s", triggerEvent));
@@ -464,5 +479,9 @@ public class AdtMessageFactory {
     private void setHospitalService(PV1Wrap pv1Wrap, PendingEvent pendingEvent) throws HL7Exception {
         String hospitalService = pv1Wrap.getHospitalService();
         pendingEvent.setHospitalService(InterchangeValue.buildFromHl7(hospitalService));
+    }
+    private void setHospitalService(PV1Wrap pv1Wrap, HospitalService hospitalServiceMsg) throws HL7Exception {
+        String hospitalService = pv1Wrap.getHospitalService();
+        hospitalServiceMsg.setHospitalService(InterchangeValue.buildFromHl7(hospitalService));
     }
 }
