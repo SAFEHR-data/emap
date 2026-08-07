@@ -1,0 +1,32 @@
+@startuml
+title "HL7 → Waveform message decisions"
+
+start
+
+:HL7 message received;
+
+:Save HL7 to disk;
+
+while (More OBX (data) lines in message?) is (yes)
+  if (Variable on allow list?) then (no)
+    :Discard OBX line;
+  else (yes)
+    if (Metadata valueType is "Waveform"?) then (yes)
+      :Create **WaveformMessage** interchange message;
+      :Interpret OBX-5 as array of numeric samples;
+      :Pass to collator;
+    else (no)
+      :Create **WaveformLowFreqMessage** interchange message;
+      if (Known categorical type?\nvariable 584 = Ventilation Mode\nvariable 2047 = Inspired Trigger Type) then (yes)
+        :Look up categorical value\nin mapping tables;
+      else (no)
+        :Interpret as numeric;
+      endif
+      :Pass to collator;
+    endif
+  endif
+endwhile (no)
+
+stop
+
+@enduml
