@@ -27,9 +27,9 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Receive HL7 messages, transform each to an interchange message, and
- * store them in memory ready for collation into bigger interchange messages
- * (see {@link WaveformCollator}).
+ * Receive HL7 messages, transform each to an interchange message, then either
+ * queue high-frequency waveforms for collation (see {@link WaveformCollator})
+ * or send low-frequency messages immediately via {@link WaveformOperations}.
  */
 @Component
 public class Hl7ParseAndQueue {
@@ -266,29 +266,30 @@ public class Hl7ParseAndQueue {
         logger.trace("output interchange WaveformMessage = {}", waveformMessage);
     }
 
+
     /**
-     * Parse an HL7 message starting from text and store the resulting WaveformMessage in the queue awaiting collation.
+     * Parse an HL7 message starting from text, optionally save it, then dispatch the resulting
+     * interchange messages (queue HF for collation, send LF immediately).
      * If HL7 is invalid or in a form that the ad hoc parser can't handle, log error and skip.
      * Main use case for doSave = false is when you're feeding it messages that were read from your
      * saved messages in the first place.
      * @param messageAsStr One HL7 message as a string
      * @param doSave to save message or not
-     * @throws Hl7ParseException if data cannot be parsed
-     * @throws WaveformCollator.CollationException if the data has a logical error that prevents collation
+     * @throws Hl7ParseException if header parsing fails before dispatch
      */
-    public void saveParseQueue(String messageAsStr, boolean doSave) throws Hl7ParseException, WaveformCollator.CollationException {
+    public void saveParseQueue(String messageAsStr, boolean doSave) throws Hl7ParseException {
         PartiallyParsedMessage partiallyParsedMessage = parseHl7Headers(messageAsStr);
         saveParseQueue(partiallyParsedMessage, doSave);
     }
 
     /**
-     * Fully parse an HL7 message that has been partially parsed and store the resulting WaveformMessage in the queue awaiting collation.
+     * Fully parse an HL7 message that has been partially parsed, then dispatch the resulting
+     * interchange messages (queue HF for collation, send LF immediately).
      * If HL7 is invalid or in a form that the ad hoc parser can't handle, log error and skip.
      * Main use case for doSave = false is when you're feeding it messages that were read from your
      * saved messages in the first place.
      * @param partiallyParsedMessage One HL7 message that has been partially processed
      * @param doSave to save message or not
-     *
      */
     public void saveParseQueue(PartiallyParsedMessage partiallyParsedMessage, boolean doSave) {
         if (doSave) {
@@ -299,16 +300,18 @@ public class Hl7ParseAndQueue {
                 logger.error("HL7 saving failed", e);
             }
         }
-        FullyParsedMessage fullyParsed = null;
         try {
-            fullyParsed = parseHl7Fully(partiallyParsedMessage);
-            queueForCollation(fullyParsed);
+            FullyParsedMessage fullyParsed = parseHl7Fully(partiallyParsedMessage);
+            dispatchMessages(fullyParsed);
         } catch (Hl7ParseException e) {
             logger.error("HL7 parsing failed, first 100 chars: {}\nstacktrace {}",
                     e.getHl7Message().substring(0, Math.min(100, e.getHl7Message().length())),
                     e.getStackTrace());
         } catch (WaveformCollator.CollationException e) {
             logger.error("HL7 collator collation failed", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.warn("Publish interrupted; abandoning further dispatch for this HL7 message", e);
         }
     }
 
@@ -333,7 +336,14 @@ public class Hl7ParseAndQueue {
                 bedId);
     }
 
-    void queueForCollation(FullyParsedMessage fullyParsed) throws WaveformCollator.CollationException {
+    /**
+     * Queue high-frequency waveform messages for collation, and send low-frequency messages immediately.
+     * @param fullyParsed fully parsed HL7 message
+     * @throws WaveformCollator.CollationException if the data has a logical error that prevents collation
+     * @throws InterruptedException if publishing is interrupted while waiting to enqueue
+     */
+    void dispatchMessages(FullyParsedMessage fullyParsed)
+            throws WaveformCollator.CollationException, InterruptedException {
         // it would be very unexpected for an HL7 message to have a mixture of HF and LF data.
         List<WaveformBaseMessage> msgs = fullyParsed.waveformBaseMessages();
         List<WaveformMessage> waveformMessages = msgs.stream()
@@ -341,13 +351,15 @@ public class Hl7ParseAndQueue {
                 .map(msg -> (WaveformMessage) msg)
                 .toList();
         List<WaveformLowFreqMessage> lfMessages = msgs.stream()
-                .filter(msg -> !(msg instanceof WaveformMessage))
+                .filter(msg -> (msg instanceof WaveformLowFreqMessage))
                 .map(msg -> (WaveformLowFreqMessage) msg)
                 .toList();
         logger.trace("HL7 message generated {} Waveform messages ({} collatable, {} not), sending for collation",
                 msgs.size(), waveformMessages.size(), lfMessages.size());
+        for (var m: lfMessages) {
+            waveformOperations.sendMessage(m);
+        }
         waveformCollator.addMessages(waveformMessages);
-        waveformCollator.addNonCollatableMessages(lfMessages);
         numHl7++;
         if (numHl7 % 5000 == 0) {
             logger.debug("Have parsed and queued {} HL7 messages in total, {} pending messages, "

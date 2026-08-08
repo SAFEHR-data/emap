@@ -6,7 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
-import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformLowFreqMessage;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
 
 import java.time.Instant;
@@ -33,12 +32,8 @@ public class WaveformCollator {
         return new ImmutableTriple<>(msg.getSourceLocationString(), msg.getSourceVariableId(), msg.getSourceChannelId());
     }
 
-    public void addNonCollatableMessages(List<WaveformLowFreqMessage> messagesToAdd) {
-        // XXX: yes what indeed
-    }
-
     /**
-     * Add short messages from the same patient for collating.
+     * Add uncollated messages from the same patient for collating.
      * @param messagesToAdd messages to add, can be for different location+variable+channel
      * @throws CollationException if a message duplicates another message
      */

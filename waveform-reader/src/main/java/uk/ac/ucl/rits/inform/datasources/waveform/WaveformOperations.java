@@ -4,7 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import uk.ac.ucl.rits.inform.interchange.messaging.Publisher;
-import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformBaseMessage;
 
 @Component
 public class WaveformOperations {
@@ -22,7 +22,7 @@ public class WaveformOperations {
      * @param msg the (collated) waveform message
      * @throws InterruptedException If the Publisher thread is interrupted
      */
-    public void sendMessage(WaveformMessage msg) throws InterruptedException {
+    public void sendMessage(WaveformBaseMessage msg) throws InterruptedException {
         if (msg.getSourceMessageId() == null || msg.getSourceMessageId().isEmpty()) {
             logger.error("ERROR: About to publish message with bad message ID {}", msg.getSourceMessageId());
         }
