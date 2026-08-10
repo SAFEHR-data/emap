@@ -17,6 +17,7 @@ import uk.ac.ucl.rits.inform.interchange.messaging.Publisher;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -194,8 +195,8 @@ public class Hl7Generator {
         }
     }
 
-    private String applyHl7Template(long samplingRate, String locationId, Instant observationDatetime,
-                                    String messageId, List<ImmutablePair<String, List<Double>>> valuesByVariableId, String obr13Value) {
+    private String applyHFHl7Template(long samplingRate, String locationId, Instant observationDatetime,
+                                      String messageId, List<ImmutablePair<String, List<Double>>> valuesByVariableId, String obr13Value) {
         // lines in HL7 messages must be CR terminated
         final String templateStr = """
                 MSH|^~\\&|DATACAPTOR||||${messageDatetime}||ORU^R01|${messageId}|P|2.3||||||UNICODE UTF-8|\r\
@@ -206,13 +207,9 @@ public class Hl7Generator {
         final String obxTemplate = """
                 OBX|${obxI}|${dataType}|${streamId}||${valuesAsStr}||||||F||20|${obsDatetime}|\r\
                 """;
-        ZoneId hospitalTimezone = ZoneId.of("Europe/London");
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss.SSSZZ");
-        String obsDatetime = formatter.format(observationDatetime.atZone(hospitalTimezone));
-        // go for something vaguely realistic
-        int milliSecondDelay = new Random().nextInt(50, 150);
-        Instant messageDatetime = observationDatetime.plusMillis(milliSecondDelay);
-        String messageDatetimeStr = formatter.format(messageDatetime.atZone(hospitalTimezone));
+
+        String obsDatetime = zonedHl7DatetimeStrFromInstant(observationDatetime);
+        String messageDatetimeStr = zonedHl7DatetimeStrFromInstant(messageDatetimeFromObsDatetime(observationDatetime));
         Map<String, String> parameters = new HashMap<>();
         parameters.put("locationId", locationId);
         parameters.put("obsDatetime", obsDatetime);
@@ -245,6 +242,30 @@ public class Hl7Generator {
             throw new RuntimeException("HL7 message contains LF char; lines must be CR terminated");
         }
         return obrMsgStr;
+    }
+
+    private static Instant messageDatetimeFromObsDatetime(Instant observationDatetime) {
+        // go for something vaguely realistic, message timestamps will get assigned slightly after
+        // the event itself happened
+        int milliSecondDelay = new Random().nextInt(50, 150);
+        return observationDatetime.plusMillis(milliSecondDelay);
+    }
+
+    private static String zonedHl7DatetimeStrFromInstant(Instant datetime) {
+        final ZoneId hospitalTimezone = ZoneId.of("Europe/London");
+        final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss.SSSZZ");
+        return formatter.format(datetime.atZone(hospitalTimezone));
+    }
+
+
+    /*
+     * Because we need to represent both integers (category codes) and reals, use a numerical type
+     * (BigDecimal) that won't give us any rounding problems.
+     */
+    private record Hl7ValueTuple(String variableId, BigDecimal value, String unitCode) {
+        Hl7ValueTuple(String variableId, String value, String unitCode) {
+            this(variableId, new BigDecimal(value), unitCode);
+        }
     }
 
     /**
@@ -321,11 +342,63 @@ public class Hl7Generator {
                     valuesForThisChannel = values.stream().map(val -> Math.pow(1.2, finalI) * val).toList();
                 }
                 valuesByStreamId.add(new ImmutablePair<>(streamId, valuesForThisChannel));
-                String fullHl7message = applyHl7Template(samplingRate, locationId, messageStartTime, messageId, valuesByStreamId, obr13Value);
+                String fullHl7message = applyHFHl7Template(samplingRate, locationId, messageStartTime, messageId, valuesByStreamId, obr13Value);
                 allMessages.add(fullHl7message);
             }
         }
         context.setCounter(persistentSampleIdx);
+        return allMessages;
+    }
+
+    private List<String> makeSyntheticLowFreqMessages(
+            String locationId, String messageIdBase, Instant startTime, long numMillis, List<Hl7ValueTuple> valueTuples) {
+        final long messageIntervalMillis = 1000L;
+        logger.debug("Generating low frequency messages for {} at {} for {} millis", locationId, startTime, numMillis);
+        Instant currentTime = startTime;
+        Instant endTime = currentTime.plus(numMillis, ChronoUnit.MILLIS);
+        List<String> allMessages = new ArrayList<>();
+        int messageIdx = 1;
+        while (currentTime.isBefore(endTime)) {
+            // lines in HL7 messages must be CR terminated
+            final String templateStr = """
+                    MSH|^~\\&|DATACAPTOR||||${messageDatetime}||ORU^R01|${messageId}|P|2.3||||||UNICODE UTF-8|\r\
+                    PID|\r\
+                    PV1||I|${locationId}|\r\
+                    OBR|||||||${obsDatetime}|||${locationId}|||${locationId}|\r\
+                    """;
+            final String obxTemplate = """
+                    OBX|${obxI}|${dataType}|${streamId}||${valueAsStr}|${unitsCode}|||||F|||${obsDatetime}|\r\
+                    """;
+
+            String obsDatetime = zonedHl7DatetimeStrFromInstant(startTime);
+            String messageDatetime = zonedHl7DatetimeStrFromInstant(messageDatetimeFromObsDatetime(startTime));
+            String messageId = String.format("%s_%05d", messageIdBase, messageIdx);
+            Map<String, String> parameters = new HashMap<>();
+            parameters.put("locationId", locationId);
+            parameters.put("obsDatetime", obsDatetime);
+            parameters.put("messageDatetime", messageDatetime);
+            parameters.put("messageId", messageId);
+            StringSubstitutor stringSubstitutor = new StringSubstitutor(parameters);
+            StringBuilder obrMsg = new StringBuilder(stringSubstitutor.replace(templateStr));
+            for (int obxI = 0; obxI < valueTuples.size(); obxI++) {
+                var obxEntry = valueTuples.get(obxI);
+                var valueAsStr = obxEntry.value().toString();
+                String dataType = "NM";
+                parameters.put("obxI", Integer.toString(obxI + 1));
+                parameters.put("streamId", obxEntry.variableId());
+                parameters.put("dataType", dataType);
+                parameters.put("valueAsStr", valueAsStr);
+                obrMsg.append(stringSubstitutor.replace(obxTemplate));
+            }
+            String obrMsgStr = obrMsg.toString();
+            if (obrMsgStr.contains("\n")) {
+                throw new RuntimeException("HL7 message contains LF char; lines must be CR terminated");
+            }
+            allMessages.add(obrMsgStr);
+
+            currentTime = currentTime.plus(messageIntervalMillis, ChronoUnit.MILLIS);
+            messageIdx++;
+        }
         return allMessages;
     }
 
@@ -367,6 +440,32 @@ public class Hl7Generator {
                 continue;
             }
             int sizeBefore = waveformMsgs.size();
+
+            String timeStr = DateTimeFormatter.ofPattern("yyyyMMddHHmmss").format(startTime.atOffset(ZoneOffset.UTC));
+            String messageId = String.format("%s_t%s", location, timeStr);
+
+            // Low frequency data sends multiple variables in one message.
+            // Well, sometimes in two (or more?) messages depending on which are valid for the patient.
+            // But I believe them to be similar enough that for testing purposes we can put them all in one message.
+            // In future we may want to randomise the values a bit.
+            List<Hl7ValueTuple> valuesForHl7 = List.of(
+                    new Hl7ValueTuple("584", "11", "139"),
+                    new Hl7ValueTuple("1408", "0.13", "4"),
+                    new Hl7ValueTuple("1332", "8", "39"),
+                    new Hl7ValueTuple("2104", "4", "39"),
+                    new Hl7ValueTuple("9114", "50", "19"),
+                    new Hl7ValueTuple("7878", "0.11", "4"),
+                    new Hl7ValueTuple("2047", "3", "139"),
+                    new Hl7ValueTuple("635", "19.5", "19"),
+                    new Hl7ValueTuple("1314", "17.3", "1"),
+                    new Hl7ValueTuple("1570", "0.8", "39"),
+                    new Hl7ValueTuple("22",  "17.3", "1")
+            );
+
+            waveformMsgs.addAll(makeSyntheticLowFreqMessages(location, messageId, startTime, numMillis, valuesForHl7));
+
+            int sizeAfterLF = waveformMsgs.size();
+            logger.debug("Patient {} (location {}), generated {} Low Freq messages (incl ADT)", p, location, sizeAfterLF - sizeBefore);
             // each bed has a slightly different frequency
             double frequencyFactor =  0.95 + 0.1 * p / possibleLocations.size();
             // don't turn on all streams for all patients to test more realistically
@@ -389,7 +488,7 @@ public class Hl7Generator {
                         stream.baselineSignalFrequency * frequencyFactor, numMillis, startTime, stream.maxSamplesPerMessage));
             }
             int sizeAfter = waveformMsgs.size();
-            logger.debug("Patient {} (location {}), generated {} messages (incl ADT)", p, location, sizeAfter - sizeBefore);
+            logger.debug("Patient {} (location {}), generated {} High Freq messages (incl ADT)", p, location, sizeAfter - sizeAfterLF);
         }
         logger.info("Not generating data for empty locations: {}", empties);
 
