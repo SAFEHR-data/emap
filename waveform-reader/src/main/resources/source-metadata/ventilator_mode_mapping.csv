@@ -1,4 +1,4 @@
-Value of Variable 584, Variable Description, Displayed Text on Ventilator Screen, Ventilation Mode Primary (Variable 7077), Ventilation Mode Options (Variable 7078), Full Ventilation Mode (Variable 7076), Automode Status (Variable 3483: 0 for Automode off 1 for Automode on)," Invasive/NonInvasive Status (Variable 2382: ""1"" for Invasive ""2"" for Noninvasive)", 
+Value of Variable 584, Variable Description, Displayed Text on Ventilator Screen, Ventilation Mode Primary (Variable 7077), Ventilation Mode Options (Variable 7078), Full Ventilation Mode (Variable 7076), Automode Status (Variable 3483: 0 for Automode off 1 for Automode on)," Invasive/NonInvasive Status (Variable 2382: ""1"" for Invasive ""2"" for Noninvasive)"
 1, Pressure Control (PC) Automode off, PC, MAN PC CMV, None, MAN PC CMV, Automode off, Invasive
 2, PC - PS Automode on no patient trigg, AUTOMODE PC-PS, MAN PC CMV, None, MAN PC CMV, Automode on, Invasive
 3, PC - PS Automode on patient trigg, AUTOMODE PC-PS, SPN PS, None, SPN PS, Automode on, Invasive
