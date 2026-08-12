@@ -142,7 +142,8 @@ class TestHl7ParseAndQueue {
                 new ExpectedWaveformMessage("1332", "8", "cmH2O", 8.0, null),
                 new ExpectedWaveformMessage("2104", "4", "cmH2O", 4.0, null),
                 new ExpectedWaveformMessage("9114", "50", "%", 50.0, null),
-                new ExpectedWaveformMessage("7878", "0.11", "secs", 0.11, null)
+                new ExpectedWaveformMessage("7878", "0.11", "secs", 0.11, null),
+                new ExpectedWaveformMessage("2583", "1:2", "unitless", null, "1:2")
         );
         List<WaveformLowFreqMessage> actualMsgs = makeMessagesAndBasicChecks(
                 hl7String, expectedSourceLocation, expectedMappedLocation, expectedWaveformMessages.size())

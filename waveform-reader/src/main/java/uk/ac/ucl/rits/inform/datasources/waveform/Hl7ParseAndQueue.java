@@ -167,11 +167,11 @@ public class Hl7ParseAndQueue {
                 // ones in metadata.
                 String unitCode = obx.getField(6);
                 String unit = sourceMetadata.getUnitFromCode(unitCode).orElse(metadata.unit());
+                String hl7Type = obx.getField(2);
 
                 if (metadata.isWaveform()) {
                     int samplingRate = metadata.samplingRate();
 
-                    String hl7Type = obx.getField(2);
                     if (!Set.of("NM", "NA").contains(hl7Type)) {
                         logger.warn("Skipping variable {} with type {}, not numerical", variableId, hl7Type);
                         continue;
@@ -206,9 +206,15 @@ public class Hl7ParseAndQueue {
                     if (mappedCategory.isPresent()) {
                         lfMessage.setStringValue(new InterchangeValue<>(mappedCategory.get()));
                     } else {
-                        // not a known categorical, assume it's numeric
-                        Double numericValue = Double.parseDouble(sourceValue);
-                        lfMessage.setNumericValue(new InterchangeValue<>(numericValue));
+                        // not a known categorical, treat it as a numeric/string
+                        if (hl7Type.equals("ST")) {
+                            lfMessage.setStringValue(new InterchangeValue<>(sourceValue));
+                        } else if (hl7Type.equals("NM")) {
+                            Double numericValue = Double.parseDouble(sourceValue);
+                            lfMessage.setNumericValue(new InterchangeValue<>(numericValue));
+                        } else {
+                            logger.error("Skipping OBX line, cannot handle HL7 data type {} for variable", hl7Type, variableId);
+                        }
                     }
                     allWaveformMessages.add(lfMessage);
                 }
