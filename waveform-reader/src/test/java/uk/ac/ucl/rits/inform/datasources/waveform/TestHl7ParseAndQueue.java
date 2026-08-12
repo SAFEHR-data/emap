@@ -130,11 +130,17 @@ class TestHl7ParseAndQueue {
     }
 
     @Test
-    void settings1aMessage() throws IOException, URISyntaxException, Hl7ParseException {
-        String hl7String = readHl7FromResource("hl7/settings1a.hl7");
+    void lowFreqHl7AllGood() throws IOException, URISyntaxException, Hl7ParseException {
+        String hl7String = readHl7FromResource("hl7/settings1_all_good.hl7");
         String expectedSourceLocation = "UCHT03ICUBED11";
         String expectedMappedLocation = "T03^T03 BY01^BY01-11";
+        // the obx lines don't appear in the same message in reality, but for testing this is fine
         List<ExpectedWaveformMessage> expectedWaveformMessages = List.of(
+                new ExpectedWaveformMessage("2047", "3", "unitless", null, "Flow Trig"),
+                new ExpectedWaveformMessage("635", "19.5", "%", 19.5, null),
+                new ExpectedWaveformMessage("1314", "17.3", "/min", 17.3, null),
+                new ExpectedWaveformMessage("1570", "0.8", "cmH2O", 0.8, null),
+                new ExpectedWaveformMessage("22", "17.3", "/min", 17.3, null),
                 new ExpectedWaveformMessage("584", "11", "unitless", null, "Pressure Support / CPAP (PS)"),
                 // must be able to accept the same variable with different units in the same message; this happens in practice
                 new ExpectedWaveformMessage("1408", "0.13", "secs", 0.13, null),
@@ -152,17 +158,33 @@ class TestHl7ParseAndQueue {
 
     }
 
-    @Test
-    void settings1bMessage() throws IOException, URISyntaxException, Hl7ParseException {
-        String hl7String = readHl7FromResource("hl7/settings1b.hl7");
+    @ParameterizedTest
+    @ValueSource(strings =
+            {
+                    // the base file with no bad lines works
+                    "",
+                    // variable not in metadata file
+                    "OBX|1|NM|12345||11|139|||||F|||20260703181500.220+0100|\r",
+                    // known variable, but NA is not a recognised type for LF data
+                    "OBX|1|NA|22||11|139|||||F|||20260703181500.220+0100|\r",
+                    // categorical, but value unknown
+                    "OBX|1|NM|2047||123|139|||||F|||20260703181500.441+0100|\r",
+                    // categorical, but value missing
+                    "OBX|1|NM|2047|||139|||||F|||20260703181500.441+0100|\r",
+            }
+    )
+    // syntactically correct but uninterpretable data that should be skipped
+    void lowFreqHl7SkipBadData(String badObx) throws IOException, URISyntaxException, Hl7ParseException {
+        String hl7StringBase = readHl7FromResource("hl7/settings2_base.hl7");
         String expectedSourceLocation = "UCHT03ICUBED11";
         String expectedMappedLocation = "T03^T03 BY01^BY01-11";
+        // Put good line at the end to make sure we're not just stopping as soon
+        // as an error is found
+        String goodObx = "OBX|1|NM|584||11|139|||||F|||20260703181500.220+0100|\r";
+        String hl7String = hl7StringBase + badObx + goodObx;
+        // whatever erroneous lines exist, the one good one should be processed
         List<ExpectedWaveformMessage> expectedWaveformMessages = List.of(
-                new ExpectedWaveformMessage("2047", "3", "unitless", null, "Flow Trig"),
-                new ExpectedWaveformMessage("635", "19.5", "%", 19.5, null),
-                new ExpectedWaveformMessage("1314", "17.3", "/min", 17.3, null),
-                new ExpectedWaveformMessage("1570", "0.8", "cmH2O", 0.8, null),
-                new ExpectedWaveformMessage("22", "17.3", "/min", 17.3, null)
+                new ExpectedWaveformMessage("584", "11", "unitless", null, "Pressure Support / CPAP (PS)")
                 );
         List<WaveformLowFreqMessage> actualMsgs = makeMessagesAndBasicChecks(
                 hl7String, expectedSourceLocation, expectedMappedLocation, expectedWaveformMessages.size())
@@ -170,6 +192,24 @@ class TestHl7ParseAndQueue {
         ExpectedWaveformMessage.checkAllMessages(expectedWaveformMessages, actualMsgs);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings =
+            {
+                    // shortened OBX
+                    "OBX|1|NM|2047|\r",
+            }
+    )
+    // malformed HL7 that should give a parse error
+    void lowFreqHl7ThrowBadData(String badObx) throws IOException, URISyntaxException, Hl7ParseException {
+        String hl7StringBase = readHl7FromResource("hl7/settings2_base.hl7");
+        String goodObx = "OBX|1|NM|584||11|139|||||F|||20260703181500.220+0100|\r";
+        String hl7String = hl7StringBase + badObx + goodObx;
+        Hl7ParseException hl7ParseException = assertThrows(Hl7ParseException.class, () -> {
+                    hl7ParseAndQueue.parseHl7Fully(hl7ParseAndQueue.parseHl7Headers(hl7String));
+                }
+        );
+        assertTrue(hl7ParseException.getMessage().contains("non existent field"));
+    }
 
     @Test
     void messageWithMoreThanOneRepeat() throws IOException, URISyntaxException {

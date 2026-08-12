@@ -200,7 +200,7 @@ public class Hl7ParseAndQueue {
                     try {
                         mappedCategory = sourceMetadata.tryMapCategorical(variableId, sourceValue);
                     } catch (UnknownCategoricalValueException e) {
-                        logger.error("Failed mapping variable {} with value {}", variableId, sourceValue, e);
+                        logger.error("Skipping OBX line, failed mapping variable {} with value {}", variableId, sourceValue, e);
                         continue;
                     }
                     if (mappedCategory.isPresent()) {
@@ -214,6 +214,7 @@ public class Hl7ParseAndQueue {
                             lfMessage.setNumericValue(new InterchangeValue<>(numericValue));
                         } else {
                             logger.error("Skipping OBX line, cannot handle HL7 data type {} for variable", hl7Type, variableId);
+                            continue;
                         }
                     }
                     allWaveformMessages.add(lfMessage);
