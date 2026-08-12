@@ -145,7 +145,6 @@ public class Hl7ParseAndQueue {
                 // aka stream ID
                 String variableId = obx.getField(3);
 
-
                 Optional<SourceMetadataItem> metadataOpt = sourceMetadata.getVariableMetadata(variableId);
                 if (metadataOpt.isEmpty()) {
                     logger.warn("Skipping variable {}, unrecognised variableID", variableId);
@@ -172,9 +171,6 @@ public class Hl7ParseAndQueue {
                 if (metadata.isWaveform()) {
                     int samplingRate = metadata.samplingRate();
 
-
-                    // non-numerical types won't be able to go in the waveform table, but it's possible
-                    // we might need them as a VisitObservation
                     String hl7Type = obx.getField(2);
                     if (!Set.of("NM", "NA").contains(hl7Type)) {
                         logger.warn("Skipping variable {} with type {}, not numerical", variableId, hl7Type);

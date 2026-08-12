@@ -8,7 +8,7 @@ start
 :Save HL7 to disk;
 
 while (More OBX (data) lines in message?) is (yes)
-  if (Variable on allow list?) then (no)
+  if (Variable in **Device_Values_formatted.csv**?) then (no)
     :Discard OBX line;
   else (yes)
     if (Metadata valueType is "Waveform"?) then (yes)

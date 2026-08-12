@@ -211,9 +211,10 @@ record SourceMetadataItem(
     public boolean isUsable() {
         if (isWaveform()) {
             // We need to know the sampling rate so we can check the data is free of gaps, for one thing
-            return samplingRate != null && unit != null;
+            return samplingRate != null && unit != null && !unit.isEmpty();
         } else {
-            return unit != null;
+            // low-frequency data specifies units only in the HL7 messages and doesn't have a sampling rate
+            return true;
         }
     }
 
