@@ -210,10 +210,15 @@ public class Hl7ParseAndQueue {
                         if (hl7Type.equals("ST")) {
                             lfMessage.setStringValue(new InterchangeValue<>(sourceValue));
                         } else if (hl7Type.equals("NM")) {
-                            Double numericValue = Double.parseDouble(sourceValue);
-                            lfMessage.setNumericValue(new InterchangeValue<>(numericValue));
+                            try {
+                                Double numericValue = Double.parseDouble(sourceValue);
+                                lfMessage.setNumericValue(new InterchangeValue<>(numericValue));
+                            } catch (NumberFormatException e) {
+                                logger.error("Skipping OBX line, invalid number {}", sourceValue, e);
+                                continue;
+                            }
                         } else {
-                            logger.error("Skipping OBX line, cannot handle HL7 data type {} for variable", hl7Type, variableId);
+                            logger.error("Skipping OBX line, cannot handle HL7 data type {} for variable {}", hl7Type, variableId);
                             continue;
                         }
                     }

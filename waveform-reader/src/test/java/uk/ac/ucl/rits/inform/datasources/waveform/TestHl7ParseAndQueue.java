@@ -167,6 +167,8 @@ class TestHl7ParseAndQueue {
                     "OBX|1|NM|12345||11|139|||||F|||20260703181500.220+0100|\r",
                     // known variable, but NA is not a recognised type for LF data
                     "OBX|1|NA|22||11|139|||||F|||20260703181500.220+0100|\r",
+                    // known variable, but value blank
+                    "OBX|1|NM|22|||139|||||F|||20260703181500.220+0100|\r",
                     // categorical, but value unknown
                     "OBX|1|NM|2047||123|139|||||F|||20260703181500.441+0100|\r",
                     // categorical, but value missing
