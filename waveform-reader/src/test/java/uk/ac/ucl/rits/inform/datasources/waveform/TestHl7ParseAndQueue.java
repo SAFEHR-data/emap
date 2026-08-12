@@ -50,10 +50,6 @@ class TestHl7ParseAndQueue {
         checkWaveformMessage(hl7String, "UCHT03ICUSOMETHING", null);
     }
 
-    void checkWaveformLFMessage(String hl7String, String expectedSourceLocation, String expectedMappedLocation) throws Hl7ParseException {
-        List<WaveformBaseMessage> msgs = makeMessagesAndBasicChecks(hl7String, expectedSourceLocation, expectedMappedLocation, 5);
-    }
-
     void checkWaveformMessage(String hl7String, String expectedSourceLocation, String expectedMappedLocation)
             throws IOException, URISyntaxException, Hl7ParseException {
         List<WaveformMessage> msgs = makeMessagesAndBasicChecks(hl7String, expectedSourceLocation, expectedMappedLocation, 5).stream().map(m -> (WaveformMessage)m).toList();
@@ -138,11 +134,11 @@ class TestHl7ParseAndQueue {
         String hl7String = readHl7FromResource("hl7/settings1a.hl7");
         String expectedSourceLocation = "UCHT03ICUBED11";
         String expectedMappedLocation = "T03^T03 BY01^BY01-11";
-        List<WaveformLowFreqMessage> msgs = makeMessagesAndBasicChecks(hl7String, expectedSourceLocation, expectedMappedLocation, 6)
-                .stream().map(m -> (WaveformLowFreqMessage)m).toList();
         List<ExpectedWaveformMessage> expectedWaveformMessages = List.of(
                 new ExpectedWaveformMessage("584", "11", "unitless", null, "Pressure Support / CPAP (PS)"),
+                // must be able to accept the same variable with different units in the same message; this happens in practice
                 new ExpectedWaveformMessage("1408", "0.13", "secs", 0.13, null),
+                new ExpectedWaveformMessage("1408", "5", "%", 5.0, null),
                 new ExpectedWaveformMessage("1332", "8", "cmH2O", 8.0, null),
                 new ExpectedWaveformMessage("2104", "4", "cmH2O", 4.0, null),
                 new ExpectedWaveformMessage("9114", "50", "%", 50.0, null),
