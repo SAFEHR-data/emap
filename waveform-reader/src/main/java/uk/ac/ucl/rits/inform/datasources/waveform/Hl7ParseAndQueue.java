@@ -271,7 +271,7 @@ public class Hl7ParseAndQueue {
         waveformMessage.setSamplingRate(samplingRate);
         waveformMessage.setSourceChannelId(sourceChannelId);
         waveformMessage.setNumericValues(new InterchangeValue<>(arrayValues));
-        logger.trace("output interchange WaveformMessage = {}", waveformMessage);
+        logger.trace("output interchange WaveformHighFreqMessage = {}", waveformMessage);
     }
 
 

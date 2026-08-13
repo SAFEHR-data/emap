@@ -188,7 +188,7 @@ public interface EmapOperationMessageProcessor {
     void processMessage(PatientAllergy msg) throws EmapOperationMessageProcessingException;
 
     /**
-     * @param msg the WaveformMessage message to process
+     * @param msg the WaveformHighFreqMessage message to process
      * @throws EmapOperationMessageProcessingException if message cannot be processed
      */
     void processMessage(WaveformHighFreqMessage msg) throws EmapOperationMessageProcessingException;

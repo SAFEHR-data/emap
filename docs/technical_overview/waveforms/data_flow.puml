@@ -13,7 +13,7 @@ while (More OBX (data) lines in message?) is (yes)
     detach
   else (yes)
     if (Metadata valueType is "Waveform"?) then (yes)
-      :Create **WaveformMessage** interchange message;
+      :Create **WaveformHighFreqMessage** interchange message;
       :Interpret OBX-5 as array of numeric samples;
       :Pass to Collator;
     else (no)
