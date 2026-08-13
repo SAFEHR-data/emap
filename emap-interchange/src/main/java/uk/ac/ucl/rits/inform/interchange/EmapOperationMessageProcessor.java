@@ -20,7 +20,7 @@ import uk.ac.ucl.rits.inform.interchange.location.LocationMetadata;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.Flowsheet;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.FlowsheetMetadata;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformLowFreqMessage;
-import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformHighFreqMessage;
 
 /**
  * Define the message types that an Emap processor
@@ -191,7 +191,7 @@ public interface EmapOperationMessageProcessor {
      * @param msg the WaveformMessage message to process
      * @throws EmapOperationMessageProcessingException if message cannot be processed
      */
-    void processMessage(WaveformMessage msg) throws EmapOperationMessageProcessingException;
+    void processMessage(WaveformHighFreqMessage msg) throws EmapOperationMessageProcessingException;
 
     /**
      * @param msg the WaveformLowFreqMessage message to process

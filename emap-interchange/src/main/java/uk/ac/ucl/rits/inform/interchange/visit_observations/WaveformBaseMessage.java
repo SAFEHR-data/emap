@@ -10,7 +10,7 @@ import java.time.Instant;
 
 /**
  * Represent a Waveform message, which may be a message carrying actual
- * high-frequency data (see {@link WaveformMessage}) or lower frequency settings and measurements.
+ * high-frequency data (see {@link WaveformHighFreqMessage}) or lower frequency settings and measurements.
  * At this time, waveform data doesn't come with any direct identifiers for the patient, only their location.
  * @author Jeremy Stein
  */

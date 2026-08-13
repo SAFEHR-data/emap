@@ -10,8 +10,8 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7ParseException;
 import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformBaseMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformHighFreqMessage;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformLowFreqMessage;
-import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -52,20 +52,20 @@ class TestHl7ParseAndQueue {
 
     void checkWaveformMessage(String hl7String, String expectedSourceLocation, String expectedMappedLocation)
             throws IOException, URISyntaxException, Hl7ParseException {
-        List<WaveformMessage> msgs = makeMessagesAndBasicChecks(hl7String, expectedSourceLocation, expectedMappedLocation, 5).stream().map(m -> (WaveformMessage)m).toList();
+        List<WaveformHighFreqMessage> msgs = makeMessagesAndBasicChecks(hl7String, expectedSourceLocation, expectedMappedLocation, 5).stream().map(m -> (WaveformHighFreqMessage)m).toList();
         assertEquals(
                 List.of("52912", "52913", "27", "51911", "52921"),
-                msgs.stream().map(WaveformMessage::getSourceVariableId).toList());
+                msgs.stream().map(WaveformHighFreqMessage::getSourceVariableId).toList());
         assertEquals(
                 List.of("Airway Volume Waveform", "Airway Pressure Waveform", "Generic ECG Waveform",
                         "O2 Pleth Waveform", "ETCO2"),
-                msgs.stream().map(WaveformMessage::getMappedVariableDescription).toList());
+                msgs.stream().map(WaveformHighFreqMessage::getMappedVariableDescription).toList());
         assertEquals(
                 List.of(50, 50, 300, 100, 25),
-                msgs.stream().map(WaveformMessage::getSamplingRate).toList());
+                msgs.stream().map(WaveformHighFreqMessage::getSamplingRate).toList());
         List<String> distinctMessageIds = msgs.stream().map(m -> m.getSourceMessageId()).distinct().toList();
         assertEquals(msgs.size(), distinctMessageIds.size());
-        List<String> actualUnits = msgs.stream().map(WaveformMessage::getUnit).toList();
+        List<String> actualUnits = msgs.stream().map(WaveformHighFreqMessage::getUnit).toList();
         assertEquals(List.of("mL", "cmH2O", "uV", "%", "%"), actualUnits);
         var expectedValues = List.of(
                 List.of(42.10),
@@ -75,7 +75,7 @@ class TestHl7ParseAndQueue {
                 List.of(42.50, 43.50, 44.5, 45.5, 46.5));
 
         for (int i = 0; i < msgs.size(); i++) {
-            WaveformMessage m = msgs.get(i);
+            WaveformHighFreqMessage m = msgs.get(i);
             InterchangeValue<List<Double>> numericValues = m.getNumericValues();
             assertTrue(numericValues.isSave());
             List<Double> expected = expectedValues.get(i);

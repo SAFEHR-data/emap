@@ -19,7 +19,7 @@ import uk.ac.ucl.rits.inform.informdb.visit_recordings.VisitObservationType;
 import uk.ac.ucl.rits.inform.informdb.visit_recordings.VisitObservationTypeAudit;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.Flowsheet;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.FlowsheetMetadata;
-import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformHighFreqMessage;
 
 import javax.annotation.Resource;
 import java.time.Instant;
@@ -129,7 +129,7 @@ public class VisitObservationController {
      * @param storedFrom stored from
      * @return new or existing VisitObservationType
      */
-    public VisitObservationType getOrCreateFromWaveform(WaveformMessage msg, Instant storedFrom) {
+    public VisitObservationType getOrCreateFromWaveform(WaveformHighFreqMessage msg, Instant storedFrom) {
         VisitObservationType observationType = cache.getOrCreatePersistedObservationType(
                 msg.getSourceVariableId(), msg.getSourceVariableId(), msg.getSourceObservationType(), msg.getObservationTime(), storedFrom);
         observationType.setName(msg.getMappedVariableDescription());

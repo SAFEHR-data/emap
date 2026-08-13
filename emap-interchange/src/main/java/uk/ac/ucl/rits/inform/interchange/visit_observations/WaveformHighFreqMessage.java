@@ -23,7 +23,7 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")
-public class WaveformMessage extends WaveformBaseMessage {
+public class WaveformHighFreqMessage extends WaveformBaseMessage {
     /**
      * Channel ID according to the source system.
      */

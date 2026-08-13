@@ -11,8 +11,8 @@ import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7ParseException;
 import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7Segment;
 import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformBaseMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformHighFreqMessage;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformLowFreqMessage;
-import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
 
 import java.io.IOException;
 import java.time.DateTimeException;
@@ -185,7 +185,7 @@ public class Hl7ParseAndQueue {
                     logger.debug("location {}, time {}, messageId {}, value count = {}",
                             locationId, obsDatetime, messageIdSpecific, points.size());
 
-                    WaveformMessage waveformMessage = new WaveformMessage();
+                    WaveformHighFreqMessage waveformMessage = new WaveformHighFreqMessage();
                     setBaseFields(
                             waveformMessage, locationId, mappedLocation, obsDatetime, messageIdSpecific, variableId, mappedVariableDescription, unit);
                     setWaveformFields(waveformMessage, samplingRate, channelId, points);
@@ -266,7 +266,7 @@ public class Hl7ParseAndQueue {
 
     @SuppressWarnings("checkstyle:ParameterNumber")
     private void setWaveformFields(
-            WaveformMessage waveformMessage,
+            WaveformHighFreqMessage waveformMessage,
             int samplingRate, String sourceChannelId, List<Double> arrayValues) {
         waveformMessage.setSamplingRate(samplingRate);
         waveformMessage.setSourceChannelId(sourceChannelId);
@@ -354,20 +354,20 @@ public class Hl7ParseAndQueue {
             throws WaveformCollator.CollationException, InterruptedException {
         // it would be very unexpected for an HL7 message to have a mixture of HF and LF data.
         List<WaveformBaseMessage> msgs = fullyParsed.waveformBaseMessages();
-        List<WaveformMessage> waveformMessages = msgs.stream()
-                .filter(msg -> msg instanceof WaveformMessage)
-                .map(msg -> (WaveformMessage) msg)
+        List<WaveformHighFreqMessage> hfMessages = msgs.stream()
+                .filter(msg -> msg instanceof WaveformHighFreqMessage)
+                .map(msg -> (WaveformHighFreqMessage) msg)
                 .toList();
         List<WaveformLowFreqMessage> lfMessages = msgs.stream()
                 .filter(msg -> (msg instanceof WaveformLowFreqMessage))
                 .map(msg -> (WaveformLowFreqMessage) msg)
                 .toList();
         logger.trace("HL7 message generated {} Waveform messages ({} collatable, {} not), sending for collation",
-                msgs.size(), waveformMessages.size(), lfMessages.size());
+                msgs.size(), hfMessages.size(), lfMessages.size());
         for (var m: lfMessages) {
             waveformOperations.sendMessage(m);
         }
-        waveformCollator.addMessages(waveformMessages);
+        waveformCollator.addMessages(hfMessages);
         numHl7++;
         if (numHl7 % 5000 == 0) {
             logger.debug("Have parsed and queued {} HL7 messages in total, {} pending messages, "
@@ -397,7 +397,7 @@ public class Hl7ParseAndQueue {
     @Scheduled(fixedDelay = 10 * 1000)
     public void collateAndSend() throws InterruptedException, WaveformCollator.CollationException {
         logger.debug("{} uncollated waveform messages pending", waveformCollator.pendingMessages.size());
-        List<WaveformMessage> msgs = waveformCollator.getReadyMessages(
+        List<WaveformHighFreqMessage> msgs = waveformCollator.getReadyMessages(
                 Instant.now(), maxCollatedMessageSamples, waitForDataLimitMillis, assumedRounding);
         logger.info("{} collated waveform messages ready for sending", msgs.size());
         for (var m: msgs) {

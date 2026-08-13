@@ -10,7 +10,7 @@ import uk.ac.ucl.rits.inform.datasinks.emapstar.controllers.VisitObservationCont
 import uk.ac.ucl.rits.inform.datasinks.emapstar.controllers.WaveformController;
 import uk.ac.ucl.rits.inform.informdb.visit_recordings.VisitObservationType;
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessageProcessingException;
-import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformHighFreqMessage;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -46,7 +46,7 @@ public class WaveformProcessor {
      * @throws EmapOperationMessageProcessingException if message can't be processed.
      */
     @Transactional
-    public void processMessage(final WaveformMessage msg, final Instant storedFrom) throws EmapOperationMessageProcessingException {
+    public void processMessage(final WaveformHighFreqMessage msg, final Instant storedFrom) throws EmapOperationMessageProcessingException {
         VisitObservationType visitObservationType = visitObservationController.getOrCreateFromWaveform(msg, storedFrom);
         waveformController.processWaveform(msg, visitObservationType, storedFrom);
     }

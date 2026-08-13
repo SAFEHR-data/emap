@@ -12,7 +12,7 @@ import uk.ac.ucl.rits.inform.datasinks.emapstar.repos.visit_observations.Wavefor
 import uk.ac.ucl.rits.inform.informdb.visit_recordings.VisitObservationType;
 import uk.ac.ucl.rits.inform.informdb.visit_recordings.Waveform;
 import uk.ac.ucl.rits.inform.interchange.EmapOperationMessageProcessingException;
-import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformHighFreqMessage;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -90,7 +90,7 @@ class TestWaveformProcessing extends MessageProcessingBase {
                 new TestData( "23", "stream 23", null, 17_001, 50, 500,
                         "unknownlocation", null, Instant.parse("2010-09-10T12:00:00Z"), "stream23unit", null)
         };
-        List<WaveformMessage> allMessages = new ArrayList<>();
+        List<WaveformHighFreqMessage> allMessages = new ArrayList<>();
         for (var test: allTests) {
             allMessages.addAll(
                     messageFactory.getWaveformMsgs(test.sourceStreamId, test.mappedStreamName, test.channelId,
@@ -101,7 +101,7 @@ class TestWaveformProcessing extends MessageProcessingBase {
         // must cope with messages in any order! Fixed seed to aid in debugging.
         Collections.shuffle(allMessages, new Random(42));
 
-        for (WaveformMessage msg : allMessages) {
+        for (WaveformHighFreqMessage msg : allMessages) {
             processSingleMessage(msg);
         }
 
