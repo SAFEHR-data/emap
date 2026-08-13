@@ -367,7 +367,7 @@ public class Hl7Generator {
                     OBR|||||||${obsDatetime}|||${locationId}|||${locationId}|\r\
                     """;
             final String obxTemplate = """
-                    OBX|${obxI}|${dataType}|${streamId}||${valueAsStr}|${unitsCode}|||||F|||${obsDatetime}|\r\
+                    OBX|${obxI}|${dataType}|${streamId}||${valueAsStr}|${unitCode}|||||F|||${obsDatetime}|\r\
                     """;
 
             String obsDatetime = zonedHl7DatetimeStrFromInstant(currentTime);
@@ -386,6 +386,7 @@ public class Hl7Generator {
                 String dataType = "NM";
                 parameters.put("obxI", Integer.toString(obxI + 1));
                 parameters.put("streamId", obxEntry.variableId());
+                parameters.put("unitCode", obxEntry.unitCode());
                 parameters.put("dataType", dataType);
                 parameters.put("valueAsStr", valueAsStr);
                 obrMsg.append(stringSubstitutor.replace(obxTemplate));
