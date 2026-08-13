@@ -108,6 +108,7 @@ class TestHl7ParseAndQueue {
         public void assertIsEqual(WaveformLowFreqMessage actualMessage) {
             assertEquals(variableId, actualMessage.getSourceVariableId());
             assertEquals(sourceValue, actualMessage.getSourceValue().get());
+            assertEquals(mappedUnits, actualMessage.getUnit());
             if (numericValue == null) {
                 assertTrue(actualMessage.getNumericValue().isUnknown());
             } else {
@@ -138,17 +139,17 @@ class TestHl7ParseAndQueue {
         List<ExpectedWaveformMessage> expectedWaveformMessages = List.of(
                 new ExpectedWaveformMessage("2047", "3", "unitless", null, "Flow Trig"),
                 new ExpectedWaveformMessage("635", "19.5", "%", 19.5, null),
-                new ExpectedWaveformMessage("1314", "17.3", "/min", 17.3, null),
+                new ExpectedWaveformMessage("1314", "17.3", "1/min", 17.3, null),
                 new ExpectedWaveformMessage("1570", "0.8", "cmH2O", 0.8, null),
-                new ExpectedWaveformMessage("22", "17.3", "/min", 17.3, null),
+                new ExpectedWaveformMessage("22", "17.3", "1/min", 17.3, null),
                 new ExpectedWaveformMessage("584", "11", "unitless", null, "Pressure Support / CPAP (PS)"),
                 // must be able to accept the same variable with different units in the same message; this happens in practice
-                new ExpectedWaveformMessage("1408", "0.13", "secs", 0.13, null),
+                new ExpectedWaveformMessage("1408", "0.13", "s", 0.13, null),
                 new ExpectedWaveformMessage("1408", "5", "%", 5.0, null),
                 new ExpectedWaveformMessage("1332", "8", "cmH2O", 8.0, null),
                 new ExpectedWaveformMessage("2104", "4", "cmH2O", 4.0, null),
                 new ExpectedWaveformMessage("9114", "50", "%", 50.0, null),
-                new ExpectedWaveformMessage("7878", "0.11", "secs", 0.11, null),
+                new ExpectedWaveformMessage("7878", "0.11", "s", 0.11, null),
                 new ExpectedWaveformMessage("2583", "1:2", "unitless", null, "1:2")
         );
         List<WaveformLowFreqMessage> actualMsgs = makeMessagesAndBasicChecks(
