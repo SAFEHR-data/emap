@@ -355,7 +355,7 @@ public class Hl7Generator {
         final long messageIntervalMillis = 1000L;
         logger.debug("Generating low frequency messages for {} at {} for {} millis", locationId, startTime, numMillis);
         Instant currentTime = startTime;
-        Instant endTime = currentTime.plus(numMillis, ChronoUnit.MILLIS);
+        Instant endTime = startTime.plus(numMillis, ChronoUnit.MILLIS);
         List<String> allMessages = new ArrayList<>();
         int messageIdx = 1;
         while (currentTime.isBefore(endTime)) {
@@ -370,8 +370,8 @@ public class Hl7Generator {
                     OBX|${obxI}|${dataType}|${streamId}||${valueAsStr}|${unitsCode}|||||F|||${obsDatetime}|\r\
                     """;
 
-            String obsDatetime = zonedHl7DatetimeStrFromInstant(startTime);
-            String messageDatetime = zonedHl7DatetimeStrFromInstant(messageDatetimeFromObsDatetime(startTime));
+            String obsDatetime = zonedHl7DatetimeStrFromInstant(currentTime);
+            String messageDatetime = zonedHl7DatetimeStrFromInstant(messageDatetimeFromObsDatetime(currentTime));
             String messageId = String.format("%s_%05d", messageIdBase, messageIdx);
             Map<String, String> parameters = new HashMap<>();
             parameters.put("locationId", locationId);
