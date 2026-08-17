@@ -6,7 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
-import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformHighFreqMessage;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -26,20 +26,20 @@ import java.util.TreeMap;
  */
 public class WaveformCollator {
     private final Logger logger = LoggerFactory.getLogger(WaveformCollator.class);
-    protected final Map<Triple<String, String, String>, SortedMap<Instant, WaveformMessage>> pendingMessages = new HashMap<>();
+    protected final Map<Triple<String, String, String>, SortedMap<Instant, WaveformHighFreqMessage>> pendingMessages = new HashMap<>();
 
-    Triple<String, String, String> makeKey(WaveformMessage msg) {
+    Triple<String, String, String> makeKey(WaveformHighFreqMessage msg) {
         return new ImmutableTriple<>(msg.getSourceLocationString(), msg.getSourceVariableId(), msg.getSourceChannelId());
     }
 
     /**
-     * Add short messages from the same patient for collating.
+     * Add uncollated messages from the same patient for collating.
      * @param messagesToAdd messages to add, can be for different location+variable+channel
      * @throws CollationException if a message duplicates another message
      */
-    public void addMessages(List<WaveformMessage> messagesToAdd) throws CollationException {
-        Map<Triple<String, String, String>, List<WaveformMessage>> messagesToAddByKey = new HashMap<>();
-        for (WaveformMessage toAdd: messagesToAdd) {
+    public void addMessages(List<WaveformHighFreqMessage> messagesToAdd) throws CollationException {
+        Map<Triple<String, String, String>, List<WaveformHighFreqMessage>> messagesToAddByKey = new HashMap<>();
+        for (WaveformHighFreqMessage toAdd: messagesToAdd) {
             Triple<String, String, String> key = makeKey(toAdd);
             messagesToAddByKey.computeIfAbsent(key, k -> new ArrayList<>()).add(toAdd);
         }
@@ -60,12 +60,12 @@ public class WaveformCollator {
          * for each one only needs to be taken out once.
          */
         for (var key: messagesToAddByKey.keySet()) {
-            SortedMap<Instant, WaveformMessage> existingMessages = pendingMessages.get(key);
+            SortedMap<Instant, WaveformHighFreqMessage> existingMessages = pendingMessages.get(key);
             synchronized (existingMessages) {
-                for (WaveformMessage msg: messagesToAddByKey.get(key)) {
+                for (WaveformHighFreqMessage msg: messagesToAddByKey.get(key)) {
                     Instant observationTime = msg.getObservationTime();
                     // messages may arrive out of order, but TreeMap will keep them sorted by obs time
-                    WaveformMessage existing = existingMessages.put(observationTime, msg);
+                    WaveformHighFreqMessage existing = existingMessages.put(observationTime, msg);
                     if (existing != null) {
                         // in future we may want to compare them and only log error if they differ
                         throw new CollationException(String.format("Already existing message with time %s: %s",
@@ -92,17 +92,17 @@ public class WaveformCollator {
      * @throws CollationException if any set within pendingMessages contains messages not in
      *                             fact all from the same location+variable+channel
      */
-    public List<WaveformMessage> getReadyMessages(Instant nowTime,
-                                                  int targetCollatedMessageSamples,
-                                                  int waitForDataLimitMillis,
-                                                  ChronoUnit assumedRounding) throws CollationException {
-        List<WaveformMessage> newMessages = new ArrayList<>();
+    public List<WaveformHighFreqMessage> getReadyMessages(Instant nowTime,
+                                                          int targetCollatedMessageSamples,
+                                                          int waitForDataLimitMillis,
+                                                          ChronoUnit assumedRounding) throws CollationException {
+        List<WaveformHighFreqMessage> newMessages = new ArrayList<>();
         logger.info("Pending messages: {}.  {} location+variable+channel combos (of which {} non-empty)",
                 getPendingMessageCount(),
                 pendingMessages.size(),
                 pendingMessages.values().stream().filter(pm -> !pm.isEmpty()).count());
         logger.debug("Pending total samples: {}", getPendingSampleCount());
-        List<SortedMap<Instant, WaveformMessage>> pendingMessagesSnapshot;
+        List<SortedMap<Instant, WaveformHighFreqMessage>> pendingMessagesSnapshot;
         synchronized (pendingMessages) {
             // Here we (briefly) iterate over pendingMessages, so take out a lock to prevent
             // undefined behaviour should we happen to be simultaneously adding items to this map.
@@ -112,10 +112,10 @@ public class WaveformCollator {
         // The snapshot may become slightly out of date, but that's fine because any new
         // entries will get handled next time. The advantage is to allow
         // more fine-grained locking to take place here.
-        for (SortedMap<Instant, WaveformMessage> perPatientMap: pendingMessagesSnapshot) {
+        for (SortedMap<Instant, WaveformHighFreqMessage> perPatientMap: pendingMessagesSnapshot) {
             while (true) {
                 // There can be zero to multiple chunks that need turning into messages
-                WaveformMessage newMsg;
+                WaveformHighFreqMessage newMsg;
                 synchronized (perPatientMap) {
                     newMsg = collateContiguousData(perPatientMap, nowTime,
                             targetCollatedMessageSamples, waitForDataLimitMillis, assumedRounding);
@@ -146,30 +146,30 @@ public class WaveformCollator {
      * @throws CollationException if perPatientMap messages are not in fact all from the same location+variable+channel
      */
 
-    private WaveformMessage collateContiguousData(SortedMap<Instant, WaveformMessage> perPatientMap,
-                                                  Instant nowTime,
-                                                  int targetCollatedMessageSamples,
-                                                  int waitForDataLimitMillis,
-                                                  ChronoUnit assumedRounding) throws CollationException {
+    private WaveformHighFreqMessage collateContiguousData(SortedMap<Instant, WaveformHighFreqMessage> perPatientMap,
+                                                          Instant nowTime,
+                                                          int targetCollatedMessageSamples,
+                                                          int waitForDataLimitMillis,
+                                                          ChronoUnit assumedRounding) throws CollationException {
         if (perPatientMap.isEmpty()) {
             // maps are not removed after being emptied, so this situation can exist and is harmless
             return null;
         }
-        WaveformMessage firstMsg = perPatientMap.get(perPatientMap.firstKey());
+        WaveformHighFreqMessage firstMsg = perPatientMap.get(perPatientMap.firstKey());
         Triple<String, String, String> firstKey = makeKey(firstMsg);
 
         int sizeBefore = perPatientMap.size();
         long sampleCount = 0;
-        WaveformMessage previousMsg = null;
+        WaveformHighFreqMessage previousMsg = null;
         // existing values are not necessarily in mutable lists so use a new ArrayList
         List<Double> newNumericValues = new ArrayList<>();
-        Iterator<Map.Entry<Instant, WaveformMessage>> perPatientMapIter = perPatientMap.entrySet().iterator();
+        Iterator<Map.Entry<Instant, WaveformHighFreqMessage>> perPatientMapIter = perPatientMap.entrySet().iterator();
         // keep track of incoming message sizes for general interest (does not affect collation algorithm)
         Map<Integer, Integer> uncollatedMessageSizes = new HashMap<>();
         int messagesToCollate = 0;
         while (perPatientMapIter.hasNext()) {
-            Map.Entry<Instant, WaveformMessage> entry = perPatientMapIter.next();
-            WaveformMessage msg = entry.getValue();
+            Map.Entry<Instant, WaveformHighFreqMessage> entry = perPatientMapIter.next();
+            WaveformHighFreqMessage msg = entry.getValue();
             Triple<String, String, String> thisKey = makeKey(msg);
             if (!thisKey.equals(firstKey)) {
                 throw new CollationException(String.format("Key Mismatch: %s vs %s", firstKey, thisKey));
@@ -250,10 +250,10 @@ public class WaveformCollator {
                 messagesToCollate, sampleCount, uncollatedMessageSizes);
 
         // Do the actual collation now that we know how far to go.
-        Iterator<Map.Entry<Instant, WaveformMessage>> secondPassIter = perPatientMap.entrySet().iterator();
+        Iterator<Map.Entry<Instant, WaveformHighFreqMessage>> secondPassIter = perPatientMap.entrySet().iterator();
         for (int i = 0; i < messagesToCollate; i++) {
-            Map.Entry<Instant, WaveformMessage> entry = secondPassIter.next();
-            WaveformMessage msg = entry.getValue();
+            Map.Entry<Instant, WaveformHighFreqMessage> entry = secondPassIter.next();
+            WaveformHighFreqMessage msg = entry.getValue();
             newNumericValues.addAll(msg.getNumericValues().get());
             // Remove all messages from the map that are used as source data, even the first one.
             // The underlying message object of the first element will still exist.
@@ -266,7 +266,7 @@ public class WaveformCollator {
         return firstMsg;
     }
 
-    private Instant checkGap(WaveformMessage msg, Instant expectedNextDatetime, ChronoUnit assumedRounding) throws CollationOverlapException {
+    private Instant checkGap(WaveformHighFreqMessage msg, Instant expectedNextDatetime, ChronoUnit assumedRounding) throws CollationOverlapException {
         // gap between this message and previous message
         long gapSizeMicros = expectedNextDatetime.until(msg.getObservationTime(), ChronoUnit.MICROS);
         /* The timestamps in the messages will be rounded. Not sure if they round down or round to nearest.

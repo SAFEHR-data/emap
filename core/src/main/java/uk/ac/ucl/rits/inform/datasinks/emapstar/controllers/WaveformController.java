@@ -12,7 +12,7 @@ import uk.ac.ucl.rits.inform.informdb.movement.LocationVisit;
 import uk.ac.ucl.rits.inform.informdb.visit_recordings.VisitObservationType;
 import uk.ac.ucl.rits.inform.informdb.visit_recordings.Waveform;
 import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
-import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformHighFreqMessage;
 
 import java.time.Instant;
 import java.util.List;
@@ -46,7 +46,7 @@ public class WaveformController {
      */
     @Transactional
     public void processWaveform(
-            WaveformMessage msg,
+            WaveformHighFreqMessage msg,
             VisitObservationType visitObservationType,
             Instant storedFrom) throws MessageIgnoredException {
         InterchangeValue<List<Double>> interchangeValue = msg.getNumericValues();

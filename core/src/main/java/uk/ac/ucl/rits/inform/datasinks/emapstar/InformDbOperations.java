@@ -44,7 +44,8 @@ import uk.ac.ucl.rits.inform.interchange.location.DepartmentMetadata;
 import uk.ac.ucl.rits.inform.interchange.location.LocationMetadata;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.Flowsheet;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.FlowsheetMetadata;
-import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformHighFreqMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformLowFreqMessage;
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;
@@ -110,9 +111,14 @@ public class InformDbOperations implements EmapOperationMessageProcessor {
     }
 
     @Override
-    public void processMessage(WaveformMessage msg) throws EmapOperationMessageProcessingException {
+    public void processMessage(WaveformHighFreqMessage msg) throws EmapOperationMessageProcessingException {
         Instant storedFrom = Instant.now();
         waveformProcessor.processMessage(msg, storedFrom);
+    }
+
+    @Override
+    public void processMessage(WaveformLowFreqMessage msg) throws EmapOperationMessageProcessingException {
+        logger.warn("Waveform low frequency message processing not yet implemented");
     }
 
     /**

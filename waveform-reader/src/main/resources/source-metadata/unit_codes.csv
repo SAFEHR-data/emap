@@ -1,0 +1,32 @@
+UnitCode,Short Description,Long Description
+0,-,no dimension or unit unknown
+1,1/min,events per minute
+3,min,minute
+4,s,second
+9,mmHg,millimeter of mercury
+19,%,percent
+26,mL,milliliter
+29,mL/min,milliliter per minute
+31,L,liter
+32,L/min,liter per minute
+39,cmH2O,centimeter of water
+42,kPa,kilopascal
+44,mbar,millibar
+47,mV,millivolt
+49,µV,microvolt
+50,mL/cmH2O,milliliter per centimeter of water
+51,cmH2O/L/s,centimeter of water per liter per second
+71,y,year
+74,cm,centimeter
+76,kg,kilogram
+86,L/s,liter per second
+87,Hz,hertz
+139,unitless,unitless
+154,1/min/L,events per minute per liter
+156,mL/s,milliliter per second
+158,J/L,joule per liter
+163,cmH2O/L,centimeter of water per liter
+201,mL2/s,square milliliter per second
+243,mL/kg,milliliter per kilogram
+509,cmH2O/µV,centimeter of water per microvolt
+707,mL/µV,milliliter per microvolt

@@ -10,7 +10,9 @@ import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7Message;
 import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7ParseException;
 import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7Segment;
 import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
-import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformBaseMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformHighFreqMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformLowFreqMessage;
 
 import java.io.IOException;
 import java.time.DateTimeException;
@@ -25,9 +27,9 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Receive HL7 messages, transform each to an interchange message, and
- * store them in memory ready for collation into bigger interchange messages
- * (see {@link WaveformCollator}).
+ * Receive HL7 messages, transform each to an interchange message, then either
+ * queue high-frequency waveforms for collation (see {@link WaveformCollator})
+ * or send low-frequency messages immediately via {@link WaveformOperations}.
  */
 @Component
 public class Hl7ParseAndQueue {
@@ -62,7 +64,7 @@ public class Hl7ParseAndQueue {
 
     public record FullyParsedMessage(
             String rawHl7Trimmed,
-            List<WaveformMessage> waveformMessages,
+            List<WaveformBaseMessage> waveformBaseMessages,
             String bedLocation,
             Instant messageTimestamp,
             Instant messageTimeslot) {}
@@ -107,7 +109,7 @@ public class Hl7ParseAndQueue {
 
     FullyParsedMessage parseHl7Fully(PartiallyParsedMessage partiallyParsedMessage) throws Hl7ParseException {
         Hl7Message message = partiallyParsedMessage.hl7MessageParser();
-        List<WaveformMessage> allWaveformMessages = new ArrayList<>();
+        List<WaveformBaseMessage> allWaveformMessages = new ArrayList<>();
         if (message == null) {
             return new FullyParsedMessage(
                     partiallyParsedMessage.rawHl7Trimmed,
@@ -143,7 +145,6 @@ public class Hl7ParseAndQueue {
                 // aka stream ID
                 String variableId = obx.getField(3);
 
-
                 Optional<SourceMetadataItem> metadataOpt = sourceMetadata.getVariableMetadata(variableId);
                 if (metadataOpt.isEmpty()) {
                     logger.warn("Skipping variable {}, unrecognised variableID", variableId);
@@ -158,35 +159,71 @@ public class Hl7ParseAndQueue {
                 // If it's a no-channel flavour of HL7 message, OBR-13 is the location and we
                 // shouldn't treat it as the channel!
                 String channelId = metadata.hasChannels() ? obr.getField(13) : null;
-
-                // Sampling rate and variable description is not in the message, so use the metadata
-                int samplingRate = metadata.samplingRate();
                 String mappedLocation = locationMapping.hl7AdtLocationFromCapsuleLocation(locationId);
-                String mappedVariableDescription = metadata.mappedVariableDescription();
-                String unit = metadata.unit();
-
-                // non-numerical types won't be able to go in the waveform table, but it's possible
-                // we might need them as a VisitObservation
-                String hl7Type = obx.getField(2);
-                if (!Set.of("NM", "NA").contains(hl7Type)) {
-                    logger.warn("Skipping variable {} with type {}, not numerical", variableId, hl7Type);
-                    continue;
-                }
-                String allPointsStr = obx.getField(5);
-                if (allPointsStr.contains("~")) {
-                    throw new Hl7ParseException(partiallyParsedMessage.rawHl7Trimmed, "must only be 1 repeat in OBX-5");
-                }
-
-                List<Double> points = Arrays.stream(allPointsStr.split("\\^")).map(Double::parseDouble).toList();
-
                 String messageIdSpecific = String.format("%s_%d_%d", messageIdBase, obrI, obxI);
-                logger.debug("location {}, time {}, messageId {}, value count = {}",
-                        locationId, obsDatetime, messageIdSpecific, points.size());
-                WaveformMessage waveformMessage = waveformMessageFromValues(
-                        samplingRate, locationId, mappedLocation, obsDatetime, messageIdSpecific,
-                        variableId, mappedVariableDescription, channelId, unit, points);
+                // Sampling rate and variable description are not in the message, so use the metadata
+                String mappedVariableDescription = metadata.mappedVariableDescription();
+                // Units can vary even within the same variable, so use the values in the HL7 messages in preference to the
+                // ones in metadata.
+                String unitCode = obx.getField(6);
+                String unit = sourceMetadata.getUnitFromCode(unitCode).orElse(metadata.unit());
+                String hl7Type = obx.getField(2);
 
-                allWaveformMessages.add(waveformMessage);
+                if (metadata.isWaveform()) {
+                    int samplingRate = metadata.samplingRate();
+
+                    if (!Set.of("NM", "NA").contains(hl7Type)) {
+                        logger.warn("Skipping variable {} with type {}, not numerical", variableId, hl7Type);
+                        continue;
+                    }
+                    String allPointsStr = obx.getField(5);
+                    if (allPointsStr.contains("~")) {
+                        throw new Hl7ParseException(partiallyParsedMessage.rawHl7Trimmed, "must only be 1 repeat in OBX-5");
+                    }
+
+                    List<Double> points = Arrays.stream(allPointsStr.split("\\^")).map(Double::parseDouble).toList();
+                    logger.debug("location {}, time {}, messageId {}, value count = {}",
+                            locationId, obsDatetime, messageIdSpecific, points.size());
+
+                    WaveformHighFreqMessage waveformMessage = new WaveformHighFreqMessage();
+                    setBaseFields(
+                            waveformMessage, locationId, mappedLocation, obsDatetime, messageIdSpecific, variableId, mappedVariableDescription, unit);
+                    setWaveformFields(waveformMessage, samplingRate, channelId, points);
+                    allWaveformMessages.add(waveformMessage);
+                } else {
+                    WaveformLowFreqMessage lfMessage = new WaveformLowFreqMessage();
+                    setBaseFields(lfMessage, locationId, mappedLocation, obsDatetime, messageIdSpecific, variableId, mappedVariableDescription, unit);
+                    String sourceValue = obx.getField(5);
+                    // depending on the variableId, sourceValue might be a category code or a numeric field
+                    lfMessage.setSourceValue(new InterchangeValue<>(sourceValue));
+                    Optional<String> mappedCategory;
+                    try {
+                        mappedCategory = sourceMetadata.tryMapCategorical(variableId, sourceValue);
+                    } catch (UnknownCategoricalValueException e) {
+                        logger.error("Skipping OBX line, failed mapping variable {} with value {}", variableId, sourceValue, e);
+                        continue;
+                    }
+                    if (mappedCategory.isPresent()) {
+                        lfMessage.setStringValue(new InterchangeValue<>(mappedCategory.get()));
+                    } else {
+                        // not a known categorical, treat it as a numeric/string
+                        if (hl7Type.equals("ST")) {
+                            lfMessage.setStringValue(new InterchangeValue<>(sourceValue));
+                        } else if (hl7Type.equals("NM")) {
+                            try {
+                                Double numericValue = Double.parseDouble(sourceValue);
+                                lfMessage.setNumericValue(new InterchangeValue<>(numericValue));
+                            } catch (NumberFormatException e) {
+                                logger.error("Skipping OBX line, invalid number {}", sourceValue, e);
+                                continue;
+                            }
+                        } else {
+                            logger.error("Skipping OBX line, cannot handle HL7 data type {} for variable {}", hl7Type, variableId);
+                            continue;
+                        }
+                    }
+                    allWaveformMessages.add(lfMessage);
+                }
             }
         }
 
@@ -215,50 +252,52 @@ public class Hl7ParseAndQueue {
     }
 
     @SuppressWarnings("checkstyle:ParameterNumber")
-    private WaveformMessage waveformMessageFromValues(
-            int samplingRate, String locationId, String mappedLocation, Instant messageStartTime, String messageId,
-            String sourceVariableId, String mappedVariableDescription, String sourceChannelId, String unit, List<Double> arrayValues) {
-        WaveformMessage waveformMessage = new WaveformMessage();
-        // XXX: get from the CSV device file thingy and prefix with "waveform-" But aren't they all just "Waveform"?
-        // We might need to ask how we know which is Carescape and which is etc.
-        waveformMessage.setSourceObservationType("waveform");
-        waveformMessage.setSamplingRate(samplingRate);
-        waveformMessage.setSourceLocationString(locationId);
-        waveformMessage.setMappedLocationString(mappedLocation);
-        waveformMessage.setMappedVariableDescription(mappedVariableDescription);
-        waveformMessage.setObservationTime(messageStartTime);
-        waveformMessage.setSourceMessageId(messageId);
-        waveformMessage.setSourceVariableId(sourceVariableId);
-        waveformMessage.setSourceChannelId(sourceChannelId);
-        waveformMessage.setUnit(unit);
-        waveformMessage.setNumericValues(new InterchangeValue<>(arrayValues));
-        logger.trace("output interchange waveform message = {}", waveformMessage);
-        return waveformMessage;
+    private void setBaseFields(WaveformBaseMessage message, String locationId, String mappedLocation, Instant messageStartTime, String messageId,
+                               String sourceVariableId, String mappedVariableDescription, String unit) {
+        message.setSourceMessageId(messageId);
+        message.setSourceLocationString(locationId);
+        message.setMappedLocationString(mappedLocation);
+        message.setMappedVariableDescription(mappedVariableDescription);
+        message.setObservationTime(messageStartTime);
+        message.setSourceVariableId(sourceVariableId);
+        message.setUnit(unit);
+
     }
 
+    @SuppressWarnings("checkstyle:ParameterNumber")
+    private void setWaveformFields(
+            WaveformHighFreqMessage waveformMessage,
+            int samplingRate, String sourceChannelId, List<Double> arrayValues) {
+        waveformMessage.setSamplingRate(samplingRate);
+        waveformMessage.setSourceChannelId(sourceChannelId);
+        waveformMessage.setNumericValues(new InterchangeValue<>(arrayValues));
+        logger.trace("output interchange WaveformHighFreqMessage = {}", waveformMessage);
+    }
+
+
     /**
-     * Parse an HL7 message starting from text and store the resulting WaveformMessage in the queue awaiting collation.
+     * Parse an HL7 message starting from text, optionally save it, then dispatch the resulting
+     * interchange messages (queue HF for collation, send LF immediately).
      * If HL7 is invalid or in a form that the ad hoc parser can't handle, log error and skip.
      * Main use case for doSave = false is when you're feeding it messages that were read from your
      * saved messages in the first place.
      * @param messageAsStr One HL7 message as a string
      * @param doSave to save message or not
-     * @throws Hl7ParseException if data cannot be parsed
-     * @throws WaveformCollator.CollationException if the data has a logical error that prevents collation
+     * @throws Hl7ParseException if header parsing fails before dispatch
      */
-    public void saveParseQueue(String messageAsStr, boolean doSave) throws Hl7ParseException, WaveformCollator.CollationException {
+    public void saveParseQueue(String messageAsStr, boolean doSave) throws Hl7ParseException {
         PartiallyParsedMessage partiallyParsedMessage = parseHl7Headers(messageAsStr);
         saveParseQueue(partiallyParsedMessage, doSave);
     }
 
     /**
-     * Fully parse an HL7 message that has been partially parsed and store the resulting WaveformMessage in the queue awaiting collation.
+     * Fully parse an HL7 message that has been partially parsed, then dispatch the resulting
+     * interchange messages (queue HF for collation, send LF immediately).
      * If HL7 is invalid or in a form that the ad hoc parser can't handle, log error and skip.
      * Main use case for doSave = false is when you're feeding it messages that were read from your
      * saved messages in the first place.
      * @param partiallyParsedMessage One HL7 message that has been partially processed
      * @param doSave to save message or not
-     *
      */
     public void saveParseQueue(PartiallyParsedMessage partiallyParsedMessage, boolean doSave) {
         if (doSave) {
@@ -269,16 +308,18 @@ public class Hl7ParseAndQueue {
                 logger.error("HL7 saving failed", e);
             }
         }
-        FullyParsedMessage fullyParsed = null;
         try {
-            fullyParsed = parseHl7Fully(partiallyParsedMessage);
-            queueForCollation(fullyParsed);
+            FullyParsedMessage fullyParsed = parseHl7Fully(partiallyParsedMessage);
+            dispatchMessages(fullyParsed);
         } catch (Hl7ParseException e) {
             logger.error("HL7 parsing failed, first 100 chars: {}\nstacktrace {}",
                     e.getHl7Message().substring(0, Math.min(100, e.getHl7Message().length())),
                     e.getStackTrace());
         } catch (WaveformCollator.CollationException e) {
             logger.error("HL7 collator collation failed", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.warn("Publish interrupted; abandoning further dispatch for this HL7 message", e);
         }
     }
 
@@ -303,10 +344,30 @@ public class Hl7ParseAndQueue {
                 bedId);
     }
 
-    void queueForCollation(FullyParsedMessage fullyParsed) throws WaveformCollator.CollationException {
-        List<WaveformMessage> msgs = fullyParsed.waveformMessages();
-        logger.trace("HL7 message generated {} Waveform messages, sending for collation", msgs.size());
-        waveformCollator.addMessages(msgs);
+    /**
+     * Queue high-frequency waveform messages for collation, and send low-frequency messages immediately.
+     * @param fullyParsed fully parsed HL7 message
+     * @throws WaveformCollator.CollationException if the data has a logical error that prevents collation
+     * @throws InterruptedException if publishing is interrupted while waiting to enqueue
+     */
+    void dispatchMessages(FullyParsedMessage fullyParsed)
+            throws WaveformCollator.CollationException, InterruptedException {
+        // it would be very unexpected for an HL7 message to have a mixture of HF and LF data.
+        List<WaveformBaseMessage> msgs = fullyParsed.waveformBaseMessages();
+        List<WaveformHighFreqMessage> hfMessages = msgs.stream()
+                .filter(msg -> msg instanceof WaveformHighFreqMessage)
+                .map(msg -> (WaveformHighFreqMessage) msg)
+                .toList();
+        List<WaveformLowFreqMessage> lfMessages = msgs.stream()
+                .filter(msg -> (msg instanceof WaveformLowFreqMessage))
+                .map(msg -> (WaveformLowFreqMessage) msg)
+                .toList();
+        logger.trace("HL7 message generated {} Waveform messages ({} collatable, {} not), sending for collation",
+                msgs.size(), hfMessages.size(), lfMessages.size());
+        for (var m: lfMessages) {
+            waveformOperations.sendMessage(m);
+        }
+        waveformCollator.addMessages(hfMessages);
         numHl7++;
         if (numHl7 % 5000 == 0) {
             logger.debug("Have parsed and queued {} HL7 messages in total, {} pending messages, "
@@ -336,7 +397,7 @@ public class Hl7ParseAndQueue {
     @Scheduled(fixedDelay = 10 * 1000)
     public void collateAndSend() throws InterruptedException, WaveformCollator.CollationException {
         logger.debug("{} uncollated waveform messages pending", waveformCollator.pendingMessages.size());
-        List<WaveformMessage> msgs = waveformCollator.getReadyMessages(
+        List<WaveformHighFreqMessage> msgs = waveformCollator.getReadyMessages(
                 Instant.now(), maxCollatedMessageSamples, waitForDataLimitMillis, assumedRounding);
         logger.info("{} collated waveform messages ready for sending", msgs.size());
         for (var m: msgs) {

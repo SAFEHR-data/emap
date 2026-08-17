@@ -9,7 +9,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import uk.ac.ucl.rits.inform.datasources.waveform.hl7parse.Hl7ParseException;
 import uk.ac.ucl.rits.inform.interchange.InterchangeValue;
-import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformBaseMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformHighFreqMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformLowFreqMessage;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -30,7 +32,7 @@ class TestHl7ParseAndQueue {
     @Test
     void goodMessageSideRoom() throws IOException, URISyntaxException, Hl7ParseException {
         String hl7String = readHl7FromResource("hl7/test1.hl7");
-        checkMessage(hl7String, "UCHT03ICURM08", "T03^T03 SR08^SR08-08");
+        checkWaveformMessage(hl7String, "UCHT03ICURM08", "T03^T03 SR08^SR08-08");
     }
 
     @Test
@@ -38,40 +40,32 @@ class TestHl7ParseAndQueue {
         String hl7String = readHl7FromResource("hl7/test1.hl7");
         String bed15 = "UCHT03ICUBED15";
         hl7String = hl7String.replaceAll("UCHT03ICURM08", bed15);
-        checkMessage(hl7String, bed15, "T03^T03 BY01^BY01-15");
+        checkWaveformMessage(hl7String, bed15, "T03^T03 BY01^BY01-15");
     }
 
     @Test
     void messageWithUnknownLocation() throws IOException, URISyntaxException, Hl7ParseException {
         String hl7String = readHl7FromResource("hl7/test1.hl7");
         hl7String = hl7String.replaceAll("UCHT03ICURM08", "UCHT03ICUSOMETHING");
-        checkMessage(hl7String, "UCHT03ICUSOMETHING", null);
+        checkWaveformMessage(hl7String, "UCHT03ICUSOMETHING", null);
     }
 
-    void checkMessage(String hl7String, String expectedSourceLocation, String expectedMappedLocation)
+    void checkWaveformMessage(String hl7String, String expectedSourceLocation, String expectedMappedLocation)
             throws IOException, URISyntaxException, Hl7ParseException {
-        List<WaveformMessage> msgs = hl7ParseAndQueue.parseHl7Fully(hl7ParseAndQueue.parseHl7Headers(hl7String)).waveformMessages();
-        assertEquals(5, msgs.size());
-        List<String> actualSource = msgs.stream().map(WaveformMessage::getSourceLocationString).distinct().toList();
-        assertEquals(1, actualSource.size());
-        assertEquals(expectedSourceLocation, actualSource.get(0));
-
-        List<String> actualMapped = msgs.stream().map(WaveformMessage::getMappedLocationString).distinct().toList();
-        assertEquals(1, actualMapped.size());
-        assertEquals(expectedMappedLocation, actualMapped.get(0));
+        List<WaveformHighFreqMessage> msgs = makeMessagesAndBasicChecks(hl7String, expectedSourceLocation, expectedMappedLocation, 5).stream().map(m -> (WaveformHighFreqMessage)m).toList();
         assertEquals(
                 List.of("52912", "52913", "27", "51911", "52921"),
-                msgs.stream().map(WaveformMessage::getSourceVariableId).toList());
+                msgs.stream().map(WaveformHighFreqMessage::getSourceVariableId).toList());
         assertEquals(
                 List.of("Airway Volume Waveform", "Airway Pressure Waveform", "Generic ECG Waveform",
                         "O2 Pleth Waveform", "ETCO2"),
-                msgs.stream().map(WaveformMessage::getMappedVariableDescription).toList());
+                msgs.stream().map(WaveformHighFreqMessage::getMappedVariableDescription).toList());
         assertEquals(
                 List.of(50, 50, 300, 100, 25),
-                msgs.stream().map(WaveformMessage::getSamplingRate).toList());
+                msgs.stream().map(WaveformHighFreqMessage::getSamplingRate).toList());
         List<String> distinctMessageIds = msgs.stream().map(m -> m.getSourceMessageId()).distinct().toList();
         assertEquals(msgs.size(), distinctMessageIds.size());
-        List<String> actualUnits = msgs.stream().map(WaveformMessage::getUnit).toList();
+        List<String> actualUnits = msgs.stream().map(WaveformHighFreqMessage::getUnit).toList();
         assertEquals(List.of("mL", "cmH2O", "uV", "%", "%"), actualUnits);
         var expectedValues = List.of(
                 List.of(42.10),
@@ -81,12 +75,143 @@ class TestHl7ParseAndQueue {
                 List.of(42.50, 43.50, 44.5, 45.5, 46.5));
 
         for (int i = 0; i < msgs.size(); i++) {
-            WaveformMessage m = msgs.get(i);
+            WaveformHighFreqMessage m = msgs.get(i);
             InterchangeValue<List<Double>> numericValues = m.getNumericValues();
             assertTrue(numericValues.isSave());
             List<Double> expected = expectedValues.get(i);
             assertEquals(expected, numericValues.get());
         }
+    }
+
+    private List<WaveformBaseMessage> makeMessagesAndBasicChecks(String hl7String, String expectedSourceLocation, String expectedMappedLocation, int expectedMessageCount) throws Hl7ParseException {
+        List<WaveformBaseMessage> msgs = hl7ParseAndQueue.parseHl7Fully(hl7ParseAndQueue.parseHl7Headers(hl7String)).waveformBaseMessages();
+        assertEquals(expectedMessageCount, msgs.size());
+        List<String> actualSource = msgs.stream().map(WaveformBaseMessage::getSourceLocationString).distinct().toList();
+        assertEquals(1, actualSource.size());
+        assertEquals(expectedSourceLocation, actualSource.get(0));
+
+        List<String> actualMapped = msgs.stream().map(WaveformBaseMessage::getMappedLocationString).distinct().toList();
+        assertEquals(1, actualMapped.size());
+        assertEquals(expectedMappedLocation, actualMapped.get(0));
+        return msgs;
+    }
+
+    /**
+     * Represent expecte values for the main fields in a {@link WaveformLowFreqMessage}
+     * @param variableId variable ID as a string
+     * @param sourceValue the source (unmapped) value as a string
+     * @param mappedUnits the units as a string (eg. "cmH2O")
+     * @param numericValue value if a numeric conversion is expected, else null
+     * @param stringValue value if a string (incl categorical) conversion is expected, else null
+     */
+    record ExpectedWaveformMessage(String variableId, String sourceValue, String mappedUnits, Double numericValue, String stringValue) {
+        public void assertIsEqual(WaveformLowFreqMessage actualMessage) {
+            assertEquals(variableId, actualMessage.getSourceVariableId());
+            assertEquals(sourceValue, actualMessage.getSourceValue().get());
+            assertEquals(mappedUnits, actualMessage.getUnit());
+            if (numericValue == null) {
+                assertTrue(actualMessage.getNumericValue().isUnknown());
+            } else {
+                assertEquals(numericValue, actualMessage.getNumericValue().get());
+            }
+            if (stringValue == null) {
+                assertTrue(actualMessage.getStringValue().isUnknown());
+            } else {
+                assertEquals(stringValue, actualMessage.getStringValue().get());
+            }
+        }
+        static void checkAllMessages(
+                List<ExpectedWaveformMessage> expectedWaveformMessages,
+                List<WaveformLowFreqMessage> msgs) {
+            for (int i = 0; i < expectedWaveformMessages.size(); i++) {
+                expectedWaveformMessages.get(i).assertIsEqual(msgs.get(i));
+            }
+        }
+
+    }
+
+    @Test
+    void lowFreqHl7AllGood() throws IOException, URISyntaxException, Hl7ParseException {
+        String hl7String = readHl7FromResource("hl7/settings1_all_good.hl7");
+        String expectedSourceLocation = "UCHT03ICUBED11";
+        String expectedMappedLocation = "T03^T03 BY01^BY01-11";
+        // the obx lines don't appear in the same message in reality, but for testing this is fine
+        List<ExpectedWaveformMessage> expectedWaveformMessages = List.of(
+                new ExpectedWaveformMessage("2047", "3", "unitless", null, "Flow Trig"),
+                new ExpectedWaveformMessage("635", "19.5", "%", 19.5, null),
+                new ExpectedWaveformMessage("1314", "17.3", "1/min", 17.3, null),
+                new ExpectedWaveformMessage("1570", "0.8", "cmH2O", 0.8, null),
+                new ExpectedWaveformMessage("22", "17.3", "1/min", 17.3, null),
+                new ExpectedWaveformMessage("584", "11", "unitless", null, "Pressure Support / CPAP (PS)"),
+                // must be able to accept the same variable with different units in the same message; this happens in practice
+                new ExpectedWaveformMessage("1408", "0.13", "s", 0.13, null),
+                new ExpectedWaveformMessage("1408", "5", "%", 5.0, null),
+                new ExpectedWaveformMessage("1332", "8", "cmH2O", 8.0, null),
+                new ExpectedWaveformMessage("2104", "4", "cmH2O", 4.0, null),
+                new ExpectedWaveformMessage("9114", "50", "%", 50.0, null),
+                new ExpectedWaveformMessage("7878", "0.11", "s", 0.11, null),
+                new ExpectedWaveformMessage("2583", "1:2", "unitless", null, "1:2")
+        );
+        List<WaveformLowFreqMessage> actualMsgs = makeMessagesAndBasicChecks(
+                hl7String, expectedSourceLocation, expectedMappedLocation, expectedWaveformMessages.size())
+                .stream().map(m -> (WaveformLowFreqMessage)m).toList();
+        ExpectedWaveformMessage.checkAllMessages(expectedWaveformMessages, actualMsgs);
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings =
+            {
+                    // the base file with no bad lines works
+                    "",
+                    // variable not in metadata file
+                    "OBX|1|NM|12345||11|139|||||F|||20260703181500.220+0100|\r",
+                    // known variable, but NA is not a recognised type for LF data
+                    "OBX|1|NA|22||11|139|||||F|||20260703181500.220+0100|\r",
+                    // known variable, but value blank
+                    "OBX|1|NM|22|||139|||||F|||20260703181500.220+0100|\r",
+                    // categorical, but value unknown
+                    "OBX|1|NM|2047||123|139|||||F|||20260703181500.441+0100|\r",
+                    // categorical, but value missing
+                    "OBX|1|NM|2047|||139|||||F|||20260703181500.441+0100|\r",
+            }
+    )
+    // syntactically correct but uninterpretable data that should be skipped
+    void lowFreqHl7SkipBadData(String badObx) throws IOException, URISyntaxException, Hl7ParseException {
+        String hl7StringBase = readHl7FromResource("hl7/settings2_base.hl7");
+        String expectedSourceLocation = "UCHT03ICUBED11";
+        String expectedMappedLocation = "T03^T03 BY01^BY01-11";
+        // Put good line at the end to make sure we're not just stopping as soon
+        // as an error is found
+        String goodObx = "OBX|1|NM|584||11|139|||||F|||20260703181500.220+0100|\r";
+        String hl7String = hl7StringBase + badObx + goodObx;
+        // whatever erroneous lines exist, the one good one should be processed
+        List<ExpectedWaveformMessage> expectedWaveformMessages = List.of(
+                new ExpectedWaveformMessage("584", "11", "unitless", null, "Pressure Support / CPAP (PS)")
+                );
+        List<WaveformLowFreqMessage> actualMsgs = makeMessagesAndBasicChecks(
+                hl7String, expectedSourceLocation, expectedMappedLocation, expectedWaveformMessages.size())
+                .stream().map(m -> (WaveformLowFreqMessage)m).toList();
+        ExpectedWaveformMessage.checkAllMessages(expectedWaveformMessages, actualMsgs);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings =
+            {
+                    // shortened OBX
+                    "OBX|1|NM|2047|\r",
+            }
+    )
+    // malformed HL7 that should give a parse error
+    void lowFreqHl7ThrowBadData(String badObx) throws IOException, URISyntaxException, Hl7ParseException {
+        String hl7StringBase = readHl7FromResource("hl7/settings2_base.hl7");
+        String goodObx = "OBX|1|NM|584||11|139|||||F|||20260703181500.220+0100|\r";
+        String hl7String = hl7StringBase + badObx + goodObx;
+        Hl7ParseException hl7ParseException = assertThrows(Hl7ParseException.class, () -> {
+                    hl7ParseAndQueue.parseHl7Fully(hl7ParseAndQueue.parseHl7Headers(hl7String));
+                }
+        );
+        assertTrue(hl7ParseException.getMessage().contains("non existent field"));
     }
 
     @Test

@@ -26,7 +26,7 @@ import uk.ac.ucl.rits.inform.interchange.location.DepartmentMetadata;
 import uk.ac.ucl.rits.inform.interchange.location.LocationMetadata;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.Flowsheet;
 import uk.ac.ucl.rits.inform.interchange.visit_observations.FlowsheetMetadata;
-import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformMessage;
+import uk.ac.ucl.rits.inform.interchange.visit_observations.WaveformHighFreqMessage;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -272,17 +272,17 @@ public class InterchangeMessageFactory {
      *                    or null to not perform rounding
      * @return list of messages containing synthetic data
      */
-    public List<WaveformMessage> getWaveformMsgs(String sourceStreamId, String mappedStreamName, String channelId,
-                                                 int samplingRate, final int numSamples, int maxSamplesPerMessage,
-                                                 String sourceLocation, String mappedLocation,
-                                                 Instant obsDatetime, String unit, ChronoUnit roundToUnit) {
+    public List<WaveformHighFreqMessage> getWaveformMsgs(String sourceStreamId, String mappedStreamName, String channelId,
+                                                         int samplingRate, final int numSamples, int maxSamplesPerMessage,
+                                                         String sourceLocation, String mappedLocation,
+                                                         Instant obsDatetime, String unit, ChronoUnit roundToUnit) {
         // XXX: perhaps make use of the hl7-reader utility function for splitting messages? Or is that cheating?
         // Or should such a utility function go into (non-test) Interchange?
-        List<WaveformMessage> allMessages = new ArrayList<>();
+        List<WaveformHighFreqMessage> allMessages = new ArrayList<>();
         int samplesRemaining = numSamples;
         while (samplesRemaining > 0) {
             int samplesThisMessage = Math.min(samplesRemaining, maxSamplesPerMessage);
-            WaveformMessage waveformMessage = new WaveformMessage();
+            WaveformHighFreqMessage waveformMessage = new WaveformHighFreqMessage();
             waveformMessage.setSourceObservationType("waveform");
             waveformMessage.setSourceVariableId(sourceStreamId);
             waveformMessage.setMappedVariableDescription(mappedStreamName);
