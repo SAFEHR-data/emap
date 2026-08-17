@@ -25,11 +25,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Receive HL7 messages, transform each to an interchange message, then either
  * queue high-frequency waveforms for collation (see {@link WaveformCollator})
- * or send low-frequency messages immediately via {@link WaveformOperations}.
+ * or queue low-frequency messages for sending on the next {@link #collateAndSend()} run.
+ * Neither path performs a (potentially blocking) send on the HL7-ingestion thread.
  */
 @Component
 public class Hl7ParseAndQueue {
@@ -40,6 +42,7 @@ public class Hl7ParseAndQueue {
     private final LocationMapping locationMapping;
     private final Hl7MessageTimeSlotCalculator hl7MessageTimeSlotCalculator;
     private final Hl7MessageSaver hl7MessageSaver;
+    private final ConcurrentLinkedQueue<WaveformLowFreqMessage> pendingLfMessages = new ConcurrentLinkedQueue<>();
     private long numHl7 = 0;
 
     Hl7ParseAndQueue(WaveformOperations waveformOperations,
@@ -277,7 +280,7 @@ public class Hl7ParseAndQueue {
 
     /**
      * Parse an HL7 message starting from text, optionally save it, then dispatch the resulting
-     * interchange messages (queue HF for collation, send LF immediately).
+     * interchange messages (queue HF for collation, queue LF for sending on the next {@link #collateAndSend()} run).
      * If HL7 is invalid or in a form that the ad hoc parser can't handle, log error and skip.
      * Main use case for doSave = false is when you're feeding it messages that were read from your
      * saved messages in the first place.
@@ -292,7 +295,7 @@ public class Hl7ParseAndQueue {
 
     /**
      * Fully parse an HL7 message that has been partially parsed, then dispatch the resulting
-     * interchange messages (queue HF for collation, send LF immediately).
+     * interchange messages (queue HF for collation, queue LF for sending on the next {@link #collateAndSend()} run).
      * If HL7 is invalid or in a form that the ad hoc parser can't handle, log error and skip.
      * Main use case for doSave = false is when you're feeding it messages that were read from your
      * saved messages in the first place.
@@ -317,9 +320,6 @@ public class Hl7ParseAndQueue {
                     e.getStackTrace());
         } catch (WaveformCollator.CollationException e) {
             logger.error("HL7 collator collation failed", e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            logger.warn("Publish interrupted; abandoning further dispatch for this HL7 message", e);
         }
     }
 
@@ -345,13 +345,13 @@ public class Hl7ParseAndQueue {
     }
 
     /**
-     * Queue high-frequency waveform messages for collation, and send low-frequency messages immediately.
+     * Queue high-frequency waveform messages for collation, and queue low-frequency messages
+     * for sending on the next {@link #collateAndSend()} run.
      * @param fullyParsed fully parsed HL7 message
      * @throws WaveformCollator.CollationException if the data has a logical error that prevents collation
-     * @throws InterruptedException if publishing is interrupted while waiting to enqueue
      */
     void dispatchMessages(FullyParsedMessage fullyParsed)
-            throws WaveformCollator.CollationException, InterruptedException {
+            throws WaveformCollator.CollationException {
         // it would be very unexpected for an HL7 message to have a mixture of HF and LF data.
         List<WaveformBaseMessage> msgs = fullyParsed.waveformBaseMessages();
         List<WaveformHighFreqMessage> hfMessages = msgs.stream()
@@ -362,11 +362,9 @@ public class Hl7ParseAndQueue {
                 .filter(msg -> (msg instanceof WaveformLowFreqMessage))
                 .map(msg -> (WaveformLowFreqMessage) msg)
                 .toList();
-        logger.trace("HL7 message generated {} Waveform messages ({} collatable, {} not), sending for collation",
+        logger.trace("HL7 message generated {} Waveform messages ({} collatable, {} not), queueing for sending",
                 msgs.size(), hfMessages.size(), lfMessages.size());
-        for (var m: lfMessages) {
-            waveformOperations.sendMessage(m);
-        }
+        pendingLfMessages.addAll(lfMessages);
         waveformCollator.addMessages(hfMessages);
         numHl7++;
         if (numHl7 % 5000 == 0) {
@@ -389,7 +387,8 @@ public class Hl7ParseAndQueue {
     private int waitForDataLimitMillis = 15000;
 
     /**
-     * Get collated messages, if any, and send them to the Publisher.
+     * Get collated messages, if any, and send them to the Publisher. Also flush any
+     * low-frequency messages that have been queued up by {@link #dispatchMessages}.
      * All Scheduling is disabled for HL7 replay, so you need to call this manually.
      * @throws InterruptedException If the Publisher thread is interrupted
      * @throws WaveformCollator.CollationException if the data has a logical error that prevents collation
@@ -403,6 +402,10 @@ public class Hl7ParseAndQueue {
         for (var m: msgs) {
             // consider sending to publisher in batches?
             waveformOperations.sendMessage(m);
+        }
+        WaveformLowFreqMessage lfMessage;
+        while ((lfMessage = pendingLfMessages.poll()) != null) {
+            waveformOperations.sendMessage(lfMessage);
         }
         logger.info("collateAndSend end");
     }
