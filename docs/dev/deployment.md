@@ -241,6 +241,10 @@ See Slab for the
 [required chmod/chown/setfacl trick](https://uclh.slab.com/posts/shared-virtual-python-environments-with-uv-u7pa2fv4#hpkxd-per-gae-setup-tasks)
 if you did this.
 
+### Create docker network
+
+`docker create network emap-portal-grafana`
+
 ### Bringing up an instance
 ```bash
 emap docker up -d
