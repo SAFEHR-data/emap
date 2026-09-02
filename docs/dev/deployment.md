@@ -243,7 +243,7 @@ if you did this.
 
 ### Create docker network
 
-`docker create network emap-portal-grafana`
+`docker network create emap-portal-grafana`
 
 ### Bringing up an instance
 ```bash
