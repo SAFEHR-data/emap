@@ -13,6 +13,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PreDestroy;
+import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -206,11 +207,15 @@ public class Hl7MessageCompressor implements SmartLifecycle {
         Files.createDirectories(path.getParent());
 
         FileOutputStream fos = null;
+        BufferedOutputStream bos = null;
         try {
             fos = new FileOutputStream(path.toFile());
-            return new BZip2CompressorOutputStream(fos);
+            bos = new BufferedOutputStream(fos, 10 * 1024);
+            return new BZip2CompressorOutputStream(bos);
         } catch (IOException e) {
-            if (fos != null) {
+            if (bos != null) {
+                bos.close();
+            } else if (fos != null) {
                 fos.close();
             }
             throw e;
