@@ -187,7 +187,9 @@ public class Hl7ListenerConfig {
                                               // Spring needs to be explicitly told name when Bean is a List
                                               @Qualifier("hl7HandlerTaskExecutors") List<ThreadPoolTaskExecutor> hl7HandlerTaskExecutors) {
         return IntegrationFlows.from(hl7MessageChannel)
-                .bridge(e -> e.poller(Pollers.fixedDelay(10).taskExecutor(pollerTaskScheduler)))
+                .bridge(e ->
+                        e.taskScheduler(pollerTaskScheduler)
+                                .poller(Pollers.fixedDelay(10).receiveTimeout(0)))
                 .enrichHeaders(h -> h.headerFunction(
                         PARTIAL_PARSED_HEADER_KEY,
                         message -> {
