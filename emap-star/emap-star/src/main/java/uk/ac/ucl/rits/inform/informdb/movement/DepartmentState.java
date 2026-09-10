@@ -54,6 +54,27 @@ public class DepartmentState extends AuditCore<DepartmentState> {
      * \brief Current speciality of the department.
      */
     private String speciality;
+
+    /**
+     * \brief Report Group Nine (departmentType) value associated with this department.
+     */
+    private String departmentType;
+
+    /**
+     * \brief Predicate determining whether the Department is a ward or flow area.
+     */
+    private Boolean isWardOrFlowArea;
+
+    /**
+     * \brief Predicate determining whether the Department is a core inpatient area.
+     */
+    private Boolean isCoreInpatientArea;
+
+    /**
+     * \brief hospital location where this department is situated.
+     */
+    private String siteLocation;
+
     /**
      * Create valid department state.
      * @param department parent department
@@ -61,11 +82,21 @@ public class DepartmentState extends AuditCore<DepartmentState> {
      * @param validFrom  time that the message was valid from
      * @param storedFrom time that emap core stared processing the message
      * @param speciality name of the current speciality of this department
+     * @param departmentType Report Group Nine value associated with this department
+     * @param isWardOrFlowArea is this department a ward or flow area
+     * @param isCoreInpatientArea is this department a core inpatient area
+     * @param siteLocation hospital location where this department is situated.
      */
-    public DepartmentState(Department department, String status, String speciality, Instant validFrom, Instant storedFrom) {
+    public DepartmentState(Department department, String status,
+    String speciality, String departmentType, Boolean isWardOrFlowArea,
+    Boolean isCoreInpatientArea, String siteLocation, Instant validFrom, Instant storedFrom) {
         departmentId = department;
         this.status = status;
         this.speciality = speciality;
+        this.departmentType = departmentType;
+        this.isWardOrFlowArea = isWardOrFlowArea;
+        this.isCoreInpatientArea = isCoreInpatientArea;
+        this.siteLocation = siteLocation;
         setValidFrom(validFrom);
         setStoredFrom(storedFrom);
     }
@@ -78,6 +109,10 @@ public class DepartmentState extends AuditCore<DepartmentState> {
         departmentId = other.departmentId;
         status = other.status;
         speciality = other.speciality;
+        departmentType = other.departmentType;
+        isWardOrFlowArea = other.isWardOrFlowArea;
+        isCoreInpatientArea = other.isCoreInpatientArea;
+        siteLocation = other.siteLocation;
     }
 
     @Override
