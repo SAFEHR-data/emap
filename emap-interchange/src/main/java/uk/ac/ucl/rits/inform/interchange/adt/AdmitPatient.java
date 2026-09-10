@@ -18,6 +18,7 @@ import java.time.Instant;
 @ToString(callSuper = true)
 public class AdmitPatient extends AdtMessage implements AdmissionDateTime  {
     private InterchangeValue<Instant> admissionDateTime = InterchangeValue.unknown();
+    private InterchangeValue<String> admissionType = InterchangeValue.unknown();
 
 
     @Override

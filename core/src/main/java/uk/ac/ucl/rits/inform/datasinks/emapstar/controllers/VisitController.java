@@ -138,7 +138,7 @@ public class VisitController {
         Instant validFrom = msg.bestGuessAtValidFrom();
         RowState<HospitalVisit, HospitalVisitAudit> visitState = getOrCreateHospitalVisit(
                 msg.getVisitNumber(), mrn, msg.getSourceSystem(), validFrom, storedFrom);
-
+        addAdmissionType(msg, visitState);
         if (visitShouldBeUpdated(validFrom, msg.getSourceSystem(), visitState)) {
             updateGenericData(msg, visitState);
 
@@ -218,6 +218,17 @@ public class VisitController {
         HospitalVisit visit = visitState.getEntity();
         visitState.assignInterchangeValue(msg.getAdmissionDateTime(), visit.getAdmissionDatetime(), visit::setAdmissionDatetime);
     }
+
+    /**
+     * Add admission type.
+     * @param msg        AdmissionDateTime
+     * @param visitState visit wrapped in state class
+     */
+    private void addAdmissionType(final AdtMessage msg, RowState<HospitalVisit, HospitalVisitAudit> visitState) {
+        HospitalVisit visit = visitState.getEntity();
+        visitState.assignInterchangeValue(msg.getAdmissionType(), visit.getAdmissionType(), visit::setAdmissionType);
+    }
+
 
     /**
      * Delete admission specific information.
