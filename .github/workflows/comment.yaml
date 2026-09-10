@@ -12,8 +12,8 @@ jobs:
         id: generate-token
         uses: actions/create-github-app-token@v1
         with:
-          app-id: ${{ secrets.SAFEHR_WORKER_APP_ID }}
-          private-key: ${{ secrets.SAFEHR_WORKER_APP_KEY }}
+          app-id: ${{ secrets.SAFEHR_READ_ONLY_WORKER_ID }}
+          private-key: ${{ secrets.SAFEHR_READ_ONLY_WORKER_KEY }}
       - name: Checkout documentation
         uses: actions/checkout@v4
         with:

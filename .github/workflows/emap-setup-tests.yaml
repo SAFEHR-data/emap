@@ -36,8 +36,8 @@ jobs:
         id: generate-token
         uses: actions/create-github-app-token@v1
         with:
-          app-id: ${{ secrets.SAFEHR_WORKER_APP_ID }}
-          private-key: ${{ secrets.SAFEHR_WORKER_APP_KEY }}
+          app-id: ${{ secrets.SAFEHR_READ_ONLY_WORKER_ID }}
+          private-key: ${{ secrets.SAFEHR_READ_ONLY_WORKER_KEY }}
       - uses: actions/checkout@v3
       - name: Set up python
         uses: actions/setup-python@v5
