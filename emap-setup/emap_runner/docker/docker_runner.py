@@ -186,7 +186,7 @@ class DockerRunner:
         self.run("ps", output_lines=output_lines)
         # filter in expression to allow for no services to be running
         glowroot_running = any(
-            " running " in line for line in output_lines if "glowroot-central" in line
+            "Up " in line for line in output_lines if "glowroot-central" in line
         )
 
         logger.info(f"Is glowroot-central running: {glowroot_running}")
