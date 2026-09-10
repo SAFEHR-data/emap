@@ -210,7 +210,7 @@ public class Hl7MessageCompressor implements SmartLifecycle {
         BufferedOutputStream bos = null;
         try {
             fos = new FileOutputStream(path.toFile());
-            bos = new BufferedOutputStream(fos, 10 * 1024);
+            bos = new BufferedOutputStream(fos, 64 * 1024);
             return new BZip2CompressorOutputStream(bos);
         } catch (IOException e) {
             if (bos != null) {
