@@ -4,7 +4,7 @@ RUN apt update && \
     apt clean
 COPY core/emap-portal/nginx.conf /etc/nginx/
 COPY core/emap-portal/conf.d/ /etc/nginx/conf.d/
-COPY core/emap-portal/www/* /usr/share/nginx/html/
+COPY --chmod=644 core/emap-portal/www/ /usr/share/nginx/html/
 RUN --mount=type=secret,id=portal-build-secrets \
     . /run/secrets/portal-build-secrets && \
     htpasswd -b -B -c /etc/nginx/conf.d/htpasswd "$PORTAL_USERNAME" "$PORTAL_PASSWORD"
