@@ -8,11 +8,18 @@ jobs:
   comment:
     runs-on: ubuntu-latest
     steps:
+      - name: Generate GitHub App Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.SAFEHR_READ_ONLY_WORKER_ID }}
+          private-key: ${{ secrets.SAFEHR_READ_ONLY_WORKER_KEY }}
+          repositories: internal_emap_documentation
       - name: Checkout documentation
         uses: actions/checkout@v4
         with:
           repository: SAFEHR-data/internal_emap_documentation
-          token: ${{ secrets.GH_PAT_READ_AND_COMMENT }}
+          token: ${{ steps.generate-token.outputs.token }}
           ref: main
       - id: get-pr-checklist
         name: Get PR checklist

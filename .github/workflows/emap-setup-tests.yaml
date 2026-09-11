@@ -28,10 +28,16 @@ jobs:
   emap-setup-tests:
     needs: [filter]
     runs-on: ubuntu-latest
-    env:
-       GITHUB_TOKEN: ${{ secrets.GH_PAT_READ_AND_COMMENT }}
     if: needs.filter.outputs.emap-setup == 'true'
     steps:
+      # emap-setup test performs clones of private repos as part of the test, so
+      # a token is needed to be able to do that
+      - name: Generate GitHub App Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.SAFEHR_READ_ONLY_WORKER_ID }}
+          private-key: ${{ secrets.SAFEHR_READ_ONLY_WORKER_KEY }}
       - uses: actions/checkout@v3
       - name: Set up python
         uses: actions/setup-python@v5
@@ -42,6 +48,8 @@ jobs:
         run: | 
           python -m pip install -r emap-setup/requirements.txt
       - name: Run tests
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
         run: |
           cd emap-setup
           pytest  --cov=./ --cov-report=term
